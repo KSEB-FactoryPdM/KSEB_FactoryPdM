@@ -1,0 +1,159 @@
+name: CI/CD Pipeline for Smart Factory
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: smart-factory-cluster
+  GKE_ZONE: asia-northeast3-a
+  DEPLOYMENT_NAME: smart-factory-backend
+  IMAGE: smart-factory-backend
+
+jobs:
+  setup-build-publish-deploy:
+    name: Setup, Build, Publish, and Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r demo/requirements.txt
+
+    - name: Run tests
+      run: |
+        cd demo
+        python -m pytest tests/ -v
+
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Configure Docker to use gcloud as a credential helper
+      run: |-
+        gcloud --quiet auth configure-docker
+
+    - name: Get the GKE credentials so we can deploy to the cluster
+      run: |-
+        gcloud container clusters get-credentials "$GKE_CLUSTER" --zone "$GKE_ZONE"
+
+    - name: Build Docker image
+      run: |-
+        cd demo
+        docker build -t "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA" .
+
+    - name: Publish Docker image to GCR
+      run: |-
+        docker push "gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA"
+
+    - name: Set up Kustomize
+      run: |-
+        curl -sfLo kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/v3.1.0/kustomize_3.1.0_linux_amd64
+        chmod u+x ./kustomize
+
+    - name: Deploy infrastructure to GKE
+      run: |-
+        cd demo
+        
+        # 네임스페이스 생성
+        kubectl apply -f k8s/namespace.yaml
+        
+        # 시크릿 및 설정 적용
+        kubectl apply -f k8s/secrets.yaml
+        
+        # 인프라 서비스 배포 (순서 중요)
+        kubectl apply -f k8s/timescaledb.yaml
+        kubectl apply -f k8s/kafka.yaml
+        kubectl apply -f k8s/mqtt-redis.yaml
+        kubectl apply -f k8s/monitoring.yaml
+        
+        # 인프라 서비스가 준비될 때까지 대기
+        kubectl wait --for=condition=ready pod -l app=timescaledb -n smart-factory --timeout=300s
+        kubectl wait --for=condition=ready pod -l app=kafka -n smart-factory --timeout=300s
+        kubectl wait --for=condition=ready pod -l app=mqtt -n smart-factory --timeout=300s
+        kubectl wait --for=condition=ready pod -l app=redis -n smart-factory --timeout=300s
+
+    - name: Deploy applications to GKE
+      run: |-
+        cd demo
+        
+        # 이미지 태그 업데이트
+        sed -i "s|gcr.io/PROJECT_ID|gcr.io/$PROJECT_ID|g" k8s/smart-factory-apps.yaml
+        sed -i "s|:latest|:$GITHUB_SHA|g" k8s/smart-factory-apps.yaml
+        
+        # 애플리케이션 배포
+        kubectl apply -f k8s/smart-factory-apps.yaml
+        
+        # 롤아웃 상태 확인
+        kubectl rollout status deployment/$DEPLOYMENT_NAME -n smart-factory
+        kubectl rollout status deployment/data-collector -n smart-factory
+        kubectl rollout status deployment/ai-model-service -n smart-factory
+        kubectl rollout status deployment/sensor-simulator -n smart-factory
+
+    - name: Verify deployment
+      run: |-
+        kubectl get services -o wide -n smart-factory
+        kubectl get pods -n smart-factory
+        
+        # 서비스 상태 확인
+        echo "=== 서비스 상태 ==="
+        kubectl get svc smart-factory-backend -n smart-factory
+        
+        # 애플리케이션 로그 확인
+        echo "=== 백엔드 로그 ==="
+        kubectl logs -l app=smart-factory-backend -n smart-factory --tail=10
+        
+        echo "=== AI 모델 서비스 로그 ==="
+        kubectl logs -l app=ai-model-service -n smart-factory --tail=10
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: './demo'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  notification:
+    name: Slack Notification
+    runs-on: ubuntu-latest
+    needs: [setup-build-publish-deploy]
+    if: always()
+    
+    steps:
+    - name: Slack Notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        channel: '#smart-factory'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+      if: always() 

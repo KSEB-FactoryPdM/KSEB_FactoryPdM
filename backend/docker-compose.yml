@@ -1,0 +1,194 @@
+version: '3.8'
+
+services:
+  # 백엔드 API 서버
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@postgres:5432/predictive_maintenance
+      - TIMESCALE_URL=postgresql://user:password@postgres:5432/predictive_maintenance
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=True
+    depends_on:
+      - postgres
+      - mqtt
+      - kafka
+      - redis
+    volumes:
+      - ./models:/app/models
+    networks:
+      - app-network
+
+  # 데이터 수집기 (MQTT → Kafka)
+  data-collector:
+    build: .
+    command: python -m app.services.data_collector
+    environment:
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - DEBUG=True
+    depends_on:
+      - mqtt
+      - kafka
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # AI 모델 서비스 (Kafka Consumer)
+  ai-model:
+    build: .
+    command: python -m app.services.ai_model_service
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - DATABASE_URL=postgresql://user:password@postgres:5432/predictive_maintenance
+      - DEBUG=True
+    depends_on:
+      - kafka
+      - postgres
+    volumes:
+      - ./models:/app/models
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # 센서 시뮬레이터
+  sensor-simulator:
+    build: .
+    command: python -m app.services.sensor_simulator
+    environment:
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - DEBUG=True
+    depends_on:
+      - mqtt
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Zookeeper (Kafka 의존성)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - app-network
+
+  # Kafka 브로커
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    networks:
+      - app-network
+
+  # Redis (캐시 및 세션 저장소)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # PostgreSQL + TimescaleDB
+  postgres:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      - POSTGRES_DB=predictive_maintenance
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_timescaledb.sql:/docker-entrypoint-initdb.d/init_timescaledb.sql
+    networks:
+      - app-network
+
+  # MQTT 브로커
+  mqtt:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - app-network
+
+  # Kafka UI (개발용)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - app-network
+
+  # Prometheus (모니터링)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - app-network
+
+  # Grafana (대시보드)
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+      - postgres
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  app-network:
+    driver: bridge 
