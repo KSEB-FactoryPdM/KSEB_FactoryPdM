@@ -7,13 +7,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/predictive_maintenance
-      - TIMESCALE_URL=postgresql://user:password@postgres:5432/predictive_maintenance
+      - DATABASE_URL=${DATABASE_URL:-postgresql://user:${DB_PASSWORD:-password}@postgres:5432/predictive_maintenance}
+      - TIMESCALE_URL=${TIMESCALE_URL:-postgresql://user:${DB_PASSWORD:-password}@postgres:5432/predictive_maintenance}
+      - SECRET_KEY=${SECRET_KEY}
       - MQTT_BROKER_HOST=mqtt
       - MQTT_BROKER_PORT=1883
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - REDIS_URL=redis://redis:6379
-      - DEBUG=True
+      - DEBUG=${DEBUG:-false}
     depends_on:
       - postgres
       - mqtt
@@ -24,7 +25,7 @@ services:
     networks:
       - app-network
 
-  # 데이터 수집기 (MQTT → Kafka)
+  # 데이터 수집기 (MQTT → Kafka) - Unity 센서에서 MQTT 데이터 수집
   data-collector:
     build: .
     command: python -m app.services.data_collector
@@ -32,7 +33,7 @@ services:
       - MQTT_BROKER_HOST=mqtt
       - MQTT_BROKER_PORT=1883
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - DEBUG=True
+      - DEBUG=${DEBUG:-false}
     depends_on:
       - mqtt
       - kafka
@@ -46,8 +47,9 @@ services:
     command: python -m app.services.ai_model_service
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - DATABASE_URL=postgresql://user:password@postgres:5432/predictive_maintenance
-      - DEBUG=True
+      - DATABASE_URL=${DATABASE_URL:-postgresql://user:${DB_PASSWORD:-password}@postgres:5432/predictive_maintenance}
+      - MODEL_PATH=/app/models
+      - DEBUG=${DEBUG:-false}
     depends_on:
       - kafka
       - postgres
@@ -57,19 +59,8 @@ services:
       - app-network
     restart: unless-stopped
 
-  # 센서 시뮬레이터
-  sensor-simulator:
-    build: .
-    command: python -m app.services.sensor_simulator
-    environment:
-      - MQTT_BROKER_HOST=mqtt
-      - MQTT_BROKER_PORT=1883
-      - DEBUG=True
-    depends_on:
-      - mqtt
-    networks:
-      - app-network
-    restart: unless-stopped
+  # NOTE: 센서 시뮬레이터는 Unity로 별도 구현
+  # Unity 센서 시뮬레이터가 직접 MQTT 브로커(mqtt:1883)에 연결하여 데이터 전송
 
   # Zookeeper (Kafka 의존성)
   zookeeper:
@@ -116,7 +107,7 @@ services:
     environment:
       - POSTGRES_DB=predictive_maintenance
       - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
@@ -125,7 +116,7 @@ services:
     networks:
       - app-network
 
-  # MQTT 브로커
+  # MQTT 브로커 (Unity 센서 시뮬레이터 연결용)
   mqtt:
     image: eclipse-mosquitto:latest
     ports:
@@ -173,7 +164,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards

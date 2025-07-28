@@ -123,7 +123,7 @@ class EquipmentService:
             if not equipment:
                 return None
             
-            update_data = equipment_update.dict(exclude_unset=True)
+            update_data = equipment_update.model_dump(exclude_unset=True)
             
             # specifications을 JSON 문자열로 변환
             if update_data.get("specifications"):

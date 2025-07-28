@@ -26,15 +26,9 @@ class Settings(BaseSettings):
         env="ALLOWED_HOSTS"
     )
     
-    # 데이터베이스 설정
-    DATABASE_URL: str = Field(
-        default="postgresql://user:password@localhost:5432/predictive_maintenance",
-        env="DATABASE_URL"
-    )
-    TIMESCALE_URL: str = Field(
-        default="postgresql://user:password@localhost:5432/predictive_maintenance",
-        env="TIMESCALE_URL"
-    )
+    # 데이터베이스 설정 - 환경변수 필수
+    DATABASE_URL: str = Field(env="DATABASE_URL", description="데이터베이스 연결 URL (필수)")
+    TIMESCALE_URL: str = Field(env="TIMESCALE_URL", description="TimescaleDB 연결 URL (필수)")
     
     # MQTT 설정
     MQTT_BROKER_HOST: str = Field(default="localhost", env="MQTT_BROKER_HOST")
@@ -53,11 +47,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
     LOG_FILE: str = Field(default="logs/app.log", env="LOG_FILE")
     
-    # JWT 설정
-    SECRET_KEY: str = Field(
-        default="your-secret-key-here",
-        env="SECRET_KEY"
-    )
+    # JWT 설정 - 환경변수 필수
+    SECRET_KEY: str = Field(env="SECRET_KEY", description="JWT 암호화 키 (필수)")
     ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=30,
@@ -92,7 +83,7 @@ class Settings(BaseSettings):
     PROMETHEUS_PORT: int = Field(default=9090, env="PROMETHEUS_PORT")
     GRAFANA_PORT: int = Field(default=3000, env="GRAFANA_PORT")
     
-    # AWS 설정 (배포용)
+    # AWS 설정 (배포용) - 환경변수에서만
     AWS_ACCESS_KEY_ID: Optional[str] = Field(default=None, env="AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY: Optional[str] = Field(default=None, env="AWS_SECRET_ACCESS_KEY")
     AWS_REGION: str = Field(default="ap-northeast-2", env="AWS_REGION")
@@ -108,6 +99,30 @@ class Settings(BaseSettings):
         "case_sensitive": True,
         "extra": "allow"
     }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # 필수 환경변수 검증
+        self._validate_required_settings()
+    
+    def _validate_required_settings(self):
+        """필수 환경변수 검증"""
+        required_vars = []
+        
+        if not self.DATABASE_URL:
+            required_vars.append("DATABASE_URL")
+        
+        if not self.TIMESCALE_URL:
+            required_vars.append("TIMESCALE_URL")
+            
+        if not self.SECRET_KEY:
+            required_vars.append("SECRET_KEY")
+        
+        if required_vars:
+            raise ValueError(
+                f"다음 환경변수들이 설정되지 않았습니다: {', '.join(required_vars)}\n"
+                "이러한 환경변수들은 보안상 중요하므로 반드시 .env 파일이나 시스템 환경변수에 설정해주세요."
+            )
 
 
 # 전역 설정 인스턴스

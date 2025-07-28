@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from sqlalchemy.orm import Session
+import os
 
 from app.models.notification import Notification, NotificationChannel, NotificationLog, AlertRule
 from app.models.device import Device
@@ -36,7 +37,7 @@ class NotificationService:
             # 기본 채널 설정
             self.channels = {
                 "email": {
-                    "enabled": True,
+                    "enabled": bool(settings.EMAIL_USERNAME and settings.EMAIL_PASSWORD),
                     "config": {
                         "smtp_server": settings.EMAIL_SMTP_SERVER,
                         "smtp_port": settings.EMAIL_SMTP_PORT,
@@ -45,7 +46,7 @@ class NotificationService:
                     }
                 },
                 "kakao": {
-                    "enabled": True,
+                    "enabled": bool(settings.KAKAO_API_KEY and settings.KAKAO_TEMPLATE_ID),
                     "config": {
                         "api_key": settings.KAKAO_API_KEY,
                         "template_id": settings.KAKAO_TEMPLATE_ID
@@ -143,10 +144,16 @@ class NotificationService:
                 logger.warning("이메일 설정이 불완전합니다")
                 return
             
+            # 관리자 이메일 주소를 환경변수에서 가져옴
+            admin_email = os.getenv('ADMIN_EMAIL')
+            if not admin_email:
+                logger.warning("ADMIN_EMAIL 환경변수가 설정되지 않았습니다")
+                return
+            
             # 이메일 메시지 생성
             msg = MIMEMultipart()
             msg['From'] = config["username"]
-            msg['To'] = config.get("to_email", "admin@example.com")
+            msg['To'] = admin_email
             msg['Subject'] = f"[{alert_message.severity.upper()}] {alert_message.anomaly_type} 이상 탐지"
             
             # 이메일 본문
@@ -189,16 +196,26 @@ class NotificationService:
                 logger.warning("카카오 알림톡 설정이 불완전합니다")
                 return
             
+            # 카카오 알림톡 설정을 환경변수에서 가져옴
+            kakao_userid = os.getenv('KAKAO_USERID')
+            kakao_sender = os.getenv('KAKAO_SENDER')  
+            kakao_receiver = os.getenv('KAKAO_RECEIVER')
+            kakao_token = os.getenv('KAKAO_TOKEN', '')
+            
+            if not all([kakao_userid, kakao_sender, kakao_receiver]):
+                logger.warning("카카오 알림톡 필수 환경변수가 설정되지 않았습니다 (KAKAO_USERID, KAKAO_SENDER, KAKAO_RECEIVER)")
+                return
+            
             # 카카오 알림톡 API 호출
             url = "https://kakaoapi.aligo.in/akv10/talk/add/"
             
             data = {
                 "apikey": config["api_key"],
-                "userid": config.get("userid", ""),
-                "token": config.get("token", ""),
-                "sender": config.get("sender", ""),
+                "userid": kakao_userid,
+                "token": kakao_token,
+                "sender": kakao_sender,
                 "tpl_code": config["template_id"],
-                "receiver": config.get("receiver", ""),
+                "receiver": kakao_receiver,
                 "msg": f"[{alert_message.severity.upper()}] {alert_message.anomaly_type} 이상 탐지\n장비: {alert_message.device_id}\n센서: {alert_message.sensor_id}\n시간: {alert_message.detected_at}\n{alert_message.message}"
             }
             

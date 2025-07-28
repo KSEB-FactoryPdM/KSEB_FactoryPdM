@@ -14,74 +14,16 @@ from sqlalchemy import create_engine, text
 from loguru import logger
 
 
-class AnomalyDetectionModel(nn.Module):
-    """LSTM 기반 이상탐지 모델"""
-    
-    def __init__(self, input_size: int, hidden_size: int = 64, num_layers: int = 2):
-        super(AnomalyDetectionModel, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        
-        # LSTM 레이어
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.2)
-        
-        # 출력 레이어
-        self.fc1 = nn.Linear(hidden_size, 32)
-        self.fc2 = nn.Linear(32, input_size)  # 재구성 오류 기반 이상탐지
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.1)
-        
-    def forward(self, x):
-        # LSTM 순전파
-        lstm_out, _ = self.lstm(x)
-        
-        # 마지막 타임스텝의 출력 사용
-        output = lstm_out[:, -1, :]
-        
-        # 완전연결 레이어
-        output = self.relu(self.fc1(output))
-        output = self.dropout(output)
-        output = self.fc2(output)
-        
-        return output
-
-
-class PredictiveMaintenanceModel(nn.Module):
-    """잔여 수명 예측 모델"""
-    
-    def __init__(self, input_size: int, hidden_size: int = 128, num_layers: int = 3):
-        super(PredictiveMaintenanceModel, self).__init__()
-        
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=0.3)
-        
-        self.fc1 = nn.Linear(hidden_size, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, 1)  # 잔여 수명 (일 단위)
-        
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
-        
-    def forward(self, x):
-        lstm_out, _ = self.lstm(x)
-        output = lstm_out[:, -1, :]
-        
-        output = self.relu(self.fc1(output))
-        output = self.dropout(output)
-        output = self.relu(self.fc2(output))
-        output = self.dropout(output)
-        output = self.fc3(output)
-        
-        return output
-
-
 class AIModelService:
     def __init__(self):
         # Kafka 설정
         self.kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
         self.consumer_topic = 'sensor-data-processed'
         
-        # 데이터베이스 설정
-        self.db_url = os.getenv('DATABASE_URL', 'postgresql://user:password@localhost:5432/predictive_maintenance')
+        # 데이터베이스 설정 
+        self.db_url = os.getenv('DATABASE_URL')
+        if not self.db_url:
+            raise ValueError("DATABASE_URL 환경변수가 설정되지 않았습니다.")
         self.engine = None
         
         # 모델 설정
@@ -120,18 +62,10 @@ class AIModelService:
                          'POS_V001', 'SPEED_C001']
             
             for sensor_id in sensor_ids:
-                # 이상탐지 모델
-                anomaly_model = AnomalyDetectionModel(self.input_size)
-                self.anomaly_models[sensor_id] = anomaly_model
-                
-                # 예지보전 모델
-                maintenance_model = PredictiveMaintenanceModel(self.input_size)
-                self.maintenance_models[sensor_id] = maintenance_model
-                
                 # 센서 데이터 버퍼 초기화
                 self.sensor_buffers[sensor_id] = deque(maxlen=self.buffer_size)
                 
-            # 사전 훈련된 모델 로드 시도
+            # 사전 훈련된 모델 로드
             self.load_pretrained_models()
             
             logger.info(f"AI 모델 초기화 완료 (센서 수: {len(sensor_ids)})")
@@ -142,28 +76,47 @@ class AIModelService:
             
     def load_pretrained_models(self):
         """사전 훈련된 모델 로드"""
-        models_dir = "models"
+        models_dir = os.getenv('MODEL_PATH', 'models')
         
         if not os.path.exists(models_dir):
-            logger.info("사전 훈련된 모델이 없습니다. 기본 모델을 사용합니다.")
-            return
+            logger.error(f"모델 디렉토리가 존재하지 않습니다: {models_dir}")
+            raise FileNotFoundError(f"모델 디렉토리를 찾을 수 없습니다: {models_dir}")
             
         try:
-            for sensor_id in self.anomaly_models.keys():
+            sensor_ids = ['TEMP_A001', 'PRES_A001', 'VIB_A001', 'TEMP_M001', 
+                         'CURR_M001', 'RPM_M001', 'FLOW_P001', 'PRES_P001', 
+                         'POS_V001', 'SPEED_C001']
+                         
+            for sensor_id in sensor_ids:
                 # 이상탐지 모델 로드
                 anomaly_path = os.path.join(models_dir, f"anomaly_{sensor_id}.pth")
                 if os.path.exists(anomaly_path):
-                    self.anomaly_models[sensor_id].load_state_dict(torch.load(anomaly_path))
-                    logger.info(f"이상탐지 모델 로드: {sensor_id}")
+                    self.anomaly_models[sensor_id] = torch.load(anomaly_path, map_location='cpu')
+                    self.anomaly_models[sensor_id].eval()
+                    logger.info(f"이상탐지 모델 로드 완료: {sensor_id}")
+                else:
+                    logger.warning(f"이상탐지 모델 파일을 찾을 수 없습니다: {anomaly_path}")
                     
                 # 예지보전 모델 로드
                 maintenance_path = os.path.join(models_dir, f"maintenance_{sensor_id}.pth")
                 if os.path.exists(maintenance_path):
-                    self.maintenance_models[sensor_id].load_state_dict(torch.load(maintenance_path))
-                    logger.info(f"예지보전 모델 로드: {sensor_id}")
+                    self.maintenance_models[sensor_id] = torch.load(maintenance_path, map_location='cpu')
+                    self.maintenance_models[sensor_id].eval()
+                    logger.info(f"예지보전 모델 로드 완료: {sensor_id}")
+                else:
+                    logger.warning(f"예지보전 모델 파일을 찾을 수 없습니다: {maintenance_path}")
+                    
+            # 로드된 모델 개수 확인
+            loaded_anomaly = len(self.anomaly_models)
+            loaded_maintenance = len(self.maintenance_models)
+            logger.info(f"모델 로드 완료 - 이상탐지: {loaded_anomaly}개, 예지보전: {loaded_maintenance}개")
+            
+            if loaded_anomaly == 0 and loaded_maintenance == 0:
+                raise RuntimeError("사용 가능한 사전 훈련된 모델이 없습니다.")
                     
         except Exception as e:
-            logger.warning(f"모델 로드 중 오류: {e}")
+            logger.error(f"모델 로드 중 오류: {e}")
+            raise
             
     def preprocess_sensor_data(self, sensor_data: Dict[str, Any]) -> Optional[float]:
         """센서 데이터 전처리"""
@@ -196,19 +149,30 @@ class AIModelService:
     def detect_anomaly(self, sensor_id: str, sequence: List[float]) -> Dict[str, Any]:
         """이상탐지 수행"""
         try:
+            if sensor_id not in self.anomaly_models:
+                logger.warning(f"센서 {sensor_id}에 대한 이상탐지 모델을 찾을 수 없습니다.")
+                return {
+                    'is_anomaly': False,
+                    'reconstruction_error': 0.0,
+                    'confidence': 0.0,
+                    'threshold': self.anomaly_threshold
+                }
+                
             model = self.anomaly_models[sensor_id]
-            model.eval()
             
             # 시퀀스를 텐서로 변환
             input_tensor = torch.FloatTensor(sequence).unsqueeze(0).unsqueeze(-1)
             
             with torch.no_grad():
-                # 재구성 수행
-                reconstructed = model(input_tensor)
+                # 모델 추론
+                output = model(input_tensor)
                 
-                # 재구성 오류 계산
-                original = input_tensor[:, -1, :]  # 마지막 값
-                reconstruction_error = torch.mean((original - reconstructed) ** 2).item()
+                # 재구성 오류 계산 (모델 출력에 따라 다를 수 있음)
+                if hasattr(output, 'shape') and len(output.shape) > 1:
+                    original = input_tensor[:, -1, :]  # 마지막 값
+                    reconstruction_error = torch.mean((original - output) ** 2).item()
+                else:
+                    reconstruction_error = float(output)
                 
                 # 이상 여부 판정
                 is_anomaly = reconstruction_error > self.anomaly_threshold
@@ -231,17 +195,26 @@ class AIModelService:
             }
             
     def predict_remaining_life(self, sensor_id: str, sequence: List[float]) -> Dict[str, Any]:
-        """잔여 수명 예측"""
+        """사전 훈련된 모델을 사용한 잔여 수명 예측"""
         try:
+            if sensor_id not in self.maintenance_models:
+                logger.warning(f"센서 {sensor_id}에 대한 예지보전 모델을 찾을 수 없습니다.")
+                return {
+                    'remaining_days': 365.0,
+                    'confidence': 0.0,
+                    'risk_level': 'unknown',
+                    'needs_maintenance': False
+                }
+                
             model = self.maintenance_models[sensor_id]
-            model.eval()
             
             # 시퀀스를 텐서로 변환
             input_tensor = torch.FloatTensor(sequence).unsqueeze(0).unsqueeze(-1)
             
             with torch.no_grad():
                 # 잔여 수명 예측 (일 단위)
-                predicted_days = model(input_tensor).item()
+                prediction = model(input_tensor)
+                predicted_days = float(prediction.item()) if hasattr(prediction, 'item') else float(prediction)
                 
                 # 음수 방지
                 predicted_days = max(0, predicted_days)

@@ -9,7 +9,7 @@
 ```mermaid
 graph TB
     subgraph "데이터 수집 계층"
-        A[센서 시뮬레이터] --> B[MQTT 브로커]
+        A[Unity 센서 시뮬레이터] --> B[MQTT 브로커]
         B --> C[데이터 수집기]
     end
     
@@ -46,10 +46,10 @@ graph TB
 
 | 구성 요소 | 주요 기술 | 역할 |
 |----------|-----------|------|
-| 센서 시뮬레이터 | Python + MQTT | 가상 센서 데이터 생성 및 Publish |
+| 센서 시뮬레이터 | Unity + MQTT | 가상 센서 데이터 생성 및 Publish |
 | 데이터 수집기 | FastAPI + MQTT Client + Kafka Producer | MQTT Subscribe → Kafka Publish |
 | 데이터 버퍼링 | Apache Kafka | 스트리밍 파이프라인, 모델 연계용 Topic 운영 |
-| AI 모델 | PyTorch + Kafka Consumer | 이상탐지/예지 모델 실시간 예측 |
+| AI 모델 | 사전 훈련된 PyTorch 모델 + Kafka Consumer | 이상탐지/예지 모델 실시간 예측 |
 | DB | TimescaleDB | 예측 결과 및 원본 데이터 저장 |
 | 시각화 | Grafana + Prometheus | 모델 결과 및 시스템 상태 모니터링 |
 | 인프라 | Docker + Kubernetes (GKE) | 서비스 컨테이너화 및 오케스트레이션 |
@@ -66,8 +66,7 @@ graph TB
 - **Pydantic** - 데이터 검증 및 직렬화
 
 #### AI/ML
-- **PyTorch** - 딥러닝 프레임워크
-- **scikit-learn** - 머신러닝 라이브러리
+- **사전 훈련된 PyTorch 모델** - 완성된 이상탐지/예지보전 모델 사용
 - **NumPy & Pandas** - 데이터 처리
 - **TSLearn** - 시계열 분석
 
@@ -84,6 +83,10 @@ graph TB
 - **Prometheus** - 메트릭 수집 및 모니터링
 - **Grafana** - 대시보드 및 데이터 시각화
 - **Loguru** - 구조화된 로깅
+
+#### 센서 시뮬레이션
+- **Unity 3D** - 가상 공장 환경 및 센서 시뮬레이션
+- **Unity MQTT Client** - 센서 데이터 전송
 
 #### 인프라 & DevOps
 - **Docker & Docker Compose** - 컨테이너화
@@ -102,6 +105,7 @@ graph TB
 ### 사전 요구사항
 
 - **Docker & Docker Compose**
+- **Unity 3D** (센서 시뮬레이터용)
 - **Kubernetes 클러스터** (로컬: minikube/kind, 클라우드: GKE)
 - **kubectl**
 - **Python 3.11+**
@@ -109,24 +113,61 @@ graph TB
 
 ### 로컬 개발 환경 설정
 
+#### Docker Compose 사용 (권장)
+
 ```bash
 # 저장소 클론
 git clone <repository-url>
-cd project/demo
+cd backend
 
-# 의존성 설치
-pip install -r requirements.txt
+# 환경 변수 설정 파일 생성
+cp .env.docker.example .env
 
-# 환경 변수 설정
-cp env.example .env
-# .env 파일 수정
+# .env 파일에서 다음 필수 변수들 설정:
+# DB_PASSWORD=secure_password
+# SECRET_KEY=your-32-char-secret-key
+# 기타 필요한 알림 설정들...
 
-# Docker Compose로 개발 환경 실행
+# 사전 훈련된 모델 파일들을 models/ 폴더에 배치
+# models/anomaly_SENSOR_ID.pth
+# models/maintenance_SENSOR_ID.pth
+
+# Docker Compose로 모든 서비스 실행
 docker-compose up -d
 
 # 서비스 상태 확인
 docker-compose ps
+
+# 로그 확인
+docker-compose logs -f backend
+docker-compose logs -f ai-model
 ```
+
+#### 직접 Python 실행
+
+```bash
+# 의존성 설치
+pip install -r requirements.txt
+
+# 환경 변수 설정
+cp .env.example .env
+# .env 파일에서 DATABASE_URL, SECRET_KEY 등 필수 변수 설정
+
+# 데이터베이스 및 기타 인프라 서비스만 Docker로 실행
+docker-compose up -d postgres mqtt kafka redis
+
+# 애플리케이션 직접 실행
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+
+### 접근 정보
+
+- **API 서버**: http://localhost:8000
+- **API 문서**: http://localhost:8000/docs
+- **Grafana**: http://localhost:3000 (admin / 설정한 비밀번호)
+- **Prometheus**: http://localhost:9090
+- **Kafka UI**: http://localhost:8080
 
 ### 프로덕션 배포 (Kubernetes)
 
@@ -189,13 +230,13 @@ gcloud container clusters create smart-factory-cluster \
 ## 🧠 AI 모델
 
 ### 이상탐지 모델
-- **알고리즘**: LSTM 기반 오토인코더
+- **사전 훈련된 LSTM 기반 오토인코더**
 - **입력**: 시계열 센서 데이터 (30 시점)
 - **출력**: 재구성 오류 기반 이상 점수
 - **임계값**: 동적 임계값 자동 조정
 
 ### 예지보전 모델
-- **알고리즘**: LSTM 기반 회귀 모델
+- **사전 훈련된 LSTM 기반 회귀 모델**
 - **입력**: 다변량 시계열 센서 데이터
 - **출력**: 잔여 수명 예측 (일 단위)
 - **특징**: 설비별 특화 모델
@@ -221,10 +262,10 @@ gcloud container clusters create smart-factory-cluster \
 
 ## 🔄 데이터 플로우
 
-1. **데이터 생성**: 센서 시뮬레이터가 실제 공장설비 데이터를 모사하여 MQTT로 전송
+1. **데이터 생성**: Unity 센서 시뮬레이터가 실제 공장설비 데이터를 모사하여 MQTT로 전송
 2. **데이터 수집**: 데이터 수집기가 MQTT 메시지를 구독하여 Kafka로 스트리밍
 3. **데이터 처리**: Kafka Consumer가 데이터를 소비하여 전처리 및 정규화 수행
-4. **AI 추론**: PyTorch 모델이 실시간으로 이상탐지 및 예지보전 수행
+4. **AI 추론**: 사전 훈련된 PyTorch 모델이 실시간으로 이상탐지 및 예지보전 수행
 5. **결과 저장**: 예측 결과를 TimescaleDB에 저장
 6. **알림 생성**: 임계값 초과시 자동 알림 생성
 7. **시각화**: Grafana를 통한 실시간 모니터링 및 대시보드 제공
@@ -242,13 +283,12 @@ demo/
 │   ├── schemas/           # Pydantic 스키마
 │   ├── services/          # 비즈니스 로직
 │   │   ├── data_collector.py      # 데이터 수집기
-│   │   ├── sensor_simulator.py    # 센서 시뮬레이터
-│   │   └── ai_model_service.py    # AI 모델 서비스
+│   │   └── ai_model_service.py    # AI 모델 서비스 (사전 훈련된 모델 로드)
 │   └── main.py           # FastAPI 애플리케이션
 ├── k8s/                   # Kubernetes 매니페스트
 ├── scripts/               # 배포 및 유틸리티 스크립트
 ├── tests/                 # 테스트 코드
-├── models/               # AI 모델 파일
+├── models/               # 사전 훈련된 AI 모델 파일
 ├── docker-compose.yml    # 로컬 개발 환경
 ├── Dockerfile           # 컨테이너 이미지
 └── requirements.txt     # Python 의존성
@@ -270,6 +310,15 @@ isort app/
 # 타입 체크
 mypy app/
 ```
+
+### Unity 센서 시뮬레이터 연동
+
+Unity 센서 시뮬레이터는 별도의 Unity 프로젝트로 개발되며, 다음과 같은 기능을 제공합니다:
+
+1. **3D 가상 공장 환경**: 실제 공장 설비를 모사한 3D 환경
+2. **센서 시뮬레이션**: 온도, 압력, 진동 등 다양한 센서 데이터 생성
+3. **MQTT 통신**: 생성된 센서 데이터를 MQTT 브로커로 전송
+4. **시각적 모니터링**: Unity UI를 통한 실시간 센서 상태 확인
 
 ### 새로운 센서 추가
 
@@ -369,10 +418,6 @@ kubectl top pods -n smart-factory
 kubectl patch deployment ai-model-service -n smart-factory -p '{"spec":{"template":{"spec":{"containers":[{"name":"ai-model","resources":{"limits":{"memory":"4Gi"}}}]}}}}'
 ```
 
-## 📝 라이센스
-
-이 프로젝트는 MIT 라이센스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
-
 ## 🤝 기여
 
 1. 이 저장소를 포크합니다
@@ -380,21 +425,3 @@ kubectl patch deployment ai-model-service -n smart-factory -p '{"spec":{"templat
 3. 변경사항을 커밋합니다 (`git commit -m 'Add some amazing feature'`)
 4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
 5. Pull Request를 생성합니다
-
-## 📞 지원
-
-- **이슈 리포팅**: GitHub Issues
-- **문서**: [프로젝트 위키](wiki-url)
-- **이메일**: support@smart-factory.com
-
-## 🔗 관련 링크
-
-- [TimescaleDB 문서](https://docs.timescale.com/)
-- [Apache Kafka 가이드](https://kafka.apache.org/documentation/)
-- [PyTorch 튜토리얼](https://pytorch.org/tutorials/)
-- [Kubernetes 공식 문서](https://kubernetes.io/docs/)
-- [FastAPI 문서](https://fastapi.tiangolo.com/)
-
----
-
-**🏭 스마트팩토리 예지보전 시스템으로 더 안전하고 효율적인 공장 운영을 경험하세요!** 

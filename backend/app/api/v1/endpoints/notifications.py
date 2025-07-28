@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.config import settings
 from app.models.user import User
 from app.schemas.notification import (
     NotificationResponse, NotificationUpdate, NotificationSummary,
@@ -93,16 +94,16 @@ async def get_notification_channels(
             {
                 "id": 1,
                 "name": "email",
-                "enabled": True,
-                "config": {"smtp_server": "smtp.gmail.com", "smtp_port": 587},
+                "enabled": bool(settings.EMAIL_USERNAME and settings.EMAIL_PASSWORD),
+                "config": {"smtp_server": settings.EMAIL_SMTP_SERVER, "smtp_port": settings.EMAIL_SMTP_PORT},
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z"
             },
             {
                 "id": 2,
                 "name": "kakao",
-                "enabled": True,
-                "config": {"api_key": "your_api_key", "template_id": "your_template_id"},
+                "enabled": bool(settings.KAKAO_API_KEY and settings.KAKAO_TEMPLATE_ID),
+                "config": {"template_id": settings.KAKAO_TEMPLATE_ID},  # API 키는 보안상 표시하지 않음
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z"
             },
