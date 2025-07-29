@@ -55,6 +55,12 @@ DATABASE_QUERY_DURATION = Histogram(
     ['operation']
 )
 
+MODEL_TRAINING_COUNT = Counter(
+    'model_training_total',
+    'Total model training attempts',
+    ['device_id', 'training_type', 'success']
+)
+
 
 def setup_monitoring():
     """모니터링 서버 시작"""
@@ -98,4 +104,10 @@ def record_model_prediction(model_type: str, duration: float):
 
 def record_database_query(operation: str, duration: float):
     """데이터베이스 쿼리 시간 메트릭 기록"""
-    DATABASE_QUERY_DURATION.labels(operation=operation).observe(duration) 
+    DATABASE_QUERY_DURATION.labels(operation=operation).observe(duration)
+
+
+def record_model_training(device_id: str, training_type: str, success: bool):
+    """모델 학습 메트릭 기록"""
+    success_str = "success" if success else "failure"
+    MODEL_TRAINING_COUNT.labels(device_id=device_id, training_type=training_type, success=success_str).inc() 

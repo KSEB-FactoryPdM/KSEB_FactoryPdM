@@ -14,8 +14,9 @@ RUN apt-get update && apt-get install -y \
 # Python 의존성 파일 복사
 COPY requirements.txt .
 
-# Python 패키지 설치
-RUN pip install --no-cache-dir -r requirements.txt
+# Python 패키지 설치 (torch CPU 전용)
+RUN pip install torch==2.1.1+cpu -f https://download.pytorch.org/whl/torch_stable.html && \
+    pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사
 COPY . .

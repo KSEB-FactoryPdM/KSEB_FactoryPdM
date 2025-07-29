@@ -39,7 +39,7 @@ ai_model:
 
 monitoring:
   prometheus_port: 9090
-  grafana_port: 3000
+  grafana_port: 3001
   log_level: "DEBUG"
 
 sensor_simulator:

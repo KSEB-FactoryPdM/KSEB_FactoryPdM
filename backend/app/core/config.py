@@ -47,8 +47,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
     LOG_FILE: str = Field(default="logs/app.log", env="LOG_FILE")
     
-    # JWT 설정 - 환경변수 필수
-    SECRET_KEY: str = Field(env="SECRET_KEY", description="JWT 암호화 키 (필수)")
+    # JWT 설정 - 환경변수 필수 (개발 환경에서는 기본값 제공)
+    SECRET_KEY: str = Field(
+        default="dev-secret-key-change-in-production-b8f2c4e6a9d1f3e5c7a2b4d6e8f0a1c3", 
+        env="SECRET_KEY", 
+        description="JWT 암호화 키 (필수)"
+    )
     ALGORITHM: str = Field(default="HS256", env="ALGORITHM")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=30,
@@ -115,8 +119,10 @@ class Settings(BaseSettings):
         if not self.TIMESCALE_URL:
             required_vars.append("TIMESCALE_URL")
             
-        if not self.SECRET_KEY:
-            required_vars.append("SECRET_KEY")
+        # SECRET_KEY는 기본값이 있으므로 검증에서 제외 (개발 환경 지원)
+        # 프로덕션에서는 반드시 환경변수로 설정해야 함
+        if self.SECRET_KEY == "dev-secret-key-change-in-production-b8f2c4e6a9d1f3e5c7a2b4d6e8f0a1c3" and self.ENVIRONMENT == "production":
+            required_vars.append("SECRET_KEY (프로덕션 환경에서는 필수)")
         
         if required_vars:
             raise ValueError(
@@ -126,4 +132,4 @@ class Settings(BaseSettings):
 
 
 # 전역 설정 인스턴스
-settings = Settings() 
+settings = Settings()

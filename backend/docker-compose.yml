@@ -158,11 +158,26 @@ services:
     networks:
       - app-network
 
+  # Frontend (Next.js)
+  frontend:
+    build: 
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NODE_ENV=production
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
   # Grafana (대시보드)
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
     volumes:
@@ -182,4 +197,3 @@ volumes:
 
 networks:
   app-network:
-    driver: bridge 
