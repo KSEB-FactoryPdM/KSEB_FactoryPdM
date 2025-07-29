@@ -1,0 +1,4 @@
+[
+  {"id": 1, "equipmentId": "EQ-1", "scheduledDate": "2024-02-01", "status": "pending"},
+  {"id": 2, "equipmentId": "EQ-2", "scheduledDate": "2024-02-15", "status": "completed"}
+]
