@@ -1,5 +1,5 @@
-# Python 3.9 베이스 이미지 사용
-FROM python:3.9-slim
+# Python 3.11 베이스 이미지 사용 (GitHub Actions와 일치)
+FROM python:3.11-slim
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Python 의존성 파일 복사
