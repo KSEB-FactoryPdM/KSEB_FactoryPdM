@@ -8,6 +8,9 @@ on:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,8 +19,9 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       - name: Run lint
         run: npm run lint
       - name: Run unit tests
@@ -26,17 +30,21 @@ jobs:
         run: npx cypress run || echo "Cypress tests require login and alert pages"
       - name: Build project
         run: npm run build
-      - name: Build Storybook
-        id: build_storybook
+      - name: Check for Storybook
+        id: check_storybook
         run: |
           if node -e "const p=require('./package.json'); process.exit(!(p.scripts && p.scripts['build-storybook']));"; then
-            npm run build-storybook
+            echo "storybook_exists=true" >> $GITHUB_OUTPUT
           else
-            echo 'Storybook script not found'
+            echo "storybook_exists=false" >> $GITHUB_OUTPUT
+            echo 'Storybook script not found in package.json'
           fi
+      - name: Build Storybook
+        if: steps.check_storybook.outputs.storybook_exists == 'true'
+        run: npm run build-storybook
       - name: Upload Storybook artifact
-        if: success() && steps.build_storybook.conclusion == 'success' && test -d storybook-static
-        uses: actions/upload-artifact@v3
+        if: steps.check_storybook.outputs.storybook_exists == 'true' && success()
+        uses: actions/upload-artifact@v4
         with:
           name: storybook-static
-          path: storybook-static
+          path: frontend/storybook-static
