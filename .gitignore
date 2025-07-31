@@ -39,11 +39,17 @@ venv.bak/
 .env
 .env.local
 .env.production
+.env.development
+.env.test
 
-# Logs6
-
+# Logs
 *.log
 logs/
+
+# Node
+**/node_modules/
+frontend/.next/
+frontend/out/
 
 # Database
 *.db
@@ -69,7 +75,7 @@ htmlcov/
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
 
 scripts/
 ai/
