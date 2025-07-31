@@ -1,10 +1,11 @@
-name: Deploy Frontend to GCP
+name: Frontend Deploy to GCP
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
     branches: [ main ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-deploy.yml'
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -63,63 +64,15 @@ jobs:
 
     - name: Deploy frontend to GKE
       run: |-
-        # 프론트엔드 배포 설정 생성
-        cat << EOF > frontend-deployment.yaml
-        apiVersion: v1
-        kind: Service
-        metadata:
-          name: smart-factory-frontend
-          namespace: smart-factory
-          labels:
-            app: smart-factory-frontend
-        spec:
-          ports:
-          - port: 3000
-            targetPort: 3000
-            name: http
-          selector:
-            app: smart-factory-frontend
-          type: LoadBalancer
+        # 프론트엔드 배포 설정 파일 사용
+        cd backend
         
-        ---
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: smart-factory-frontend
-          namespace: smart-factory
-          labels:
-            app: smart-factory-frontend
-        spec:
-          replicas: 2
-          selector:
-            matchLabels:
-              app: smart-factory-frontend
-          template:
-            metadata:
-              labels:
-                app: smart-factory-frontend
-            spec:
-              containers:
-              - name: frontend
-                image: gcr.io/$PROJECT_ID/$IMAGE:$GITHUB_SHA
-                ports:
-                - containerPort: 3000
-                env:
-                - name: NEXT_PUBLIC_API_URL
-                  value: "http://smart-factory-backend:8000"
-                - name: NODE_ENV
-                  value: "production"
-                resources:
-                  requests:
-                    memory: "256Mi"
-                    cpu: "250m"
-                  limits:
-                    memory: "512Mi"
-                    cpu: "500m"
-        EOF
+        # 이미지 태그 업데이트
+        sed -i "s|gcr.io/PROJECT_ID/smart-factory-frontend|gcr.io/$PROJECT_ID/$IMAGE|g" k8s/frontend-apps.yaml
+        sed -i "s|smart-factory-frontend:latest|smart-factory-frontend:$GITHUB_SHA|g" k8s/frontend-apps.yaml
         
-        # 배포 실행
-        kubectl apply -f frontend-deployment.yaml
+        # 프론트엔드 배포
+        kubectl apply -f k8s/frontend-apps.yaml
         
         # 롤아웃 상태 확인
         kubectl rollout status deployment/$DEPLOYMENT_NAME -n smart-factory
