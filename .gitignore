@@ -1,0 +1,23 @@
+# Unity build/temporary files
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+
+# Ignore asset files that are large
+Assets/**/*.psd
+Assets/**/*.png
+Assets/**/*.jpg
+Assets/**/*.fbx
+Assets/**/*.wav
+Assets/**/*.mp3
+
+# VS, VSCode, Rider
+.vscode/
+*.csproj
+*.sln
+*.user
+.idea/
