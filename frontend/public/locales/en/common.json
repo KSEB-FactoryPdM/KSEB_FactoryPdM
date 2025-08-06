@@ -1,0 +1,32 @@
+{
+  "header": {
+    "title": "Factory PMS",
+    "searchPlaceholder": "Search equipment or events",
+    "notifications": "Notifications",
+    "unreadAlerts": "{{count}} unread alerts",
+    "user": "User",
+    "toggleTheme": "Toggle theme",
+    "language": "Language",
+    "datetime": "{{datetime}}",
+    "userInfo": "{{username}} ({{role}})"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "anomalies": "Anomalies",
+    "maintenance": "Maintenance",
+    "equipment": "Equipment",
+    "alerts": "Alerts",
+    "reports": "Reports",
+    "settings": "Settings",
+    "sidebarLabel": "Main navigation",
+    "logout": "Logout"
+  },
+  "login": {
+    "title": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "button": "Login",
+    "failed": "Login failed"
+
+  }
+}

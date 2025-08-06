@@ -1,0 +1,262 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: smart-factory
+  labels:
+    app: timescaledb
+spec:
+  serviceName: timescaledb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: timescaledb
+  template:
+    metadata:
+      labels:
+        app: timescaledb
+    spec:
+      containers:
+      - name: timescaledb
+        image: timescale/timescaledb:latest-pg14
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - $(POSTGRES_DB)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - $(POSTGRES_DB)
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: init-script
+        configMap:
+          name: timescaledb-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 20Gi
+      storageClassName: standard
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb
+  namespace: smart-factory
+  labels:
+    app: timescaledb
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+  selector:
+    app: timescaledb
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timescaledb-init-script
+  namespace: smart-factory
+data:
+  init_timescaledb.sql: |
+    -- TimescaleDB 확장 활성화
+    CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+    
+    -- 공장 설비 테이블
+    CREATE TABLE IF NOT EXISTS equipment (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        location VARCHAR(100),
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    -- 센서 테이블
+    CREATE TABLE IF NOT EXISTS sensors (
+        id SERIAL PRIMARY KEY,
+        equipment_id INTEGER REFERENCES equipment(id),
+        sensor_type VARCHAR(50) NOT NULL,
+        sensor_id VARCHAR(50) UNIQUE NOT NULL,
+        unit VARCHAR(20),
+        min_value FLOAT,
+        max_value FLOAT,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    -- 센서 데이터 테이블 (시계열)
+    CREATE TABLE IF NOT EXISTS sensor_data (
+        time TIMESTAMPTZ NOT NULL,
+        sensor_id VARCHAR(50) NOT NULL,
+        equipment_id INTEGER,
+        value FLOAT NOT NULL,
+        quality INTEGER DEFAULT 100,  -- 데이터 품질 점수 (0-100)
+        PRIMARY KEY (time, sensor_id)
+    );
+    
+    -- TimescaleDB Hypertable 생성
+    SELECT create_hypertable('sensor_data', 'time', if_not_exists => TRUE);
+    
+    -- 예측 결과 테이블
+    CREATE TABLE IF NOT EXISTS predictions (
+        id SERIAL PRIMARY KEY,
+        time TIMESTAMPTZ NOT NULL,
+        equipment_id INTEGER REFERENCES equipment(id),
+        model_name VARCHAR(100),
+        prediction_type VARCHAR(50), -- 'anomaly', 'failure_prediction', 'remaining_life'
+        prediction_value FLOAT,
+        confidence FLOAT,
+        threshold FLOAT,
+        is_anomaly BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    -- 알림 테이블
+    CREATE TABLE IF NOT EXISTS alerts (
+        id SERIAL PRIMARY KEY,
+        equipment_id INTEGER REFERENCES equipment(id),
+        alert_type VARCHAR(50) NOT NULL,
+        severity VARCHAR(20) DEFAULT 'medium', -- 'low', 'medium', 'high', 'critical'
+        title VARCHAR(200) NOT NULL,
+        message TEXT,
+        status VARCHAR(20) DEFAULT 'open', -- 'open', 'acknowledged', 'resolved'
+        created_at TIMESTAMP DEFAULT NOW(),
+        resolved_at TIMESTAMP
+    );
+    
+    -- 모델 성능 테이블
+    CREATE TABLE IF NOT EXISTS model_performance (
+        id SERIAL PRIMARY KEY,
+        model_name VARCHAR(100) NOT NULL,
+        metric_name VARCHAR(50) NOT NULL, -- 'accuracy', 'precision', 'recall', 'f1_score'
+        metric_value FLOAT NOT NULL,
+        evaluation_date TIMESTAMP DEFAULT NOW()
+    );
+    
+    -- 초기 데이터 삽입 (예지보전 대상 공조기 설비)
+    INSERT INTO equipment (name, type, location) VALUES
+        -- 중앙공조기 (CAHU)
+        ('L-CAHU-01R', 'CAHU', '공조실 1F'),
+        ('L-CAHU-02R', 'CAHU', '공조실 1F'),
+        ('L-CAHU-03R', 'CAHU', '공조실 1F'),
+        
+        -- 1차공조기 (PAHU)  
+        ('L-PAHU-01R', 'PAHU', '공조실 2F'),
+        ('L-PAHU-02R', 'PAHU', '공조실 2F'),
+        
+        -- 패키지 에어컨 (PAC)
+        ('L-PAC-01R', 'PAC', '사무동 1F'),
+        ('L-PAC-02R', 'PAC', '사무동 2F'),
+        ('L-PAC-03R', 'PAC', '사무동 3F'),
+        
+        -- 배기팬 (EF)
+        ('L-EF-01R', 'EF', '환기실 1F'),
+        ('L-EF-02R', 'EF', '환기실 2F'),
+        
+        -- 급기팬 (SF)
+        ('L-SF-01R', 'SF', '환기실 1F'),
+        ('L-SF-02R', 'SF', '환기실 2F'),
+        
+        -- 제습배기팬 (DEF)
+        ('L-DEF-01R', 'DEF', '제습실'),
+        ('L-DEF-02R', 'DEF', '제습실'),
+        
+        -- 제습급기팬 (DSF)
+        ('L-DSF-01R', 'DSF', '제습실'),
+        ('L-DSF-02R', 'DSF', '제습실')
+    ON CONFLICT DO NOTHING;
+    
+    -- 센서 데이터 삽입 (current와 vibration 센서만)
+    INSERT INTO sensors (equipment_id, sensor_type, sensor_id, unit, min_value, max_value) 
+    SELECT e.id, s.sensor_type, e.name || s.suffix, s.unit, 0, 50
+    FROM equipment e
+    CROSS JOIN (VALUES
+        ('current', '_CURR_X', 'A'),
+        ('current', '_CURR_Y', 'A'), 
+        ('current', '_CURR_Z', 'A'),
+        ('vibration', '_VIB', 'mm/s')
+    ) AS s(sensor_type, suffix, unit)
+    WHERE e.name IN ('L-CAHU-01R', 'L-CAHU-02R', 'L-CAHU-03R', 'L-PAHU-01R', 'L-PAHU-02R', 
+                     'L-PAC-01R', 'L-PAC-02R', 'L-PAC-03R', 'L-EF-01R', 'L-EF-02R',
+                     'L-SF-01R', 'L-SF-02R', 'L-DEF-01R', 'L-DEF-02R', 'L-DSF-01R', 'L-DSF-02R')
+    ON CONFLICT (sensor_id) DO NOTHING;
+    
+    -- 개별 센서 설정 (기존 방식과 동일한 최대값 적용)
+    UPDATE sensors SET min_value = 0, max_value = 50 
+    WHERE sensor_id LIKE 'L-CAHU-%' OR sensor_id LIKE 'L-PAHU-%';
+    
+    UPDATE sensors SET min_value = 0, max_value = 30 
+    WHERE sensor_id LIKE 'L-PAC-%';
+    
+    UPDATE sensors SET min_value = 0, max_value = 20 
+    WHERE (sensor_id LIKE 'L-EF-%' OR sensor_id LIKE 'L-SF-%') AND sensor_type = 'current';
+    
+    UPDATE sensors SET min_value = 0, max_value = 40 
+    WHERE (sensor_id LIKE 'L-EF-%' OR sensor_id LIKE 'L-SF-%') AND sensor_type = 'vibration';
+    
+    UPDATE sensors SET min_value = 0, max_value = 15 
+    WHERE (sensor_id LIKE 'L-DEF-%' OR sensor_id LIKE 'L-DSF-%') AND sensor_type = 'current';
+    
+    UPDATE sensors SET min_value = 0, max_value = 40 
+    WHERE (sensor_id LIKE 'L-DEF-%' OR sensor_id LIKE 'L-DSF-%') AND sensor_type = 'vibration';
+    
+    -- 기본 인덱스만 생성 (빠른 초기화를 위해 최소화)
+    CREATE INDEX IF NOT EXISTS idx_sensor_data_sensor_id ON sensor_data (sensor_id);
+    CREATE INDEX IF NOT EXISTS idx_sensor_data_equipment_id ON sensor_data (equipment_id);
+    
+    -- 사용자 권한 설정
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO user;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO user;

@@ -1,0 +1,4 @@
+[
+  {"id": "EQ-1", "name": "Pump", "status": "online"},
+  {"id": "EQ-2", "name": "Compressor", "status": "offline"}
+]

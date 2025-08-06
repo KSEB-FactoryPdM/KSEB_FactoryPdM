@@ -1,0 +1,48 @@
+# 로컬 개발 환경 설정
+app:
+  name: "스마트팩토리-로컬"
+  debug: true
+  environment: "local"
+  host: "0.0.0.0"
+  port: 8000
+
+database:
+  url: "postgresql://user:devpassword123@localhost:5432/predictive_maintenance"
+  timescale_url: "postgresql://user:devpassword123@localhost:5432/predictive_maintenance"
+
+mqtt:
+  broker_host: "localhost"
+  broker_port: 1883
+  username: ""
+  password: ""
+
+kafka:
+  bootstrap_servers: "localhost:9092"
+  topics:
+    raw_data: "sensor-data-raw"
+    processed_data: "sensor-data-processed"
+
+redis:
+  url: "redis://localhost:6379"
+
+security:
+  secret_key: "local-development-secret-key-change-in-production"
+  algorithm: "HS256"
+  access_token_expire_minutes: 60
+
+ai_model:
+  model_path: "./models/"
+  anomaly_threshold: 0.05
+  maintenance_threshold_days: 30
+  sequence_length: 30
+  buffer_size: 100
+
+monitoring:
+  prometheus_port: 9090
+  grafana_port: 3000
+  log_level: "DEBUG"
+
+sensor_simulator:
+  data_interval: 1.0
+  simulation_speed: 1.0
+  anomaly_probability: 0.1  # 로컬 테스트용으로 높게 설정 

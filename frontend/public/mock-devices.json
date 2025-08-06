@@ -1,0 +1,12 @@
+[
+  {"id": "EQ-1", "name": "Pump", "type": "Pump", "status": "online"},
+  {"id": "EQ-2", "name": "Compressor", "type": "Compressor", "status": "offline"},
+  {"id": "EQ-3", "name": "Motor", "type": "Motor", "status": "online"},
+  {"id": "EQ-4", "name": "Fan", "type": "Fan", "status": "maintenance"},
+  {"id": "EQ-5", "name": "Bearing", "type": "Bearing", "status": "online"},
+  {"id": "EQ-6", "name": "Pump #2", "type": "Pump", "status": "offline"},
+  {"id": "EQ-7", "name": "Compressor #2", "type": "Compressor", "status": "online"},
+  {"id": "EQ-8", "name": "Motor #2", "type": "Motor", "status": "offline"},
+  {"id": "EQ-9", "name": "Fan #2", "type": "Fan", "status": "online"},
+  {"id": "EQ-10", "name": "Bearing #2", "type": "Bearing", "status": "maintenance"}
+]
