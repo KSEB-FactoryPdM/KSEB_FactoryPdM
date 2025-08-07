@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export default function FontSizeSelector() {
+  const { t } = useTranslation('common')
   const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>(() => {
     if (typeof window === 'undefined') return 'medium'
     return (localStorage.getItem('fontSize') as 'small' | 'medium' | 'large') || 'medium'
@@ -18,7 +20,7 @@ export default function FontSizeSelector() {
     <select
       value={fontSize}
       onChange={e => setFontSize(e.target.value as 'small' | 'medium' | 'large')}
-      aria-label="Base font size"
+      aria-label={t('header.fontSize')}
       className="bg-input-bg rounded p-1 text-sm text-black focus:outline-none focus:ring-2 focus:ring-accent"
     >
       <option value="small">A-</option>

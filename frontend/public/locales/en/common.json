@@ -6,6 +6,9 @@
     "unreadAlerts": "{{count}} unread alerts",
     "user": "User",
     "toggleTheme": "Toggle theme",
+    "enableHighContrast": "Enable high contrast mode",
+    "disableHighContrast": "Disable high contrast mode",
+    "fontSize": "Base font size",
     "language": "Language",
     "datetime": "{{datetime}}",
     "userInfo": "{{username}} ({{role}})"
