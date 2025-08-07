@@ -54,14 +54,14 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`flex flex-col ${collapsed ? 'w-20' : 'w-60'} bg-primary text-white shadow-lg h-screen`}
+      className={`flex flex-col ${collapsed ? 'w-20' : 'w-60'} bg-black text-white shadow-lg h-screen`}
       role="navigation"
       aria-label={t('nav.sidebarLabel')}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
       {/* Logo / Brand */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-primary-hover">
+      <div className="flex items-center justify-between h-16 px-4 border-b border-gray-800">
         <div className="flex items-center">
           <Image src="/logo.svg" alt="Factory PdM" width={32} height={32} />
           {!collapsed && (
@@ -71,7 +71,7 @@ export default function Sidebar() {
         <button
           onClick={() => setCollapsed(!collapsed)}
           aria-label="Toggle sidebar"
-          className="p-1 rounded hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-accent"
+          className="p-1 rounded hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-accent"
         >
           {collapsed ? (
             <ChevronRightIcon className="w-5 h-5" />
@@ -92,10 +92,8 @@ export default function Sidebar() {
               ref={el => {
                 itemRefs.current[index] = el;
               }}
-              className={`group flex items-center gap-3 h-12 px-3 rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-accent ${
-                active
-                  ? 'bg-primary-hover font-semibold'
-                  : 'hover:bg-primary-hover'
+                className={`group flex items-center gap-3 h-12 px-3 rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-accent ${
+                active ? 'bg-gray-800 font-semibold' : 'hover:bg-gray-800'
               }`}
               aria-current={active ? 'page' : undefined}
               whileHover={{ scale: 1.02 }}
@@ -110,7 +108,7 @@ export default function Sidebar() {
       </nav>
 
       {/* Logout Button */}
-      <div className="px-4 py-4 border-t border-primary-hover">
+      <div className="px-4 py-4 border-t border-gray-800">
         <motion.button
           onClick={() => {
             // TODO: 실제 로그아웃 로직 연결

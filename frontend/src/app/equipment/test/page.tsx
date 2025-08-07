@@ -4,21 +4,21 @@ import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { error } from '@/lib/logger'
 
-interface Equipment {
-  id: string
-  name: string
-  status: string
-}
+  interface Equipment {
+    power: string
+    id: string
+    statuses: string[]
+  }
 
 export default function EquipmentTestPage() {
   const [data, setData] = useState<Equipment[] | null>(null)
 
-  useEffect(() => {
-    fetch('/mock-equipment.json')
-      .then((res) => res.json())
-      .then((json: Equipment[]) => setData(json))
-      .catch((err) => error('Failed to load mock data:', err))
-  }, [])
+    useEffect(() => {
+      fetch('/machines.json')
+        .then((res) => res.json())
+        .then((json: Equipment[]) => setData(json))
+        .catch((err) => error('Failed to load mock data:', err))
+    }, [])
 
   return (
     <DashboardLayout>

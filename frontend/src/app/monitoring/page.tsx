@@ -4,7 +4,6 @@
 import DashboardLayout from '@/components/DashboardLayout'
 import ChartCard from '@/components/ChartCard'
 import SummaryCard from '@/components/SummaryCard'
-import NotificationPanel from '@/components/NotificationPanel'
 import { TimeRangeSelector, EquipmentFilter, SensorFilter } from '@/components/filters'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useMemo } from 'react'
@@ -20,7 +19,7 @@ import {
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 
-type MyType = {
+type MyType = Array<{
   time: number
   total: number
   A: number
@@ -36,13 +35,9 @@ type MyType = {
   size50: number
   size90: number
   size99: number
-}
+}>
 
-interface Equipment {
-  id: string
-  name: string
-  status: string
-}
+import type { Machine } from '@/components/filters/EquipmentFilter'
 
 interface Anomaly {
   id: number
@@ -72,18 +67,17 @@ export default function MonitoringPage() {
     process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
     'ws://localhost:8080'
   // 자동 재연결 옵션 추가
-  const { data, status, notifications } = useWebSocket<MyType>(socketUrl, { autoReconnect: true })
+  const { data, status } = useWebSocket<MyType>(socketUrl, { autoReconnect: true })
   const hasAnomaly =
     data != null && data[data.length - 1]?.total != null && data[data.length - 1]!.total > 0
 
   // Fetch static mock lists with short caching to reduce network traffic.
-  const { data: equipment } = useQuery<Equipment[]>({
-    queryKey: ['equipment'],
-    queryFn: () =>
-      fetch('/mock-equipment.json').then((res) => res.json() as Promise<Equipment[]>),
-    staleTime: 30000,
-    gcTime: 300000,
-  })
+    const { data: machines } = useQuery<Machine[]>({
+      queryKey: ['machines'],
+      queryFn: () => fetch('/machines.json').then((res) => res.json() as Promise<Machine[]>),
+      staleTime: 30000,
+      gcTime: 300000,
+    })
   const { data: anomalies } = useQuery<Anomaly[]>({
     queryKey: ['anomalies'],
     queryFn: () =>
@@ -107,7 +101,8 @@ export default function MonitoringPage() {
   })
 
   const [timeRange, setTimeRange] = useState('24h')
-  const [selectedEquipment, setSelectedEquipment] = useState('')
+    const [power, setPower] = useState('')
+    const [selectedEquipment, setSelectedEquipment] = useState('')
   const [sensor, setSensor] = useState('size50')
 
   const filteredData = useMemo(() => {
@@ -118,7 +113,7 @@ export default function MonitoringPage() {
     return data.filter((d) => d.time >= latest - range)
   }, [data, timeRange])
 
-  const equipmentCount = equipment?.length ?? 0
+    const equipmentCount = machines?.length ?? 0
   const activeAlerts = anomalies?.filter((a) => a.status === 'open').length ?? 0
   const predictedToday = data?.[data.length - 1]?.total ?? 0
   const latestRul = data?.[data.length - 1]?.rul ?? 0
@@ -133,18 +128,6 @@ export default function MonitoringPage() {
 
   return (
     <DashboardLayout>
-      {/* 실시간 알림 패널 */}
-      <NotificationPanel notifications={notifications} />
-
-      {/* Version Card */}
-        <div className="bg-white rounded-lg shadow-md p-4 h-20 flex items-center justify-center">
-          <div className="text-center w-full">
-            <h3 className="text-[1.25rem] font-medium font-heading">
-              System Version
-            </h3>
-            <div className="text-[3rem] font-bold">v1.7.0</div>
-          </div>
-        </div>
 
       {status === 'connecting' && (
         <div className="bg-blue-100 text-blue-800 p-2 rounded-md mb-2">
@@ -194,9 +177,11 @@ export default function MonitoringPage() {
       <div className="flex flex-wrap gap-2 items-center">
         <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
         <EquipmentFilter
-          options={equipment?.map((e) => e.id) ?? []}
-          value={selectedEquipment}
-          onChange={setSelectedEquipment}
+          machines={machines ?? []}
+          power={power}
+          device={selectedEquipment}
+          onPowerChange={setPower}
+          onDeviceChange={setSelectedEquipment}
         />
         <SensorFilter
           options={[

@@ -38,15 +38,6 @@ export default function MonitoringPage() {
 
   return (
     <DashboardLayout>
-      {/* Version Card */}
-      <div className="bg-white rounded-lg shadow-md p-4 h-20 flex items-center justify-center">
-        <div className="text-center w-full">
-          <h3 className="text-[1.25rem] font-medium font-heading">
-            System Version
-          </h3>
-          <div className="text-[3rem] font-bold">v1.7.0</div>
-        </div>
-      </div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -4,12 +4,16 @@ import { useState, useMemo } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
 import ChartCard from '@/components/ChartCard'
 import { alertList, AlertItem } from '@/mockData'
+import { EquipmentFilter } from '@/components/filters'
+import type { Machine } from '@/components/filters/EquipmentFilter'
+import { useQuery } from '@tanstack/react-query'
 import AlertDetailsModal from '@/components/AlertDetailsModal'
 import { error } from '@/lib/logger'
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState(alertList)
   const [selected, setSelected] = useState<AlertItem | null>(null)
+  const [power, setPower] = useState('')
   const [equipment, setEquipment] = useState('')
   const [severity, setSeverity] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -17,10 +21,12 @@ export default function AlertsPage() {
   const [endDate, setEndDate] = useState('')
   const [selectedIds, setSelectedIds] = useState<number[]>([])
 
-  const equipmentOptions = useMemo(
-    () => Array.from(new Set(alerts.map((a) => a.device))),
-    [alerts]
-  )
+  const { data: machines } = useQuery<Machine[]>({
+    queryKey: ['machines'],
+    queryFn: () => fetch('/machines.json').then((res) => res.json() as Promise<Machine[]>),
+    staleTime: 30000,
+    gcTime: 300000,
+  })
   const severityOptions = useMemo(
     () => Array.from(new Set(alerts.map((a) => a.severity))),
     [alerts]
@@ -51,6 +57,7 @@ export default function AlertsPage() {
 
   const filteredAlerts = useMemo(() => {
     return alerts.filter((a) => {
+      if (power && a.power !== power) return false
       if (equipment && a.device !== equipment) return false
       if (severity && a.severity !== severity) return false
       if (statusFilter && a.status !== statusFilter) return false
@@ -59,24 +66,19 @@ export default function AlertsPage() {
       if (endDate && date > new Date(endDate)) return false
       return true
     })
-  }, [alerts, equipment, severity, statusFilter, startDate, endDate])
+  }, [alerts, power, equipment, severity, statusFilter, startDate, endDate])
 
   return (
     <DashboardLayout>
       <ChartCard title="Alerts">
         <div className="flex flex-wrap gap-2 mb-2">
-          <select
-            className="border rounded px-2 py-1"
-            value={equipment}
-            onChange={(e) => setEquipment(e.target.value)}
-          >
-            <option value="">All Equipment</option>
-            {equipmentOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+          <EquipmentFilter
+            machines={machines ?? []}
+            power={power}
+            device={equipment}
+            onPowerChange={setPower}
+            onDeviceChange={setEquipment}
+          />
           <select
             className="border rounded px-2 py-1"
             value={severity}
@@ -154,6 +156,7 @@ export default function AlertsPage() {
                 />
               </th>
               <th className="py-2">Time</th>
+              <th className="py-2">kW</th>
               <th className="py-2">Device</th>
               <th className="py-2">Type</th>
               <th className="py-2">Severity</th>
@@ -177,6 +180,7 @@ export default function AlertsPage() {
                   />
                 </td>
                 <td className="py-2">{a.time}</td>
+                <td className="py-2">{a.power}</td>
                 <td className="py-2">{a.device}</td>
                 <td className="py-2">{a.type}</td>
                 <td className="py-2">{a.severity}</td>

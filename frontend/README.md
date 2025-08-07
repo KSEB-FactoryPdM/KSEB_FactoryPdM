@@ -105,7 +105,7 @@ factory-PdM/
 │   ├── mock-anomalies.json          # 이상 이벤트 예시
 │   ├── mock-data.json               # 센서 스트림 목 데이터
 │   ├── mock-devices.json            # 장비 목록 예시
-│   ├── mock-equipment.json          # 설비 정보 예시
+│   ├── machines.json                # 설비 정보 예시
 │   ├── mock-maintenance.json        # 정비 이력 예시
 │   ├── mock-reports.json            # 보고서 데이터 예시
 │   ├── file.svg                     # 예제 아이콘

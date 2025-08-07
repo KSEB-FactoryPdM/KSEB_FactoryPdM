@@ -18,6 +18,7 @@
     "alerts": "알림",
     "reports": "리포트",
     "settings": "설정",
+    "help": "도움말",
     "sidebarLabel": "주요 탐색",
     "logout": "로그아웃"
   },
@@ -27,5 +28,20 @@
     "password": "비밀번호",
     "button": "로그인",
     "failed": "로그인 실패"
+  },
+  "footer": {
+    "version": "버전 {{version}}",
+    "contact": "© {{year}} 공장 PdM"
+  },
+  "filters": {
+    "allPower": "모든 kW",
+    "allEquipment": "모든 장비"
+  },
+  "status": {
+    "normal": "정상",
+    "misalignment": "축정렬불량",
+    "unbalance": "회전체불평형",
+    "belt_loose": "벨트느슨함",
+    "bearing_fault": "베어링불량"
   }
 }

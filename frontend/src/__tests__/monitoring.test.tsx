@@ -93,12 +93,12 @@ describe('MonitoringPage', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(4))
     const calls = (global.fetch as jest.Mock).mock.calls
     expect(calls).toEqual(
-      expect.arrayContaining([
-        ['/mock-equipment.json'],
-        ['/mock-anomalies.json'],
-        ['/mock-alerts.json'],
-        ['/mock-maintenance.json'],
-      ])
+        expect.arrayContaining([
+          ['/machines.json'],
+          ['/mock-anomalies.json'],
+          ['/mock-alerts.json'],
+          ['/mock-maintenance.json'],
+        ])
     )
   })
 })

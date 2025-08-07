@@ -18,6 +18,7 @@
     "alerts": "Alerts",
     "reports": "Reports",
     "settings": "Settings",
+    "help": "Help",
     "sidebarLabel": "Main navigation",
     "logout": "Logout"
   },
@@ -27,6 +28,20 @@
     "password": "Password",
     "button": "Login",
     "failed": "Login failed"
-
+  },
+  "footer": {
+    "version": "Version {{version}}",
+    "contact": "© {{year}} Factory PdM"
+  },
+  "filters": {
+    "allPower": "All kW",
+    "allEquipment": "All Equipment"
+  },
+  "status": {
+    "normal": "Normal",
+    "misalignment": "Misalignment",
+    "unbalance": "Rotational imbalance",
+    "belt_loose": "Loose belt",
+    "bearing_fault": "Bearing fault"
   }
 }

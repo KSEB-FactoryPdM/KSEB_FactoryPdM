@@ -1,15 +1,61 @@
 'use client'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 
-export default function EquipmentFilter({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
+export interface Machine {
+  power: string
+  id: string
+  statuses: string[]
+}
+
+interface Props {
+  machines: Machine[]
+  power: string
+  device: string
+  onPowerChange: (v: string) => void
+  onDeviceChange: (v: string) => void
+}
+
+export default function EquipmentFilter({ machines, power, device, onPowerChange, onDeviceChange }: Props) {
+  const { t } = useTranslation('common')
+  const powerOptions = Array.from(new Set(machines.map((m) => m.power))).sort()
+  const deviceOptions = Array.from(
+    new Set(
+      machines
+        .filter((m) => !power || m.power === power)
+        .map((m) => m.id),
+    ),
+  ).sort()
+
   return (
-    <select className="border rounded px-2 py-1" value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">All Equipment</option>
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt}
-        </option>
-      ))}
-    </select>
+    <div className="flex gap-2">
+      <select
+        className="border rounded px-2 py-1"
+        value={power}
+        onChange={(e) => {
+          onPowerChange(e.target.value)
+          onDeviceChange('')
+        }}
+      >
+        <option value="">{t('filters.allPower')}</option>
+        {powerOptions.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+      <select
+        className="border rounded px-2 py-1"
+        value={device}
+        onChange={(e) => onDeviceChange(e.target.value)}
+      >
+        <option value="">{t('filters.allEquipment')}</option>
+        {deviceOptions.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </div>
   )
 }

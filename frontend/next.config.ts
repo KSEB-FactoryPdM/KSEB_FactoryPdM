@@ -7,8 +7,6 @@ const nextConfig: NextConfig = {
   experimental: {
     typedRoutes: true,
   },
-  // Docker standalone 모드 설정
-  output: 'standalone',
   // i18n 설정 제거 (App Router에서 지원되지 않음)
 };
 
