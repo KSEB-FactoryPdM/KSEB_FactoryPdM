@@ -1,14 +1,15 @@
 'use client'
 import { Component, ReactNode } from 'react'
+import { withTranslation, WithTranslation } from 'react-i18next'
 
-interface Props {
+interface Props extends WithTranslation {
   children: ReactNode
 }
 interface State {
   hasError: boolean
 }
 
-export default class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false }
 
   static getDerivedStateFromError() {
@@ -25,11 +26,12 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const { t } = this.props
       return (
         <div className="flex flex-col items-center justify-center h-screen gap-4 p-4">
-          <p>문제가 발생했습니다</p>
+          <p>{t('errorBoundary.message', 'An error occurred')}</p>
           <button onClick={this.handleRetry} className="bg-primary text-white px-4 py-2 rounded">
-            다시 시도
+            {t('errorBoundary.retry', 'Retry')}
           </button>
         </div>
       )
@@ -38,3 +40,5 @@ export default class ErrorBoundary extends Component<Props, State> {
     return this.props.children
   }
 }
+
+export default withTranslation('common')(ErrorBoundary)
