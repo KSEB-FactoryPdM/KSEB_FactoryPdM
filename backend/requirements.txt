@@ -36,6 +36,7 @@ email-validator==2.1.0
 
 # 알림 시스템
 requests==2.31.0
+slack-sdk==3.26.1
 
 # 모니터링
 prometheus-client==0.19.0

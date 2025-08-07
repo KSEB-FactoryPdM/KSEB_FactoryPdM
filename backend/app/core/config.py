@@ -78,10 +78,12 @@ class Settings(BaseSettings):
     EMAIL_SMTP_PORT: int = Field(default=587, env="EMAIL_SMTP_PORT")
     EMAIL_USERNAME: Optional[str] = Field(default=None, env="EMAIL_USERNAME")
     EMAIL_PASSWORD: Optional[str] = Field(default=None, env="EMAIL_PASSWORD")
+    ADMIN_EMAIL: str = Field(default="admin@kseb-factory.com", env="ADMIN_EMAIL")
     
-    # 카카오 알림톡 설정
-    KAKAO_API_KEY: Optional[str] = Field(default=None, env="KAKAO_API_KEY")
-    KAKAO_TEMPLATE_ID: Optional[str] = Field(default=None, env="KAKAO_TEMPLATE_ID")
+    # 슬랙 알림 설정
+    SLACK_WEBHOOK_URL: Optional[str] = Field(default=None, env="SLACK_WEBHOOK_URL")
+    
+
     
     # 모니터링 설정
     PROMETHEUS_PORT: int = Field(default=9090, env="PROMETHEUS_PORT")

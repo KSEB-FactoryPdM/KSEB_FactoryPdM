@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Python 패키지 설치 (torch CPU 전용)
-RUN pip install torch==2.1.1+cpu -f https://download.pytorch.org/whl/torch_stable.html && \
+RUN pip install torch==2.1.1 -f https://download.pytorch.org/whl/torch_stable.html && \
     pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사

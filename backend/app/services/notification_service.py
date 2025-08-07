@@ -1,413 +1,295 @@
 """
-알림 서비스
+알림 서비스 - 슬랙, 이메일, 웹 알림 통합
 """
 import logging
-import smtplib
-import json
 import requests
-from datetime import datetime
-from typing import List, Optional, Dict, Any
+import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from typing import Dict, List, Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
-import os
 
-from app.models.notification import Notification, NotificationChannel, NotificationLog, AlertRule
-from app.models.device import Device
-from app.models.sensor import Sensor
-from app.schemas.notification import (
-    NotificationCreate, NotificationUpdate, AlertMessage,
-    NotificationChannelCreate, AlertRuleCreate
-)
 from app.core.config import settings
+from app.core.websocket_manager import websocket_manager
+from app.models.notification import Notification
+from app.schemas.notification import NotificationCreate
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    """알림 서비스"""
+    """통합 알림 서비스"""
     
     def __init__(self):
-        self.channels = {}
-        self._load_channels()
-    
-    def _load_channels(self):
-        """알림 채널 로드"""
+        self.slack_webhook_url = settings.SLACK_WEBHOOK_URL
+        self.email_smtp_server = settings.EMAIL_SMTP_SERVER
+        self.email_smtp_port = settings.EMAIL_SMTP_PORT
+        self.email_username = settings.EMAIL_USERNAME
+        self.email_password = settings.EMAIL_PASSWORD
+        
+    def create_notification(self, 
+                          db: Session,
+                          device_id: str,
+                          sensor_id: str,
+                          alert_type: str,
+                          anomaly_type: str,
+                          severity: str,
+                          message: str,
+                          sensor_value: Optional[float] = None,
+                          threshold_value: Optional[float] = None) -> Notification:
+        """통합 알림 생성 및 전송"""
         try:
-            # 기본 채널 설정
-            self.channels = {
-                "email": {
-                    "enabled": bool(settings.EMAIL_USERNAME and settings.EMAIL_PASSWORD),
-                    "config": {
-                        "smtp_server": settings.EMAIL_SMTP_SERVER,
-                        "smtp_port": settings.EMAIL_SMTP_PORT,
-                        "username": settings.EMAIL_USERNAME,
-                        "password": settings.EMAIL_PASSWORD
-                    }
-                },
-                "kakao": {
-                    "enabled": bool(settings.KAKAO_API_KEY and settings.KAKAO_TEMPLATE_ID),
-                    "config": {
-                        "api_key": settings.KAKAO_API_KEY,
-                        "template_id": settings.KAKAO_TEMPLATE_ID
-                    }
-                },
-                "tts": {
-                    "enabled": True,
-                    "config": {}
-                }
-            }
-        except Exception as e:
-            logger.error(f"알림 채널 로드 실패: {e}")
-    
-    def create_notification(
-        self, 
-        db: Session, 
-        device_id: str,
-        sensor_id: str,
-        alert_type: str,
-        anomaly_type: str,
-        severity: str,
-        message: str,
-        sensor_value: Optional[float] = None,
-        threshold_value: Optional[float] = None
-    ) -> Notification:
-        """알림 생성"""
-        try:
-            notification = Notification(
+            # 1. 데이터베이스에 알림 저장
+            notification_data = NotificationCreate(
                 device_id=device_id,
                 sensor_id=sensor_id,
                 alert_type=alert_type,
                 anomaly_type=anomaly_type,
                 severity=severity,
                 message=message,
-                detected_at=datetime.utcnow()
+                sensor_value=sensor_value,
+                threshold_value=threshold_value,
+                created_at=datetime.now()
             )
             
+            notification = Notification(**notification_data.dict())
             db.add(notification)
             db.commit()
             db.refresh(notification)
             
-            # 실시간 알림 전송
-            self._send_real_time_notifications(notification, sensor_value, threshold_value)
+            # 2. 슬랙 알림 전송
+            self.send_slack_notification(notification)
             
-            logger.info(f"알림 생성 완료: {notification.id}")
+            # 3. 이메일 알림 전송
+            self.send_email_notification(notification)
+            
+            # 4. 웹 알림 이벤트 생성
+            self.create_web_notification_event(notification)
+            
+            logger.info(f"통합 알림 전송 완료: {device_id} - {severity}")
             return notification
             
         except Exception as e:
-            db.rollback()
             logger.error(f"알림 생성 실패: {e}")
             raise
     
-    def _send_real_time_notifications(
-        self, 
-        notification: Notification,
-        sensor_value: Optional[float] = None,
-        threshold_value: Optional[float] = None
-    ):
-        """실시간 알림 전송"""
+    def send_slack_notification(self, notification: Notification):
+        """슬랙 알림 전송"""
         try:
-            # 알림 메시지 생성
-            alert_message = AlertMessage(
-                device_id=notification.device_id,
-                sensor_id=notification.sensor_id,
-                alert_type=notification.alert_type,
-                anomaly_type=notification.anomaly_type,
-                severity=notification.severity,
-                message=notification.message,
-                detected_at=notification.detected_at,
-                sensor_value=sensor_value,
-                threshold_value=threshold_value
-            )
-            
-            # 각 채널별로 알림 전송
-            if self.channels.get("email", {}).get("enabled", False):
-                self._send_email_notification(alert_message)
-            
-            if self.channels.get("kakao", {}).get("enabled", False):
-                self._send_kakao_notification(alert_message)
-            
-            if self.channels.get("tts", {}).get("enabled", False):
-                self._send_tts_notification(alert_message)
-            
-            logger.info(f"실시간 알림 전송 완료: {notification.id}")
-            
-        except Exception as e:
-            logger.error(f"실시간 알림 전송 실패: {e}")
-    
-    def _send_email_notification(self, alert_message: AlertMessage):
-        """이메일 알림 전송"""
-        try:
-            config = self.channels["email"]["config"]
-            
-            if not all([config.get("smtp_server"), config.get("username"), config.get("password")]):
-                logger.warning("이메일 설정이 불완전합니다")
+            if not self.slack_webhook_url:
+                logger.warning("슬랙 웹훅 URL이 설정되지 않았습니다")
                 return
             
-            # 관리자 이메일 주소를 환경변수에서 가져옴
-            admin_email = os.getenv('ADMIN_EMAIL')
-            if not admin_email:
-                logger.warning("ADMIN_EMAIL 환경변수가 설정되지 않았습니다")
+            # 슬랙 메시지 포맷팅
+            color_map = {
+                "critical": "#ff0000",  # 빨간색
+                "high": "#ff6600",      # 주황색
+                "medium": "#ffcc00",    # 노란색
+                "low": "#00cc00"        # 초록색
+            }
+            
+            color = color_map.get(notification.severity, "#cccccc")
+            
+            slack_message = {
+                "attachments": [
+                    {
+                        "color": color,
+                        "title": f"🚨 설비 이상 탐지 - {notification.device_id}",
+                        "fields": [
+                            {
+                                "title": "장비 ID",
+                                "value": notification.device_id,
+                                "short": True
+                            },
+                            {
+                                "title": "센서 ID", 
+                                "value": notification.sensor_id,
+                                "short": True
+                            },
+                            {
+                                "title": "이상 유형",
+                                "value": notification.anomaly_type,
+                                "short": True
+                            },
+                            {
+                                "title": "심각도",
+                                "value": notification.severity.upper(),
+                                "short": True
+                            },
+                            {
+                                "title": "센서 값",
+                                "value": f"{notification.sensor_value:.2f}" if notification.sensor_value else "N/A",
+                                "short": True
+                            },
+                            {
+                                "title": "임계값",
+                                "value": f"{notification.threshold_value:.2f}" if notification.threshold_value else "N/A",
+                                "short": True
+                            },
+                            {
+                                "title": "상세 메시지",
+                                "value": notification.message,
+                                "short": False
+                            }
+                        ],
+                        "footer": "KSEB Factory PdM System",
+                        "ts": int(datetime.now().timestamp())
+                    }
+                ]
+            }
+            
+            # 슬랙 API 호출
+            response = requests.post(
+                self.slack_webhook_url,
+                json=slack_message,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                logger.info(f"슬랙 알림 전송 성공: {notification.device_id}")
+            else:
+                logger.error(f"슬랙 알림 전송 실패: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            logger.error(f"슬랙 알림 전송 중 오류: {e}")
+    
+    def send_email_notification(self, notification: Notification):
+        """이메일 알림 전송"""
+        try:
+            if not all([self.email_username, self.email_password]):
+                logger.warning("이메일 설정이 완료되지 않았습니다")
                 return
             
             # 이메일 메시지 생성
-            msg = MIMEMultipart()
-            msg['From'] = config["username"]
-            msg['To'] = admin_email
-            msg['Subject'] = f"[{alert_message.severity.upper()}] {alert_message.anomaly_type} 이상 탐지"
+            subject = f"[KSEB Factory] 설비 이상 탐지 - {notification.device_id}"
             
-            # 이메일 본문
-            body = f"""
-            장비 이상 탐지 알림
-            
-            장비 ID: {alert_message.device_id}
-            센서 ID: {alert_message.sensor_id}
-            이상 유형: {alert_message.anomaly_type}
-            심각도: {alert_message.severity}
-            알림 유형: {alert_message.alert_type}
-            감지 시간: {alert_message.detected_at}
-            
-            메시지: {alert_message.message}
-            
-            센서 값: {alert_message.sensor_value}
-            임계값: {alert_message.threshold_value}
+            html_content = f"""
+            <html>
+            <body>
+                <h2 style="color: {'#ff0000' if notification.severity == 'critical' else '#ff6600' if notification.severity == 'high' else '#ffcc00' if notification.severity == 'medium' else '#00cc00'};">
+                    🚨 설비 이상 탐지 알림
+                </h2>
+                
+                <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+                    <tr style="background-color: #f5f5f5;">
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">장비 ID</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.device_id}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">센서 ID</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.sensor_id}</td>
+                    </tr>
+                    <tr style="background-color: #f5f5f5;">
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">이상 유형</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.anomaly_type}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">심각도</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.severity.upper()}</td>
+                    </tr>
+                    <tr style="background-color: #f5f5f5;">
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">센서 값</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.sensor_value:.2f if notification.sensor_value else 'N/A'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">임계값</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.threshold_value:.2f if notification.threshold_value else 'N/A'}</td>
+                    </tr>
+                </table>
+                
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px;">
+                    <strong>상세 메시지:</strong><br>
+                    {notification.message}
+                </div>
+                
+                <p style="margin-top: 20px; color: #666; font-size: 12px;">
+                    발송 시간: {notification.created_at.strftime('%Y-%m-%d %H:%M:%S')}<br>
+                    KSEB Factory Predictive Maintenance System
+                </p>
+            </body>
+            </html>
             """
-            
-            msg.attach(MIMEText(body, 'plain', 'utf-8'))
             
             # 이메일 전송
-            server = smtplib.SMTP(config["smtp_server"], config["smtp_port"])
-            server.starttls()
-            server.login(config["username"], config["password"])
-            server.send_message(msg)
-            server.quit()
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.email_username
+            msg['To'] = settings.ADMIN_EMAIL  # 관리자 이메일로 전송
             
-            logger.info(f"이메일 알림 전송 완료: {alert_message.device_id}")
+            html_part = MIMEText(html_content, 'html')
+            msg.attach(html_part)
+            
+            with smtplib.SMTP(self.email_smtp_server, self.email_smtp_port) as server:
+                server.starttls()
+                server.login(self.email_username, self.email_password)
+                server.send_message(msg)
+            
+            logger.info(f"이메일 알림 전송 성공: {notification.device_id}")
             
         except Exception as e:
-            logger.error(f"이메일 알림 전송 실패: {e}")
+            logger.error(f"이메일 알림 전송 중 오류: {e}")
     
-    def _send_kakao_notification(self, alert_message: AlertMessage):
-        """카카오 알림톡 전송"""
+    def create_web_notification_event(self, notification: Notification):
+        """웹 알림 이벤트 생성 (WebSocket용)"""
         try:
-            config = self.channels["kakao"]["config"]
-            
-            if not all([config.get("api_key"), config.get("template_id")]):
-                logger.warning("카카오 알림톡 설정이 불완전합니다")
-                return
-            
-            # 카카오 알림톡 설정을 환경변수에서 가져옴
-            kakao_userid = os.getenv('KAKAO_USERID')
-            kakao_sender = os.getenv('KAKAO_SENDER')  
-            kakao_receiver = os.getenv('KAKAO_RECEIVER')
-            kakao_token = os.getenv('KAKAO_TOKEN', '')
-            
-            if not all([kakao_userid, kakao_sender, kakao_receiver]):
-                logger.warning("카카오 알림톡 필수 환경변수가 설정되지 않았습니다 (KAKAO_USERID, KAKAO_SENDER, KAKAO_RECEIVER)")
-                return
-            
-            # 카카오 알림톡 API 호출
-            url = "https://kakaoapi.aligo.in/akv10/talk/add/"
-            
-            data = {
-                "apikey": config["api_key"],
-                "userid": kakao_userid,
-                "token": kakao_token,
-                "sender": kakao_sender,
-                "tpl_code": config["template_id"],
-                "receiver": kakao_receiver,
-                "msg": f"[{alert_message.severity.upper()}] {alert_message.anomaly_type} 이상 탐지\n장비: {alert_message.device_id}\n센서: {alert_message.sensor_id}\n시간: {alert_message.detected_at}\n{alert_message.message}"
+            # WebSocket을 통해 실시간 알림 전송
+            event_data = {
+                "id": notification.id,
+                "device_id": notification.device_id,
+                "sensor_id": notification.sensor_id,
+                "alert_type": notification.alert_type,
+                "anomaly_type": notification.anomaly_type,
+                "severity": notification.severity,
+                "message": notification.message,
+                "sensor_value": notification.sensor_value,
+                "threshold_value": notification.threshold_value,
+                "created_at": notification.created_at.isoformat(),
+                "tts_message": self.generate_tts_message(notification)
             }
             
-            response = requests.post(url, data=data)
-            
-            if response.status_code == 200:
-                result = response.json()
-                if result.get("result_code") == "1":
-                    logger.info(f"카카오 알림톡 전송 완료: {alert_message.device_id}")
-                else:
-                    logger.error(f"카카오 알림톡 전송 실패: {result}")
-            else:
-                logger.error(f"카카오 알림톡 API 오류: {response.status_code}")
-                
-        except Exception as e:
-            logger.error(f"카카오 알림톡 전송 실패: {e}")
-    
-    def _send_tts_notification(self, alert_message: AlertMessage):
-        """TTS 음성 알림 전송"""
-        try:
-            # TTS 메시지 생성
-            tts_message = f"""
-            경고! {alert_message.device_id} 장비에서 {alert_message.anomaly_type} 이상이 탐지되었습니다.
-            심각도는 {alert_message.severity}입니다.
-            즉시 확인이 필요합니다.
-            """
-            
-            # TTS 시스템 호출 (실제 구현에서는 TTS 엔진 연동)
-            logger.info(f"TTS 알림 메시지: {tts_message}")
-            
-            # 여기에 실제 TTS 시스템 연동 코드 추가
-            # 예: pyttsx3, gTTS, Azure Speech Service 등
+            # WebSocket 매니저를 통해 전송
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(websocket_manager.send_notification(event_data))
+            except RuntimeError:
+                # 이벤트 루프가 없는 경우 (백그라운드에서 실행)
+                logger.info(f"웹 알림 이벤트 생성: {notification.device_id}")
             
         except Exception as e:
-            logger.error(f"TTS 알림 전송 실패: {e}")
+            logger.error(f"웹 알림 이벤트 생성 중 오류: {e}")
     
-    def get_notifications(
-        self, 
-        db: Session, 
-        device_id: Optional[str] = None,
-        alert_type: Optional[str] = None,
-        acknowledged: Optional[bool] = None,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Notification]:
-        """알림 목록 조회"""
+    def generate_tts_message(self, notification: Notification) -> str:
+        """TTS용 메시지 생성"""
+        severity_korean = {
+            "critical": "치명적",
+            "high": "높음", 
+            "medium": "보통",
+            "low": "낮음"
+        }
+        
+        tts_message = f"""
+        경고. {notification.device_id} 장비에서 {notification.anomaly_type} 이상이 탐지되었습니다. 
+        심각도는 {severity_korean.get(notification.severity, notification.severity)}입니다. 
+        즉시 확인이 필요합니다.
+        """
+        
+        return tts_message.strip()
+    
+    def get_notifications(self, db: Session, device_id: Optional[str] = None, 
+                         severity: Optional[str] = None, limit: int = 100) -> List[Notification]:
+        """알림 조회"""
         query = db.query(Notification)
         
         if device_id:
             query = query.filter(Notification.device_id == device_id)
         
-        if alert_type:
-            query = query.filter(Notification.alert_type == alert_type)
+        if severity:
+            query = query.filter(Notification.severity == severity)
         
-        if acknowledged is not None:
-            query = query.filter(Notification.acknowledged == acknowledged)
-        
-        return query.order_by(Notification.detected_at.desc()).offset(skip).limit(limit).all()
-    
-    def acknowledge_notification(
-        self, 
-        db: Session, 
-        notification_id: int, 
-        acknowledged_by: str
-    ) -> Optional[Notification]:
-        """알림 확인 처리"""
-        try:
-            notification = db.query(Notification).filter(Notification.id == notification_id).first()
-            
-            if not notification:
-                return None
-            
-            notification.acknowledged = True
-            notification.acknowledged_by = acknowledged_by
-            notification.acknowledged_at = datetime.utcnow()
-            
-            db.commit()
-            db.refresh(notification)
-            
-            logger.info(f"알림 확인 처리 완료: {notification_id}")
-            return notification
-            
-        except Exception as e:
-            db.rollback()
-            logger.error(f"알림 확인 처리 실패: {e}")
-            return None
-    
-    def create_alert_rule(
-        self, 
-        db: Session, 
-        alert_rule_create: AlertRuleCreate
-    ) -> AlertRule:
-        """알림 규칙 생성"""
-        try:
-            alert_rule = AlertRule(**alert_rule_create.dict())
-            
-            db.add(alert_rule)
-            db.commit()
-            db.refresh(alert_rule)
-            
-            logger.info(f"알림 규칙 생성 완료: {alert_rule.id}")
-            return alert_rule
-            
-        except Exception as e:
-            db.rollback()
-            logger.error(f"알림 규칙 생성 실패: {e}")
-            raise
-    
-    def get_alert_rules(
-        self, 
-        db: Session, 
-        device_id: Optional[str] = None,
-        enabled: Optional[bool] = None
-    ) -> List[AlertRule]:
-        """알림 규칙 목록 조회"""
-        query = db.query(AlertRule)
-        
-        if device_id:
-            query = query.filter(AlertRule.device_id == device_id)
-        
-        if enabled is not None:
-            query = query.filter(AlertRule.enabled == enabled)
-        
-        return query.all()
-    
-    def check_alert_conditions(
-        self, 
-        db: Session, 
-        device_id: str,
-        sensor_type: str,
-        sensor_value: float
-    ) -> List[AlertRule]:
-        """알림 조건 확인"""
-        try:
-            rules = self.get_alert_rules(db, device_id=device_id, enabled=True)
-            triggered_rules = []
-            
-            for rule in rules:
-                if rule.sensor_type != sensor_type:
-                    continue
-                
-                threshold = float(rule.threshold_value)
-                
-                if rule.condition == "gt" and sensor_value > threshold:
-                    triggered_rules.append(rule)
-                elif rule.condition == "lt" and sensor_value < threshold:
-                    triggered_rules.append(rule)
-                elif rule.condition == "eq" and sensor_value == threshold:
-                    triggered_rules.append(rule)
-                elif rule.condition == "range":
-                    # 범위 조건 처리 (예: "10,20" -> 10 < value < 20)
-                    try:
-                        min_val, max_val = map(float, rule.threshold_value.split(","))
-                        if min_val < sensor_value < max_val:
-                            triggered_rules.append(rule)
-                    except:
-                        continue
-            
-            return triggered_rules
-            
-        except Exception as e:
-            logger.error(f"알림 조건 확인 실패: {e}")
-            return []
-    
-    def get_notification_summary(self, db: Session) -> Dict[str, Any]:
-        """알림 요약 정보 조회"""
-        try:
-            total = db.query(Notification).count()
-            unacknowledged = db.query(Notification).filter(Notification.acknowledged == False).count()
-            critical = db.query(Notification).filter(Notification.alert_type == "critical").count()
-            warning = db.query(Notification).filter(Notification.alert_type == "warning").count()
-            
-            recent = db.query(Notification).order_by(Notification.detected_at.desc()).limit(10).all()
-            
-            return {
-                "total_notifications": total,
-                "unacknowledged_count": unacknowledged,
-                "critical_count": critical,
-                "warning_count": warning,
-                "recent_notifications": recent
-            }
-            
-        except Exception as e:
-            logger.error(f"알림 요약 조회 실패: {e}")
-            return {
-                "total_notifications": 0,
-                "unacknowledged_count": 0,
-                "critical_count": 0,
-                "warning_count": 0,
-                "recent_notifications": []
-            }
+        return query.order_by(Notification.created_at.desc()).limit(limit).all()
 
 
-# 전역 알림 서비스 인스턴스
+# 전역 인스턴스
 notification_service = NotificationService() 

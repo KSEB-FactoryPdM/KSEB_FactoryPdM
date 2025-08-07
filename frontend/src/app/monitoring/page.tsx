@@ -4,6 +4,7 @@
 import DashboardLayout from '@/components/DashboardLayout'
 import ChartCard from '@/components/ChartCard'
 import SummaryCard from '@/components/SummaryCard'
+import NotificationPanel from '@/components/NotificationPanel'
 import { TimeRangeSelector, EquipmentFilter, SensorFilter } from '@/components/filters'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useMemo } from 'react'
@@ -19,7 +20,7 @@ import {
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 
-type MyType = Array<{
+type MyType = {
   time: number
   total: number
   A: number
@@ -35,7 +36,7 @@ type MyType = Array<{
   size50: number
   size90: number
   size99: number
-}>
+}
 
 interface Equipment {
   id: string
@@ -71,7 +72,7 @@ export default function MonitoringPage() {
     process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
     'ws://localhost:8080'
   // 자동 재연결 옵션 추가
-  const { data, status } = useWebSocket<MyType>(socketUrl, { autoReconnect: true })
+  const { data, status, notifications } = useWebSocket<MyType>(socketUrl, { autoReconnect: true })
   const hasAnomaly =
     data != null && data[data.length - 1]?.total != null && data[data.length - 1]!.total > 0
 
@@ -132,6 +133,9 @@ export default function MonitoringPage() {
 
   return (
     <DashboardLayout>
+      {/* 실시간 알림 패널 */}
+      <NotificationPanel notifications={notifications} />
+
       {/* Version Card */}
         <div className="bg-white rounded-lg shadow-md p-4 h-20 flex items-center justify-center">
           <div className="text-center w-full">
