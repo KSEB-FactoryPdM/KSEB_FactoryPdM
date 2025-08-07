@@ -43,5 +43,19 @@
     "unbalance": "Rotational imbalance",
     "belt_loose": "Loose belt",
     "bearing_fault": "Bearing fault"
+  },
+  "settings": {
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "plcEndpoint": "PLC/SCADA Endpoint",
+    "mqttEndpoint": "MQTT Endpoint",
+    "opcuaEndpoint": "OPC UA Endpoint",
+    "role": "Role",
+    "roles": {
+      "admin": "Admin",
+      "operator": "Operator",
+      "viewer": "Viewer"
+    }
   }
 }

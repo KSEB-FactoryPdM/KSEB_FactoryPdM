@@ -43,5 +43,19 @@
     "unbalance": "회전체불평형",
     "belt_loose": "벨트느슨함",
     "bearing_fault": "베어링불량"
+  },
+  "settings": {
+    "name": "이름",
+    "email": "이메일",
+    "password": "비밀번호",
+    "plcEndpoint": "PLC/SCADA 엔드포인트",
+    "mqttEndpoint": "MQTT 엔드포인트",
+    "opcuaEndpoint": "OPC UA 엔드포인트",
+    "role": "역할",
+    "roles": {
+      "admin": "관리자",
+      "operator": "운영자",
+      "viewer": "뷰어"
+    }
   }
 }
