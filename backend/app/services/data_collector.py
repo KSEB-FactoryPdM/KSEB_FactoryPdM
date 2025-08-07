@@ -21,9 +21,9 @@ class DataCollector:
         self.kafka_producer = None
         
         # 토픽 설정
-        self.sensor_topic = "factory/sensors/+/data"  # MQTT 토픽 패턴
+        self.sensor_topic = "unity/sensors/+/data"    # MQTT 토픽 패턴 (Unity에서 전송)
         self.kafka_raw_topic = "sensor-data-raw"      # Kafka 원본 데이터 토픽
-        self.kafka_processed_topic = "sensor-data-processed"  # Kafka 처리된 데이터 토픽
+        self.kafka_ai_topic = "ai-model-input"        # AI 모델 서비스 입력 토픽
         
         self.running = False
         
@@ -69,7 +69,7 @@ class DataCollector:
     def process_mqtt_message(self, topic: str, payload: str):
         """MQTT 메시지 처리 및 Kafka로 전송"""
         try:
-            # 토픽에서 센서 ID 추출 (factory/sensors/SENSOR_ID/data)
+            # 토픽에서 센서 ID 추출 (unity/sensors/SENSOR_ID/data)
             topic_parts = topic.split('/')
             if len(topic_parts) >= 3:
                 sensor_id = topic_parts[2]
@@ -86,9 +86,11 @@ class DataCollector:
             # Kafka로 원본 데이터 전송
             self.send_to_kafka(self.kafka_raw_topic, sensor_id, enriched_data)
             
-            # 데이터 전처리 후 처리된 데이터 토픽으로 전송
+            # 데이터 전처리 후 AI 모델 서비스로 전송
             processed_data = self.preprocess_sensor_data(enriched_data)
-            self.send_to_kafka(self.kafka_processed_topic, sensor_id, processed_data)
+            if processed_data.get('model_ready', False):
+                self.send_to_kafka(self.kafka_ai_topic, sensor_id, processed_data)
+                logger.debug(f"AI 모델 입력 데이터 전송 완료: {sensor_id}")
             
             logger.debug(f"센서 데이터 처리 완료: {sensor_id}")
             
@@ -120,36 +122,51 @@ class DataCollector:
         return enriched
         
     def validate_sensor_data(self, data: Dict[str, Any], sensor_id: str = None) -> bool:
-        """센서 데이터 유효성 검증 (공조기 설비 전용)"""
+        """센서 데이터 유효성 검증 (Unity 데이터 구조 지원)"""
         try:
+            # Unity에서 보내는 데이터 구조 확인
+            # Current 데이터: {device, timestamp, x, y, z}
+            # Vibration 데이터: {device, timestamp, vibe}
+            
             # 필수 필드 확인
-            if 'value' not in data:
+            required_fields = ['device', 'timestamp']
+            for field in required_fields:
+                if field not in data:
+                    logger.warning(f"필수 필드 누락: {field}")
+                    return False
+            
+            # Current 센서 데이터 검증
+            if 'x' in data and 'y' in data and 'z' in data:
+                # Current 센서 (3축 데이터)
+                for axis in ['x', 'y', 'z']:
+                    value = data[axis]
+                    if not isinstance(value, (int, float)):
+                        logger.warning(f"잘못된 데이터 타입: {axis}={value}")
+                        return False
+                    # 기본 범위 검증 (필요시 설정값으로 변경 가능)
+                    if value < -1000 or value > 1000:
+                        logger.warning(f"값이 범위를 벗어남: {axis}={value}")
+                        return False
+                        
+            # Vibration 센서 데이터 검증
+            elif 'vibe' in data:
+                value = data['vibe']
+                if not isinstance(value, (int, float)):
+                    logger.warning(f"잘못된 데이터 타입: vibe={value}")
+                    return False
+                # 기본 범위 검증 (필요시 설정값으로 변경 가능)
+                if value < 0 or value > 1000:
+                    logger.warning(f"진동 값이 범위를 벗어남: vibe={value}")
+                    return False
+            else:
+                logger.warning("알 수 없는 데이터 구조: Current(x,y,z) 또는 Vibration(vibe) 필드가 없음")
                 return False
                 
-            value = data['value']
-            
-            # 숫자 값 확인
-            if not isinstance(value, (int, float)):
+            # 타임스탬프 검증
+            timestamp = data['timestamp']
+            if not isinstance(timestamp, (int, float, str)):
+                logger.warning(f"잘못된 타임스탬프 타입: {timestamp}")
                 return False
-            
-            # 센서 타입별 범위 검증 (current와 vibration만)
-            if sensor_id:
-                if 'CURR' in sensor_id:  # current 센서 (X, Y, Z 모두)
-                    if value < 0 or value > 100:  # 전류: 0~100A
-                        logger.warning(f"전류 센서 값이 범위를 벗어남: {sensor_id}={value} (범위: 0~100A)")
-                        return False
-                elif 'VIB' in sensor_id:  # vibration 센서
-                    if value < 0 or value > 100:  # 진동: 0~100mm/s
-                        logger.warning(f"진동 센서 값이 범위를 벗어남: {sensor_id}={value} (범위: 0~100mm/s)")
-                        return False
-                else:
-                    # 알 수 없는 센서 타입
-                    if value < -1000 or value > 10000:
-                        return False
-            else:
-                # 센서 ID가 없는 경우 기본 범위
-                if value < -1000 or value > 10000:
-                    return False
                 
             return True
             
@@ -158,55 +175,52 @@ class DataCollector:
             return False
             
     def preprocess_sensor_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """센서 데이터 전처리"""
+        """센서 데이터 전처리 (Unity 데이터 구조 지원)"""
         processed = data.copy()
         
         try:
-            sensor_value = data['data']['value']
+            # Unity에서 받은 원본 데이터 구조 유지
+            sensor_data = data['data']
+            device_id = sensor_data.get('device', 'unknown')
             
-            # 이동평균 계산 (간단한 예제)
-            processed['moving_avg'] = sensor_value  # 실제로는 윈도우 기반 계산 필요
+            # 데이터 타입 분류
+            if 'x' in sensor_data and 'y' in sensor_data and 'z' in sensor_data:
+                # Current 센서 데이터 (3축)
+                processed['sensor_type'] = 'current'
+                processed['values'] = {
+                    'x': sensor_data['x'],
+                    'y': sensor_data['y'], 
+                    'z': sensor_data['z']
+                }
+                # 3축 벡터 크기 계산
+                import math
+                magnitude = math.sqrt(sensor_data['x']**2 + sensor_data['y']**2 + sensor_data['z']**2)
+                processed['magnitude'] = magnitude
+                
+            elif 'vibe' in sensor_data:
+                # Vibration 센서 데이터
+                processed['sensor_type'] = 'vibration'
+                processed['values'] = {
+                    'vibe': sensor_data['vibe']
+                }
+                processed['magnitude'] = sensor_data['vibe']
+                
+            else:
+                logger.warning(f"알 수 없는 센서 데이터 구조: {device_id}")
+                processed['sensor_type'] = 'unknown'
+                processed['values'] = {}
+                processed['magnitude'] = 0
             
-            # 이상치 감지를 위한 Z-score 계산 (간단한 예제)
-            processed['z_score'] = 0.0  # 실제로는 통계 기반 계산 필요
+            # Unity에서 받은 device ID를 equipment_id로 사용
+            processed['equipment_id'] = device_id
             
-            # 장비 ID 매핑 (current 3축 + vibration 센서)
-            equipment_mapping = {
-                # CAHU (중앙공조기) 센서
-                'L-CAHU-01R_CURR_X': 'L-CAHU-01R', 'L-CAHU-01R_CURR_Y': 'L-CAHU-01R', 'L-CAHU-01R_CURR_Z': 'L-CAHU-01R', 'L-CAHU-01R_VIB': 'L-CAHU-01R',
-                'L-CAHU-02R_CURR_X': 'L-CAHU-02R', 'L-CAHU-02R_CURR_Y': 'L-CAHU-02R', 'L-CAHU-02R_CURR_Z': 'L-CAHU-02R', 'L-CAHU-02R_VIB': 'L-CAHU-02R',
-                'L-CAHU-03R_CURR_X': 'L-CAHU-03R', 'L-CAHU-03R_CURR_Y': 'L-CAHU-03R', 'L-CAHU-03R_CURR_Z': 'L-CAHU-03R', 'L-CAHU-03R_VIB': 'L-CAHU-03R',
-                
-                # PAHU (1차공조기) 센서
-                'L-PAHU-01R_CURR_X': 'L-PAHU-01R', 'L-PAHU-01R_CURR_Y': 'L-PAHU-01R', 'L-PAHU-01R_CURR_Z': 'L-PAHU-01R', 'L-PAHU-01R_VIB': 'L-PAHU-01R',
-                'L-PAHU-02R_CURR_X': 'L-PAHU-02R', 'L-PAHU-02R_CURR_Y': 'L-PAHU-02R', 'L-PAHU-02R_CURR_Z': 'L-PAHU-02R', 'L-PAHU-02R_VIB': 'L-PAHU-02R',
-                
-                # PAC (패키지 에어컨) 센서
-                'L-PAC-01R_CURR_X': 'L-PAC-01R', 'L-PAC-01R_CURR_Y': 'L-PAC-01R', 'L-PAC-01R_CURR_Z': 'L-PAC-01R', 'L-PAC-01R_VIB': 'L-PAC-01R',
-                'L-PAC-02R_CURR_X': 'L-PAC-02R', 'L-PAC-02R_CURR_Y': 'L-PAC-02R', 'L-PAC-02R_CURR_Z': 'L-PAC-02R', 'L-PAC-02R_VIB': 'L-PAC-02R',
-                'L-PAC-03R_CURR_X': 'L-PAC-03R', 'L-PAC-03R_CURR_Y': 'L-PAC-03R', 'L-PAC-03R_CURR_Z': 'L-PAC-03R', 'L-PAC-03R_VIB': 'L-PAC-03R',
-                
-                # EF (배기팬) 센서
-                'L-EF-01R_CURR_X': 'L-EF-01R', 'L-EF-01R_CURR_Y': 'L-EF-01R', 'L-EF-01R_CURR_Z': 'L-EF-01R', 'L-EF-01R_VIB': 'L-EF-01R',
-                'L-EF-02R_CURR_X': 'L-EF-02R', 'L-EF-02R_CURR_Y': 'L-EF-02R', 'L-EF-02R_CURR_Z': 'L-EF-02R', 'L-EF-02R_VIB': 'L-EF-02R',
-                
-                # SF (급기팬) 센서
-                'L-SF-01R_CURR_X': 'L-SF-01R', 'L-SF-01R_CURR_Y': 'L-SF-01R', 'L-SF-01R_CURR_Z': 'L-SF-01R', 'L-SF-01R_VIB': 'L-SF-01R',
-                'L-SF-02R_CURR_X': 'L-SF-02R', 'L-SF-02R_CURR_Y': 'L-SF-02R', 'L-SF-02R_CURR_Z': 'L-SF-02R', 'L-SF-02R_VIB': 'L-SF-02R',
-                
-                # DEF (제습배기팬) 센서
-                'L-DEF-01R_CURR_X': 'L-DEF-01R', 'L-DEF-01R_CURR_Y': 'L-DEF-01R', 'L-DEF-01R_CURR_Z': 'L-DEF-01R', 'L-DEF-01R_VIB': 'L-DEF-01R',
-                'L-DEF-02R_CURR_X': 'L-DEF-02R', 'L-DEF-02R_CURR_Y': 'L-DEF-02R', 'L-DEF-02R_CURR_Z': 'L-DEF-02R', 'L-DEF-02R_VIB': 'L-DEF-02R',
-                
-                # DSF (제습급기팬) 센서
-                'L-DSF-01R_CURR_X': 'L-DSF-01R', 'L-DSF-01R_CURR_Y': 'L-DSF-01R', 'L-DSF-01R_CURR_Z': 'L-DSF-01R', 'L-DSF-01R_VIB': 'L-DSF-01R',
-                'L-DSF-02R_CURR_X': 'L-DSF-02R', 'L-DSF-02R_CURR_Y': 'L-DSF-02R', 'L-DSF-02R_CURR_Z': 'L-DSF-02R', 'L-DSF-02R_VIB': 'L-DSF-02R'
-            }
-            
-            processed['equipment_id'] = equipment_mapping.get(data['sensor_id'], 0)
+            # AI 모델 처리를 위한 추가 메타데이터
+            processed['model_ready'] = True
+            processed['processing_timestamp'] = datetime.utcnow().isoformat()
             
         except Exception as e:
             logger.error(f"데이터 전처리 중 오류: {e}")
+            processed['model_ready'] = False
             
         return processed
         
