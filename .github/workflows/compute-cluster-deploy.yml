@@ -1,0 +1,570 @@
+name: Compute Cluster Deploy to GKE
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'backend/app/services/ai_model_service.py'
+      - 'backend/app/ml/**'
+      - '.github/workflows/compute-cluster-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths: 
+      - 'backend/app/services/ai_model_service.py'
+      - 'backend/app/ml/**'
+      - '.github/workflows/compute-cluster-deploy.yml'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_COMPUTE_CLUSTER: compute-cluster
+  GKE_REGION: us-central1
+  GKE_ZONE: us-central1-c
+  AI_MODEL_SERVICE_IMAGE: smart-factory-ai-model-service
+  KAFKA_IMAGE: confluentinc/cp-kafka:7.4.0
+  ZOOKEEPER_IMAGE: confluentinc/cp-zookeeper:7.4.0
+
+jobs:
+  build-and-test:
+    name: Build and Test AI/ML Services
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install AI/ML dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r backend/requirements.txt
+        pip install pytest pytest-asyncio torch scikit-learn
+
+    - name: Run AI/ML service tests
+      run: |
+        cd backend
+        # AI/ML 서비스 모듈 import 테스트
+        python -c "
+        print('=== AI/ML Services 모듈 Import 테스트 ===')
+        try:
+            from app.services.ai_model_service import AIModelService
+            print('✅ AI 모델 서비스 import 성공')
+        except Exception as e:
+            print(f'❌ AI 모델 서비스 import 실패: {e}')
+            exit(1)
+        
+        try:
+            import torch
+            print('✅ PyTorch import 성공')
+            print(f'PyTorch 버전: {torch.__version__}')
+            print(f'CUDA 사용 가능: {torch.cuda.is_available()}')
+        except Exception as e:
+            print(f'❌ PyTorch import 실패: {e}')
+            exit(1)
+            
+        try:
+            from app.ml.anomaly_detection import anomaly_model
+            print('✅ 이상탐지 모델 import 성공')
+        except Exception as e:
+            print(f'❌ 이상탐지 모델 import 실패: {e}')
+            exit(1)
+        
+        print('✅ Compute Cluster AI/ML 모듈 import 성공!')
+        "
+      env:
+        KAFKA_BOOTSTRAP_SERVERS: localhost:9092
+        REDIS_URL: redis://localhost:6379
+
+  create-compute-cluster:
+    name: Create Compute Cluster if not exists
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: gcloud components install gke-gcloud-auth-plugin --quiet
+      
+    - name: Activate service account
+      run: |
+        echo '${{ secrets.GCP_SA_KEY }}' > ${HOME}/gcp-key.json
+        gcloud auth activate-service-account --key-file=${HOME}/gcp-key.json
+          
+    - name: Set active gcloud account
+      run: |
+        gcloud config set account ${{ fromJson(secrets.GCP_SA_KEY).client_email }}
+
+    - name: Create Compute Cluster with high-memory machines
+      run: |-
+        # Compute Cluster가 존재하는지 확인
+        if ! gcloud container clusters describe "$GKE_COMPUTE_CLUSTER" --region "$GKE_REGION" &> /dev/null; then
+          echo "Compute Cluster가 존재하지 않습니다. 새로 생성합니다..."
+          
+          # Compute Cluster 생성 (메모리 최적화 머신 타입)
+          gcloud container clusters create "$GKE_COMPUTE_CLUSTER" \
+            --region="$GKE_REGION" \
+            --machine-type="e2-highmem-4" \
+            --num-nodes=2 \
+            --min-nodes=1 \
+            --max-nodes=6 \
+            --enable-autoscaling \
+            --enable-autorepair \
+            --enable-autoupgrade \
+            --disk-size=100GB \
+            --disk-type=pd-ssd \
+            --enable-network-policy \
+            --enable-ip-alias \
+            --enable-shielded-nodes \
+            --labels=cluster-type=compute,environment=production,workload=ml-kafka \
+            --addons=HorizontalPodAutoscaling,HttpLoadBalancing,NetworkPolicy \
+            --node-labels=workload-type=compute-intensive
+          
+          echo "✅ Compute Cluster 생성 완료 (메모리 최적화)"
+        else
+          echo "✅ Compute Cluster가 이미 존재합니다."
+        fi
+
+  deploy-to-compute-cluster:
+    name: Deploy to Compute Cluster
+    runs-on: ubuntu-latest
+    needs: create-compute-cluster
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: gcloud components install gke-gcloud-auth-plugin --quiet
+      
+    - name: Activate service account
+      run: |
+        echo '${{ secrets.GCP_SA_KEY }}' > ${HOME}/gcp-key.json
+        gcloud auth activate-service-account --key-file=${HOME}/gcp-key.json
+          
+    - name: Set active gcloud account
+      run: |
+        gcloud config set account ${{ fromJson(secrets.GCP_SA_KEY).client_email }}
+
+    - name: Configure Docker to use gcloud as a credential helper
+      run: |-
+        gcloud --quiet auth configure-docker
+
+    - name: Get the Compute Cluster credentials
+      run: |-
+        gcloud container clusters get-credentials "$GKE_COMPUTE_CLUSTER" --region "$GKE_REGION"
+
+    - name: Build AI Model Service Docker image
+      run: |-
+        cd backend
+        # AI 모델 서비스용 Dockerfile 생성
+        cat > Dockerfile.ai-service << 'EOF'
+        FROM python:3.9-slim
+
+        WORKDIR /app
+
+        # 시스템 의존성 설치
+        RUN apt-get update && apt-get install -y \
+            gcc \
+            g++ \
+            && rm -rf /var/lib/apt/lists/*
+
+        # Python 의존성 설치
+        COPY requirements.txt .
+        RUN pip install --no-cache-dir -r requirements.txt
+
+        # 애플리케이션 코드 복사
+        COPY . .
+
+        # AI 모델 서비스 포트 노출
+        EXPOSE 8001
+
+        # AI 모델 서비스 실행
+        CMD ["python", "-m", "uvicorn", "app.services.ai_model_service:app", "--host", "0.0.0.0", "--port", "8001"]
+        EOF
+        
+        docker build -f Dockerfile.ai-service -t "gcr.io/$PROJECT_ID/$AI_MODEL_SERVICE_IMAGE:$GITHUB_SHA" .
+
+    - name: Publish AI Model Service image to GCR
+      run: |-
+        docker push "gcr.io/$PROJECT_ID/$AI_MODEL_SERVICE_IMAGE:$GITHUB_SHA"
+
+    - name: Deploy Compute Infrastructure
+      run: |-
+        cd backend
+        
+        # Compute Cluster 전용 네임스페이스 생성
+        kubectl create namespace smart-factory-compute --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Compute Cluster 시크릿 생성
+        kubectl create secret generic compute-cluster-secrets \
+          --from-literal=KAFKA_BOOTSTRAP_SERVERS=kafka-service:9092 \
+          --from-literal=ZOOKEEPER_CONNECT=zookeeper-service:2181 \
+          --namespace=smart-factory-compute \
+          --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Zookeeper 배포 매니페스트 생성
+        cat > k8s/compute-zookeeper.yaml << 'EOF'
+        apiVersion: apps/v1
+        kind: StatefulSet
+        metadata:
+          name: zookeeper
+          namespace: smart-factory-compute
+        spec:
+          serviceName: "zookeeper-service"
+          replicas: 1
+          selector:
+            matchLabels:
+              app: zookeeper
+          template:
+            metadata:
+              labels:
+                app: zookeeper
+            spec:
+              containers:
+              - name: zookeeper
+                image: confluentinc/cp-zookeeper:7.4.0
+                ports:
+                - containerPort: 2181
+                env:
+                - name: ZOOKEEPER_CLIENT_PORT
+                  value: "2181"
+                - name: ZOOKEEPER_TICK_TIME
+                  value: "2000"
+                resources:
+                  requests:
+                    memory: "1Gi"
+                    cpu: "500m"
+                  limits:
+                    memory: "2Gi" 
+                    cpu: "1000m"
+                volumeMounts:
+                - name: zookeeper-storage
+                  mountPath: /var/lib/zookeeper
+          volumeClaimTemplates:
+          - metadata:
+              name: zookeeper-storage
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 10Gi
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: zookeeper-service
+          namespace: smart-factory-compute
+        spec:
+          ports:
+          - port: 2181
+            targetPort: 2181
+          selector:
+            app: zookeeper
+        EOF
+        
+        # Kafka 배포 매니페스트 생성
+        cat > k8s/compute-kafka.yaml << 'EOF'
+        apiVersion: apps/v1
+        kind: StatefulSet
+        metadata:
+          name: kafka
+          namespace: smart-factory-compute
+        spec:
+          serviceName: "kafka-service"
+          replicas: 2
+          selector:
+            matchLabels:
+              app: kafka
+          template:
+            metadata:
+              labels:
+                app: kafka
+            spec:
+              containers:
+              - name: kafka
+                image: confluentinc/cp-kafka:7.4.0
+                ports:
+                - containerPort: 9092
+                - containerPort: 9093
+                env:
+                - name: KAFKA_BROKER_ID
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: KAFKA_ZOOKEEPER_CONNECT
+                  value: "zookeeper-service:2181"
+                - name: KAFKA_ADVERTISED_LISTENERS
+                  value: "PLAINTEXT://$(POD_NAME).kafka-service:9092,EXTERNAL://$(POD_IP):9093"
+                - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+                  value: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+                - name: KAFKA_INTER_BROKER_LISTENER_NAME
+                  value: "PLAINTEXT"
+                - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+                  value: "2"
+                - name: KAFKA_NUM_PARTITIONS
+                  value: "3"
+                - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+                  value: "2"
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: POD_IP
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: status.podIP
+                resources:
+                  requests:
+                    memory: "2Gi"
+                    cpu: "1000m"
+                  limits:
+                    memory: "4Gi"
+                    cpu: "2000m"
+                volumeMounts:
+                - name: kafka-storage
+                  mountPath: /var/lib/kafka
+          volumeClaimTemplates:
+          - metadata:
+              name: kafka-storage
+            spec:
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 20Gi
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: kafka-service
+          namespace: smart-factory-compute
+        spec:
+          ports:
+          - name: internal
+            port: 9092
+            targetPort: 9092
+          - name: external
+            port: 9093
+            targetPort: 9093
+          selector:
+            app: kafka
+          type: LoadBalancer
+        EOF
+        
+        # AI 모델 서비스 배포 매니페스트 생성
+        cat > k8s/compute-ai-service.yaml << 'EOF'
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: ai-model-service
+          namespace: smart-factory-compute
+        spec:
+          replicas: 2
+          selector:
+            matchLabels:
+              app: ai-model-service
+          template:
+            metadata:
+              labels:
+                app: ai-model-service
+            spec:
+              nodeSelector:
+                workload-type: compute-intensive
+              containers:
+              - name: ai-model-service
+                image: gcr.io/PROJECT_ID/smart-factory-ai-model-service:latest
+                ports:
+                - containerPort: 8001
+                env:
+                - name: KAFKA_BOOTSTRAP_SERVERS
+                  valueFrom:
+                    secretKeyRef:
+                      name: compute-cluster-secrets
+                      key: KAFKA_BOOTSTRAP_SERVERS
+                resources:
+                  requests:
+                    memory: "4Gi"
+                    cpu: "2000m"
+                  limits:
+                    memory: "8Gi"
+                    cpu: "4000m"
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: 8001
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                readinessProbe:
+                  httpGet:
+                    path: /ready
+                    port: 8001
+                  initialDelaySeconds: 15
+                  periodSeconds: 5
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: ai-model-service
+          namespace: smart-factory-compute
+        spec:
+          selector:
+            app: ai-model-service
+          ports:
+          - port: 8001
+            targetPort: 8001
+          type: LoadBalancer
+        ---
+        apiVersion: autoscaling/v2
+        kind: HorizontalPodAutoscaler
+        metadata:
+          name: ai-model-service-hpa
+          namespace: smart-factory-compute
+        spec:
+          scaleTargetRef:
+            apiVersion: apps/v1
+            kind: Deployment
+            name: ai-model-service
+          minReplicas: 2
+          maxReplicas: 6
+          metrics:
+          - type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+          - type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80
+        EOF
+        
+        # 이미지 태그 업데이트
+        sed -i "s|gcr.io/PROJECT_ID/smart-factory-ai-model-service|gcr.io/$PROJECT_ID/$AI_MODEL_SERVICE_IMAGE|g" k8s/compute-ai-service.yaml
+        sed -i "s|smart-factory-ai-model-service:latest|$AI_MODEL_SERVICE_IMAGE:$GITHUB_SHA|g" k8s/compute-ai-service.yaml
+        
+        # 인프라 서비스 배포 (순서 중요: Zookeeper -> Kafka -> AI Service)
+        kubectl apply -f k8s/compute-zookeeper.yaml
+        
+        # Zookeeper가 준비될 때까지 대기
+        kubectl wait --for=condition=ready pod -l app=zookeeper -n smart-factory-compute --timeout=300s
+        
+        kubectl apply -f k8s/compute-kafka.yaml
+        
+        # Kafka가 준비될 때까지 대기
+        kubectl wait --for=condition=ready pod -l app=kafka -n smart-factory-compute --timeout=300s
+        
+        # AI 모델 서비스 배포
+        kubectl apply -f k8s/compute-ai-service.yaml
+        
+        # AI 모델 서비스 롤아웃 상태 확인
+        kubectl rollout status deployment/ai-model-service -n smart-factory-compute
+
+    - name: Verify Compute Cluster Deployment
+      run: |-
+        kubectl get services -o wide -n smart-factory-compute
+        kubectl get pods -n smart-factory-compute
+        
+        # 서비스 상태 확인
+        echo "=== Compute Cluster 서비스 상태 ==="
+        kubectl get svc -n smart-factory-compute
+        
+        # 애플리케이션 로그 확인
+        echo "=== Zookeeper 로그 ==="
+        kubectl logs -l app=zookeeper -n smart-factory-compute --tail=10
+        
+        echo "=== Kafka 로그 ==="
+        kubectl logs -l app=kafka -n smart-factory-compute --tail=10
+        
+        echo "=== AI 모델 서비스 로그 ==="
+        kubectl logs -l app=ai-model-service -n smart-factory-compute --tail=10
+
+    - name: Health Check
+      run: |-
+        # Compute Cluster 서비스들의 헬스 체크
+        echo "=== Compute Cluster 헬스 체크 ==="
+        
+        # AI 모델 서비스 헬스 체크
+        AI_SERVICE_IP=$(kubectl get svc ai-model-service -n smart-factory-compute -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        if [ ! -z "$AI_SERVICE_IP" ]; then
+          echo "AI 모델 서비스 IP: $AI_SERVICE_IP"
+          curl -f http://$AI_SERVICE_IP:8001/health || echo "AI 모델 서비스 헬스 체크 실패"
+        fi
+        
+        # Kafka 클러스터 상태 확인
+        kubectl get pods -l app=kafka -n smart-factory-compute
+        kubectl get pods -l app=zookeeper -n smart-factory-compute
+        
+        # HPA 상태 확인
+        kubectl get hpa -n smart-factory-compute
+
+    - name: Setup Cross-Cluster Communication
+      run: |-
+        # Compute Cluster의 외부 엔드포인트 정보 수집
+        echo "=== 클러스터 간 통신 설정 ==="
+        
+        # Kafka 서비스 외부 IP 확인
+        KAFKA_EXTERNAL_IP=$(kubectl get svc kafka-service -n smart-factory-compute -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+        echo "Kafka 외부 IP: $KAFKA_EXTERNAL_IP"
+        
+        # AI 모델 서비스 외부 IP 확인
+        AI_EXTERNAL_IP=$(kubectl get svc ai-model-service -n smart-factory-compute -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+        echo "AI 모델 서비스 외부 IP: $AI_EXTERNAL_IP"
+        
+        # 클러스터 간 통신을 위한 네트워크 정책 생성
+        cat > k8s/cross-cluster-network-policy.yaml << 'EOF'
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: allow-cross-cluster-communication
+          namespace: smart-factory-compute
+        spec:
+          podSelector: {}
+          policyTypes:
+          - Ingress
+          - Egress
+          ingress:
+          - from: []
+            ports:
+            - protocol: TCP
+              port: 9092
+            - protocol: TCP
+              port: 8001
+          egress:
+          - to: []
+            ports:
+            - protocol: TCP
+              port: 80
+            - protocol: TCP
+              port: 443
+            - protocol: TCP
+              port: 9092
+            - protocol: TCP
+              port: 8001
+        EOF
+        
+        kubectl apply -f k8s/cross-cluster-network-policy.yaml
+        
+        echo "✅ 클러스터 간 통신 설정 완료"
+        echo "Core Cluster에서 다음 엔드포인트들을 사용하세요:"
+        echo "- Kafka: $KAFKA_EXTERNAL_IP:9092"
+        echo "- AI Model Service: $AI_EXTERNAL_IP:8001"
