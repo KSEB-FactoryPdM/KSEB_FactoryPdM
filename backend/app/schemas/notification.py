@@ -141,6 +141,14 @@ class AlertMessage(BaseModel):
     threshold_value: Optional[float] = None
 
 
+class NotificationListResponse(BaseModel):
+    """알림 목록 응답 스키마"""
+    notifications: List[NotificationResponse]
+    total: int
+    page: int
+    size: int
+
+
 class NotificationSummary(BaseModel):
     """알림 요약 스키마"""
     total_notifications: int
