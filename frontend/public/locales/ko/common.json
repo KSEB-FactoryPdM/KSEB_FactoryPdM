@@ -6,6 +6,9 @@
     "unreadAlerts": "읽지 않은 알림 {{count}}개",
     "user": "사용자",
     "toggleTheme": "테마 전환",
+    "enableHighContrast": "고대비 모드 활성화",
+    "disableHighContrast": "고대비 모드 비활성화",
+    "fontSize": "기본 글꼴 크기",
     "language": "언어",
     "datetime": "{{datetime}}",
     "userInfo": "{{username}} ({{role}})"
