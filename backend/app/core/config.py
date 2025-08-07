@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     
     # 슬랙 알림 설정
     SLACK_WEBHOOK_URL: Optional[str] = Field(default=None, env="SLACK_WEBHOOK_URL")
+    SLACK_BOT_TOKEN: Optional[str] = Field(default=None, env="SLACK_BOT_TOKEN")
+    SLACK_ADMIN_USER_ID: Optional[str] = Field(default=None, env="SLACK_ADMIN_USER_ID")
     
 
     

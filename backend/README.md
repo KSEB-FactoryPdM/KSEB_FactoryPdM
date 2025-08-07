@@ -98,6 +98,12 @@ graph TB
 #### 보안
 - **Python-JOSE** - JWT 토큰 처리
 - **Passlib** - 비밀번호 해싱
+
+#### 알림 시스템
+- **Slack Bot API** - 다이렉트 메시지 알림
+- **Slack Webhook** - 채널 알림
+- **SMTP** - 이메일 알림
+- **WebSocket** - 실시간 웹 알림
 - **OpenTelemetry** - 분산 추적
 
 ## 🚀 빠른 시작
@@ -226,6 +232,11 @@ gcloud container clusters create smart-factory-cluster \
 ### 모니터링
 - `GET /health` - 헬스 체크
 - `GET /metrics` - Prometheus 메트릭
+
+### 알림 시스템
+- `POST /api/v1/notifications/test-slack-bot` - 슬랙 봇 테스트
+- `GET /api/v1/notifications` - 알림 목록 조회
+- `PUT /api/v1/notifications/{id}` - 알림 상태 업데이트
 
 ## 🧠 AI 모델
 
@@ -425,3 +436,53 @@ kubectl patch deployment ai-model-service -n smart-factory -p '{"spec":{"templat
 3. 변경사항을 커밋합니다 (`git commit -m 'Add some amazing feature'`)
 4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
 5. Pull Request를 생성합니다
+
+## 📱 슬랙 봇 설정
+
+### 1. 슬랙 앱 생성
+1. [Slack API 웹사이트](https://api.slack.com/apps)에서 새 앱 생성
+2. **Bot Token Scopes**에 다음 권한 추가:
+   - `chat:write` - 메시지 전송
+   - `im:write` - 다이렉트 메시지 전송
+   - `users:read` - 사용자 정보 읽기
+
+### 2. 환경 변수 설정
+프로젝트 루트에 `.env` 파일을 생성하고 다음 설정을 추가:
+
+```bash
+# 슬랙 봇 설정
+SLACK_BOT_TOKEN=xoxb-9308187881795-9313419589156-P9W5pDk9if0qGWsXMtBXWFaE
+SLACK_ADMIN_USER_ID=U09925HS1PV
+
+# 기존 슬랙 웹훅 (선택사항)
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+
+# 데이터베이스 설정 (필수)
+DATABASE_URL=postgresql://username:password@localhost:5432/kseb_factory
+TIMESCALE_URL=postgresql://username:password@localhost:5432/kseb_timeseries
+
+# 보안 설정
+SECRET_KEY=your-secret-key-here
+```
+
+### 3. 슬랙 봇 테스트
+```bash
+# API 테스트
+curl -X POST http://localhost:8000/api/v1/notifications/test-slack-bot
+
+# 또는 브라우저에서
+http://localhost:8000/docs
+```
+
+### 4. 알림 기능
+- **다이렉트 메시지**: 설비 이상 탐지시 관리자에게 즉시 알림
+- **채널 알림**: 웹훅을 통한 팀 채널 알림
+- **이메일 알림**: SMTP 설정시 이메일로 알림
+- **웹 알림**: WebSocket을 통한 실시간 웹 알림
+
+### 5. 알림 설정
+알림은 다음 상황에서 자동으로 전송됩니다:
+- 센서 값이 임계값을 초과할 때
+- AI 모델이 이상을 탐지할 때
+- 설비 잔여 수명이 임계값 이하로 떨어질 때
+- 시스템 오류가 발생할 때

@@ -9,6 +9,7 @@ from datetime import datetime
 from app.core.database import get_db
 from app.core.websocket_manager import websocket_manager
 from app.services.notification_service import notification_service
+from app.services.slack_bot_service import slack_bot_service
 from app.schemas.notification import NotificationResponse, NotificationListResponse
 
 router = APIRouter()
@@ -25,6 +26,19 @@ async def websocket_notifications(websocket: WebSocket):
             # 여기서 클라이언트 메시지 처리 가능
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
+
+
+@router.post("/test-slack-bot")
+async def test_slack_bot():
+    """슬랙 봇 테스트"""
+    try:
+        success = slack_bot_service.send_test_message()
+        if success:
+            return {"message": "슬랙 봇 테스트 메시지가 성공적으로 전송되었습니다."}
+        else:
+            raise HTTPException(status_code=500, detail="슬랙 봇 테스트 메시지 전송에 실패했습니다.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"슬랙 봇 테스트 중 오류가 발생했습니다: {str(e)}")
 
 
 @router.get("/", response_model=NotificationListResponse)
