@@ -1,7 +1,8 @@
 'use client';
 import Image from 'next/image';
 import { BellIcon, UserCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import ThemeToggle from './ThemeToggle';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -21,6 +22,8 @@ export default function Header() {
     new Date().toLocaleString()
   );
   const [unread, setUnread] = useState<number>(0);
+  const [search, setSearch] = useState('');
+  const router = useRouter();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -74,18 +77,28 @@ export default function Header() {
         </span>
       </div>
       <div className="flex-1 px-4">
-        <div className="relative w-full">
+        <form
+          className="relative w-full"
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            if (search.trim()) {
+              router.push(`/search?query=${encodeURIComponent(search.trim())}`);
+            }
+          }}
+        >
           <MagnifyingGlassIcon
             className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-primary"
             aria-hidden="true"
           />
           <input
             type="text"
-            placeholder="장비 ID · 이벤트 검색"
-            aria-label="Search equipment and events"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('header.searchPlaceholder')}
+            aria-label={t('header.searchPlaceholder')}
             className="w-full bg-input-bg rounded-md py-2 pl-10 text-sm text-black placeholder:text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-hover focus:ring-offset-2"
           />
-        </div>
+        </form>
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm" aria-label={t('header.datetime', { datetime: dateTime })}>
