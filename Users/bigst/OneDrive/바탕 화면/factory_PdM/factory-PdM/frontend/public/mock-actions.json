@@ -1,0 +1,5 @@
+[
+  {"id": 1, "action": "Reset threshold", "user": "Alice", "time": "2024-03-01T12:00:00Z", "result": "success"},
+  {"id": 2, "action": "Remote stop", "user": "Bob", "time": "2024-03-02T14:30:00Z", "result": "failure"},
+  {"id": 3, "action": "Request maintenance", "user": "Carol", "time": "2024-03-03T09:15:00Z", "result": "success"}
+]

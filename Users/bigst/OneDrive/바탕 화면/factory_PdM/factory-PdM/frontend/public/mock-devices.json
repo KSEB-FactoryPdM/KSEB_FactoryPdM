@@ -1,0 +1,5 @@
+[
+  {"id":"L-CAHU-01R","name":"L-CAHU-01R","type":"Fan","status":"online"},
+  {"id":"L-SF-01","name":"L-SF-01","type":"Fan","status":"online"},
+  {"id":"R-EF-05","name":"R-EF-05","type":"Fan","status":"offline"}
+]

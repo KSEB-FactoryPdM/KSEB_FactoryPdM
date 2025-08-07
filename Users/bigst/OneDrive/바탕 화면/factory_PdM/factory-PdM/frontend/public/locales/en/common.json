@@ -1,0 +1,47 @@
+{
+  "header": {
+    "title": "Factory PMS",
+    "searchPlaceholder": "Search equipment or events",
+    "notifications": "Notifications",
+    "unreadAlerts": "{{count}} unread alerts",
+    "user": "User",
+    "toggleTheme": "Toggle theme",
+    "language": "Language",
+    "datetime": "{{datetime}}",
+    "userInfo": "{{username}} ({{role}})"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "anomalies": "Anomalies",
+    "maintenance": "Maintenance",
+    "equipment": "Equipment",
+    "alerts": "Alerts",
+    "reports": "Reports",
+    "settings": "Settings",
+    "help": "Help",
+    "sidebarLabel": "Main navigation",
+    "logout": "Logout"
+  },
+  "login": {
+    "title": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "button": "Login",
+    "failed": "Login failed"
+  },
+  "footer": {
+    "version": "Version {{version}}",
+    "contact": "© {{year}} Factory PdM"
+  },
+  "filters": {
+    "allPower": "All kW",
+    "allEquipment": "All Equipment"
+  },
+  "status": {
+    "normal": "Normal",
+    "misalignment": "Misalignment",
+    "unbalance": "Rotational imbalance",
+    "belt_loose": "Loose belt",
+    "bearing_fault": "Bearing fault"
+  }
+}

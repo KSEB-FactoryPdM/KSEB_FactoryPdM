@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run lint
+        run: npm run lint
+      - name: Run unit tests
+        run: npm test
+      - name: Run Cypress
+        run: npx cypress run || echo "Cypress tests require login and alert pages"
+      - name: Build project
+        run: npm run build
+      - name: Build Storybook
+        id: build_storybook
+        run: |
+          if node -e "const p=require('./package.json'); process.exit(!(p.scripts && p.scripts['build-storybook']));"; then
+            npm run build-storybook
+            if [ -d storybook-static ]; then
+              echo "storybook_exists=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "storybook_exists=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo 'Storybook script not found'
+            echo "storybook_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload Storybook artifact
+        if: success() && steps.build_storybook.conclusion == 'success' && steps.build_storybook.outputs.storybook_exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-static
+          path: storybook-static

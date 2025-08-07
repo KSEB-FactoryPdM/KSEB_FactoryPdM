@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+:root {
+  --base-font-size: 16px;
+  --background: #ffffff;
+  --foreground: #171717;
+  --color-primary: 26 31 113;
+  --color-primary-hover: 0 95 115;
+  --color-accent: 242 201 76;
+  --color-input-bg: 245 245 220;
+  --color-text-primary: 55 65 81;
+  --chart-a: 167 107 95;
+  --chart-ptr: 76 175 80;
+  --chart-soa: 224 122 95;
+  --chart-srv: 196 163 248;
+  --chart-txt: 214 143 218;
+  --chart-zone: 0 95 115;
+}
+
+.high-contrast {
+  --background: #000000;
+  --foreground: #ffffff;
+  --color-primary: 255 255 0;
+  --color-primary-hover: 255 200 0;
+  --color-accent: 0 255 0;
+  --color-input-bg: 0 0 0;
+  --color-text-primary: 255 255 255;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-noto-sans);
+  --font-heading: var(--font-roboto);
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-accent: var(--color-accent);
+  --color-input-bg: var(--color-input-bg);
+  --color-text-primary: var(--color-text-primary);
+  --chart-a: var(--chart-a);
+  --chart-ptr: var(--chart-ptr);
+  --chart-soa: var(--chart-soa);
+  --chart-srv: var(--chart-srv);
+  --chart-txt: var(--chart-txt);
+  --chart-zone: var(--chart-zone);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --color-primary: 26 31 113;
+    --color-primary-hover: 0 95 115;
+    --color-accent: 242 201 76;
+    --color-input-bg: 26 26 26;
+    --color-text-primary: 229 231 235;
+    --chart-a: 167 107 95;
+    --chart-ptr: 76 175 80;
+    --chart-soa: 224 122 95;
+    --chart-srv: 196 163 248;
+    --chart-txt: 214 143 218;
+    --chart-zone: 0 95 115;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: var(--base-font-size);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+}
+
+h1 {
+  font-size: 2.25rem;
+}
+
+h2 {
+  font-size: 1.75rem;
+}
+
+h3 {
+  font-size: 1.25rem;
+}
