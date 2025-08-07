@@ -41,6 +41,34 @@ async def test_slack_bot():
         raise HTTPException(status_code=500, detail=f"슬랙 봇 테스트 중 오류가 발생했습니다: {str(e)}")
 
 
+@router.post("/test-email")
+async def test_email():
+    """이메일 알림 테스트"""
+    try:
+        # 테스트용 알림 객체 생성
+        from datetime import datetime
+        from app.models.notification import Notification
+        
+        test_notification = Notification(
+            id=999,
+            device_id="TEST-EQ-001",
+            sensor_id="TEMP-001",
+            alert_type="warning",
+            anomaly_type="temperature_high",
+            severity="high",
+            message="테스트 알림: 온도가 임계값을 초과했습니다.",
+            sensor_value="85.5",
+            threshold_value="80.0",
+            detected_at=datetime.now(),
+            created_at=datetime.now()
+        )
+        
+        notification_service.send_email_notification(test_notification)
+        return {"message": "이메일 테스트 메시지가 성공적으로 전송되었습니다."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"이메일 테스트 중 오류가 발생했습니다: {str(e)}")
+
+
 @router.get("/", response_model=NotificationListResponse)
 async def get_notifications(
     device_id: Optional[str] = None,
