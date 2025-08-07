@@ -18,6 +18,8 @@ class Notification(Base):
     anomaly_type = Column(String(50), nullable=False)  # vibration, temperature, current
     severity = Column(String(20), nullable=False)  # low, medium, high, critical
     message = Column(Text, nullable=False)
+    sensor_value = Column(String(50))  # 센서 값
+    threshold_value = Column(String(50))  # 임계값
     detected_at = Column(DateTime(timezone=True), nullable=False)
     acknowledged = Column(Boolean, default=False)
     acknowledged_by = Column(String(50))

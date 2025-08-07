@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.websocket_manager import websocket_manager
 from app.models.notification import Notification
 from app.schemas.notification import NotificationCreate
+from app.services.slack_bot_service import slack_bot_service
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +59,16 @@ class NotificationService:
             db.commit()
             db.refresh(notification)
             
-            # 2. 슬랙 알림 전송
+            # 2. 슬랙 웹훅 알림 전송
             self.send_slack_notification(notification)
             
-            # 3. 이메일 알림 전송
+            # 3. 슬랙 봇 다이렉트 메시지 전송
+            self.send_slack_direct_message(notification)
+            
+            # 4. 이메일 알림 전송
             self.send_email_notification(notification)
             
-            # 4. 웹 알림 이벤트 생성
+            # 5. 웹 알림 이벤트 생성
             self.create_web_notification_event(notification)
             
             logger.info(f"통합 알림 전송 완료: {device_id} - {severity}")
@@ -153,6 +157,17 @@ class NotificationService:
                 
         except Exception as e:
             logger.error(f"슬랙 알림 전송 중 오류: {e}")
+    
+    def send_slack_direct_message(self, notification: Notification):
+        """슬랙 봇 다이렉트 메시지 전송"""
+        try:
+            success = slack_bot_service.send_direct_message(notification)
+            if success:
+                logger.info(f"슬랙 다이렉트 메시지 전송 성공: {notification.device_id}")
+            else:
+                logger.warning(f"슬랙 다이렉트 메시지 전송 실패: {notification.device_id}")
+        except Exception as e:
+            logger.error(f"슬랙 다이렉트 메시지 전송 중 오류: {e}")
     
     def send_email_notification(self, notification: Notification):
         """이메일 알림 전송"""
