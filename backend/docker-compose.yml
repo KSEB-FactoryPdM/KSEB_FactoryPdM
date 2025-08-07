@@ -1,3 +1,6 @@
+# 통합 Docker Compose 파일 (기존 호환성 유지)
+# 새로운 클러스터 분리 구조를 원하면 start-local.sh 스크립트를 사용하세요
+
 version: '3.8'
 
 services:
@@ -7,16 +10,18 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://user:${DB_PASSWORD:-password}@postgres:5432/predictive_maintenance}
-      - TIMESCALE_URL=${TIMESCALE_URL:-postgresql://user:${DB_PASSWORD:-password}@postgres:5432/predictive_maintenance}
-      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+      - TIMESCALE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
       - MQTT_BROKER_HOST=mqtt
       - MQTT_BROKER_PORT=1883
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - REDIS_URL=redis://redis:6379
       - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - AI_MODEL_SERVICE_ENDPOINT=http://ai-model:8001
     depends_on:
-      - postgres
+      - timescaledb
       - mqtt
       - kafka
       - redis
@@ -24,6 +29,12 @@ services:
       - ./models:/app/models
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # 데이터 수집기 (MQTT → Kafka) - Unity 센서에서 MQTT 데이터 수집
   data-collector:
@@ -34,6 +45,7 @@ services:
       - MQTT_BROKER_PORT=1883
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
     depends_on:
       - mqtt
       - kafka
@@ -41,26 +53,34 @@ services:
       - app-network
     restart: unless-stopped
 
-  # AI 모델 서비스 (Kafka Consumer)
+  # AI 모델 서비스 (Kafka Consumer) - 포트 8001로 변경
   ai-model:
-    build: .
-    command: python -m app.services.ai_model_service
+    build:
+      context: .
+      dockerfile: Dockerfile.ai-service
+    ports:
+      - "8001:8001"
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - DATABASE_URL=${DATABASE_URL:-postgresql://user:${DB_PASSWORD:-password}@postgres:5432/predictive_maintenance}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
       - MODEL_PATH=/app/models
       - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - AI_SERVICE_PORT=8001
     depends_on:
       - kafka
-      - postgres
+      - timescaledb
     volumes:
       - ./models:/app/models
     networks:
       - app-network
     restart: unless-stopped
-
-  # NOTE: 센서 시뮬레이터는 Unity로 별도 구현
-  # Unity 센서 시뮬레이터가 직접 MQTT 브로커(mqtt:1883)에 연결하여 데이터 전송
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # Zookeeper (Kafka 의존성)
   zookeeper:
@@ -70,6 +90,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
     networks:
       - app-network
 
@@ -90,6 +112,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     networks:
       - app-network
 
@@ -101,17 +125,17 @@ services:
     networks:
       - app-network
 
-  # PostgreSQL + TimescaleDB
-  postgres:
+  # TimescaleDB (PostgreSQL + TimescaleDB)
+  timescaledb:
     image: timescale/timescaledb:latest-pg14
     environment:
-      - POSTGRES_DB=predictive_maintenance
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+      - POSTGRES_DB=${POSTGRES_DB:-predictive_maintenance}
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - timescale_data:/var/lib/postgresql/data
       - ./scripts/init_timescaledb.sql:/docker-entrypoint-initdb.d/init_timescaledb.sql
     networks:
       - app-network
@@ -135,6 +159,7 @@ services:
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     depends_on:
       - kafka
     networks:
@@ -166,8 +191,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NODE_ENV=${NODE_ENV:-development}
     depends_on:
       - backend
     networks:
@@ -186,14 +211,17 @@ services:
       - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
     depends_on:
       - prometheus
-      - postgres
+      - timescaledb
     networks:
       - app-network
 
 volumes:
-  postgres_data:
+  timescale_data:
   prometheus_data:
   grafana_data:
+  kafka_data:
+  zookeeper_data:
 
 networks:
   app-network:
+    driver: bridge
