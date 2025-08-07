@@ -6,6 +6,7 @@ import ChartCard from '@/components/ChartCard'
 import ThemeToggle from '@/components/ThemeToggle'
 import HighContrastToggle from '@/components/HighContrastToggle'
 import FontSizeSelector from '@/components/FontSizeSelector'
+import pkg from '../../../package.json'
 
 export default function SettingsPage() {
   const [name, setName] = useState('')
@@ -76,6 +77,9 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-4">
+        <ChartCard title="System Information">
+          <p className="text-sm">Version {pkg.version}</p>
+        </ChartCard>
         <ChartCard title="User Profile">
           <div className="space-y-2">
             <input

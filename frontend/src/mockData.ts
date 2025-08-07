@@ -4,18 +4,6 @@ export const anomalyLog = [
   { id: 3, time: '2024-05-03 09:30', description: 'Unusual noise', severity: 'Low' },
 ]
 
-export const equipmentList = [
-  { id: 'EQ-1', name: 'Pump #1', status: 'Running' },
-  { id: 'EQ-2', name: 'Compressor #3', status: 'Maintenance' },
-  { id: 'EQ-3', name: 'Motor #5', status: 'Offline' },
-]
-
-export const maintenanceSchedule = [
-  { id: 1, task: 'Lubricate bearings', dueDate: '2024-05-20' },
-  { id: 2, task: 'Inspect belts', dueDate: '2024-05-25' },
-  { id: 3, task: 'Replace filters', dueDate: '2024-06-01' },
-]
-
 export const summaryReports = [
   { label: 'Downtime (h)', value: 5 },
   { label: 'Alarms', value: 12 },
@@ -45,6 +33,7 @@ export const heatmapData = [
 export interface AlertItem {
   id: number
   time: string
+  power: string
   device: string
   type: string
   severity: string
@@ -57,7 +46,8 @@ export const alertList: AlertItem[] = [
   {
     id: 1,
     time: '2024-05-05 14:20',
-    device: 'Motor #5',
+    power: '11kW',
+    device: 'L-CAHU-01R',
     type: 'Vibration',
     severity: 'High',
     status: 'new',
@@ -67,7 +57,8 @@ export const alertList: AlertItem[] = [
   {
     id: 2,
     time: '2024-05-06 09:10',
-    device: 'Pump #1',
+    power: '5.5kW',
+    device: 'L-SF-01',
     type: 'Temperature',
     severity: 'Medium',
     status: 'new',
@@ -77,7 +68,8 @@ export const alertList: AlertItem[] = [
   {
     id: 3,
     time: '2024-05-07 16:45',
-    device: 'Compressor #3',
+    power: '2.2kW',
+    device: 'R-EF-05',
     type: 'Pressure',
     severity: 'Low',
     status: 'new',

@@ -13,8 +13,8 @@ export default function ChartCard({
   return (
     <div
       className={`bg-white rounded-lg shadow-md p-4 ${
-        danger ? 'ring-2 ring-red-500' : ''
-      }`}
+        danger ? 'ring-2 ring-red-500' : 'hover:ring-2 hover:ring-accent/50'
+      } transition-shadow`}
       style={process.env.NODE_ENV === 'test' ? { width: 600 } : undefined}
     >
       <h3

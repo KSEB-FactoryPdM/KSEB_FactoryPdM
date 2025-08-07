@@ -6,14 +6,22 @@ interface CardProps {
 }
 
 export const Card: FC<CardProps> = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-lg shadow ${className}`}>{children}</div>
+  <div
+    className={`bg-gray-50 border border-gray-200 rounded-lg shadow-[0_2px_6px_rgba(0,0,0,0.08),_0_1px_3px_rgba(0,0,0,0.04)] transform transition-transform hover:-translate-y-1 hover:bg-white ${className}`}
+  >
+    {children}
+  </div>
 );
 
 export const CardHeader: FC<{ children: ReactNode; className?: string }> = ({
   children,
   className = '',
 }) => (
-  <div className={`px-6 py-4 border-b ${className}`}>{children}</div>
+  <div
+    className={`px-6 py-4 border-b border-gray-200 bg-primary text-white rounded-t-lg ${className}`}
+  >
+    {children}
+  </div>
 );
 
 export const CardTitle: FC<{ children: ReactNode; className?: string }> = ({
