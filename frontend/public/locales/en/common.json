@@ -57,5 +57,9 @@
       "operator": "Operator",
       "viewer": "Viewer"
     }
+  },
+  "errorBoundary": {
+    "message": "An error occurred",
+    "retry": "Retry"
   }
 }

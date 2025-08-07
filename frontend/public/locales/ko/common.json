@@ -57,5 +57,9 @@
       "operator": "운영자",
       "viewer": "뷰어"
     }
+  },
+  "errorBoundary": {
+    "message": "문제가 발생했습니다",
+    "retry": "다시 시도"
   }
 }
