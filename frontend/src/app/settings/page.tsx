@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import DashboardLayout from '@/components/DashboardLayout'
 import ChartCard from '@/components/ChartCard'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -9,6 +10,7 @@ import FontSizeSelector from '@/components/FontSizeSelector'
 import pkg from '../../../package.json'
 
 export default function SettingsPage() {
+  const { t } = useTranslation('common')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -82,26 +84,44 @@ export default function SettingsPage() {
         </ChartCard>
         <ChartCard title="User Profile">
           <div className="space-y-2">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-            />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-            />
+            <div>
+              <label htmlFor="profile-name" className="block text-sm">
+                {t('settings.name')}
+              </label>
+              <input
+                id="profile-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('settings.name')}
+                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-email" className="block text-sm">
+                {t('settings.email')}
+              </label>
+              <input
+                id="profile-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t('settings.email')}
+                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-password" className="block text-sm">
+                {t('settings.password')}
+              </label>
+              <input
+                id="profile-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t('settings.password')}
+                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+              />
+            </div>
           </div>
         </ChartCard>
 
@@ -120,21 +140,33 @@ export default function SettingsPage() {
               </div>
             ))}
             <div className="flex gap-2">
-              <input
-                value={newUserName}
-                onChange={(e) => setNewUserName(e.target.value)}
-                placeholder="Name"
-                className="flex-1 bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-              />
-              <select
-                value={newUserRole}
-                onChange={(e) => setNewUserRole(e.target.value)}
-                className="bg-input-bg rounded-md p-2 text-sm text-black"
-              >
-                <option value="admin">Admin</option>
-                <option value="operator">Operator</option>
-                <option value="viewer">Viewer</option>
-              </select>
+              <div className="flex-1">
+                <label htmlFor="new-user-name" className="sr-only">
+                  {t('settings.name')}
+                </label>
+                <input
+                  id="new-user-name"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  placeholder={t('settings.name')}
+                  className="flex-1 bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+                />
+              </div>
+              <div>
+                <label htmlFor="new-user-role" className="sr-only">
+                  {t('settings.role')}
+                </label>
+                <select
+                  id="new-user-role"
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value)}
+                  className="bg-input-bg rounded-md p-2 text-sm text-black"
+                >
+                  <option value="admin">{t('settings.roles.admin')}</option>
+                  <option value="operator">{t('settings.roles.operator')}</option>
+                  <option value="viewer">{t('settings.roles.viewer')}</option>
+                </select>
+              </div>
               <button
                 type="button"
                 onClick={() => {
@@ -153,8 +185,11 @@ export default function SettingsPage() {
 
         <ChartCard title="Algorithm Configuration">
           <div className="space-y-2">
-            <label className="block text-sm">Model Version</label>
+            <label htmlFor="model-version" className="block text-sm">
+              Model Version
+            </label>
             <select
+              id="model-version"
               value={modelVersion}
               onChange={(e) => setModelVersion(e.target.value)}
               className="w-full bg-input-bg rounded-md p-2 text-sm text-black"
@@ -163,8 +198,11 @@ export default function SettingsPage() {
               <option value="v2">v2</option>
               <option value="v3">v3</option>
             </select>
-            <label className="block text-sm">Detection Threshold</label>
+            <label htmlFor="detection-threshold" className="block text-sm">
+              Detection Threshold
+            </label>
             <input
+              id="detection-threshold"
               type="number"
               min="0"
               max="1"
@@ -178,31 +216,52 @@ export default function SettingsPage() {
 
         <ChartCard title="Communication Settings">
           <div className="space-y-2">
-            <input
-              value={plcEndpoint}
-              onChange={(e) => setPlcEndpoint(e.target.value)}
-              placeholder="PLC/SCADA Endpoint"
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-            />
-            <input
-              value={mqttEndpoint}
-              onChange={(e) => setMqttEndpoint(e.target.value)}
-              placeholder="MQTT Endpoint"
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-            />
-            <input
-              value={opcuaEndpoint}
-              onChange={(e) => setOpcuaEndpoint(e.target.value)}
-              placeholder="OPC UA Endpoint"
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-            />
+            <div>
+              <label htmlFor="plc-endpoint" className="block text-sm">
+                {t('settings.plcEndpoint')}
+              </label>
+              <input
+                id="plc-endpoint"
+                value={plcEndpoint}
+                onChange={(e) => setPlcEndpoint(e.target.value)}
+                placeholder={t('settings.plcEndpoint')}
+                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+              />
+            </div>
+            <div>
+              <label htmlFor="mqtt-endpoint" className="block text-sm">
+                {t('settings.mqttEndpoint')}
+              </label>
+              <input
+                id="mqtt-endpoint"
+                value={mqttEndpoint}
+                onChange={(e) => setMqttEndpoint(e.target.value)}
+                placeholder={t('settings.mqttEndpoint')}
+                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+              />
+            </div>
+            <div>
+              <label htmlFor="opcua-endpoint" className="block text-sm">
+                {t('settings.opcuaEndpoint')}
+              </label>
+              <input
+                id="opcua-endpoint"
+                value={opcuaEndpoint}
+                onChange={(e) => setOpcuaEndpoint(e.target.value)}
+                placeholder={t('settings.opcuaEndpoint')}
+                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+              />
+            </div>
           </div>
         </ChartCard>
 
         <ChartCard title="Connection">
           <div className="space-y-2">
-            <label className="block text-sm">NEXT_PUBLIC_WEBSOCKET_URL</label>
+            <label htmlFor="socket-url" className="block text-sm">
+              NEXT_PUBLIC_WEBSOCKET_URL
+            </label>
             <input
+              id="socket-url"
               value={socketUrl}
               onChange={(e) => setSocketUrl(e.target.value)}
               className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
