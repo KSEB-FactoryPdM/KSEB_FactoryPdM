@@ -38,7 +38,9 @@
   },
   "filters": {
     "allPower": "모든 kW",
-    "allEquipment": "모든 장비"
+    "allEquipment": "모든 장비",
+    "power": "kW",
+    "equipment": "장비"
   },
   "status": {
     "normal": "정상",
@@ -64,5 +66,37 @@
   "errorBoundary": {
     "message": "문제가 발생했습니다",
     "retry": "다시 시도"
+  },
+  "alerts": {
+    "title": "알림",
+    "allSeverity": "모든 심각도",
+    "allStatus": "모든 상태",
+    "acknowledgeSelected": "선택 항목 확인",
+    "clearSelected": "선택 항목 삭제",
+    "headers": {
+      "time": "시간",
+      "kw": "kW",
+      "device": "장치",
+      "type": "유형",
+      "severity": "심각도",
+      "actions": "동작"
+    },
+    "buttons": {
+      "acknowledge": "확인",
+      "clear": "삭제",
+      "details": "세부 정보"
+    },
+    "noAlerts": "알림 없음",
+    "filters": {
+      "severity": "심각도",
+      "startDate": "시작 날짜",
+      "endDate": "종료 날짜",
+      "status": "상태"
+    },
+    "status": {
+      "new": "신규",
+      "acknowledged": "확인됨",
+      "cleared": "해결됨"
+    }
   }
 }

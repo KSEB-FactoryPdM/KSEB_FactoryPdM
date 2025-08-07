@@ -36,6 +36,7 @@ export default function EquipmentFilter({ machines, power, device, onPowerChange
           onPowerChange(e.target.value)
           onDeviceChange('')
         }}
+        aria-label={t('filters.power')}
       >
         <option value="">{t('filters.allPower')}</option>
         {powerOptions.map((opt) => (
@@ -48,6 +49,7 @@ export default function EquipmentFilter({ machines, power, device, onPowerChange
         className="border rounded px-2 py-1"
         value={device}
         onChange={(e) => onDeviceChange(e.target.value)}
+        aria-label={t('filters.equipment')}
       >
         <option value="">{t('filters.allEquipment')}</option>
         {deviceOptions.map((opt) => (
