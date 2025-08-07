@@ -465,10 +465,14 @@ TIMESCALE_URL=postgresql://username:password@localhost:5432/kseb_timeseries
 SECRET_KEY=your-secret-key-here
 ```
 
-### 3. 슬랙 봇 테스트
+### 3. 통합 알림 테스트
 ```bash
+# 통합 테스트 스크립트 실행
+python3 test_integrated_notifications.py
+
 # API 테스트
 curl -X POST http://localhost:8000/api/v1/notifications/test-slack-bot
+curl -X POST http://localhost:8000/api/v1/notifications/test-email
 
 # 또는 브라우저에서
 http://localhost:8000/docs
@@ -486,3 +490,21 @@ http://localhost:8000/docs
 - AI 모델이 이상을 탐지할 때
 - 설비 잔여 수명이 임계값 이하로 떨어질 때
 - 시스템 오류가 발생할 때
+
+### 6. ML 모델 연동 (향후 추가 예정)
+```bash
+# ML 모델 파일 추가
+backend/app/models/
+├── anomaly_detection_model.pkl    # 이상 탐지 모델
+└── rul_prediction_model.pkl       # 잔여 수명 예측 모델
+
+# 고급 통합 테스트 (ML + 알림)
+python3 test_integrated_notifications.py
+# 선택: 2 (고급 통합 테스트)
+```
+
+#### ML 모델 연동 기능:
+- **이상 탐지**: 센서 데이터 기반 실시간 이상 탐지
+- **RUL 예측**: 설비 잔여 수명 예측
+- **자동 알림**: ML 결과 기반 자동 알림 전송
+- **센서 시뮬레이션**: 실제 센서 데이터 패턴 시뮬레이션

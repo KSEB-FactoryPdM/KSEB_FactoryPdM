@@ -205,11 +205,11 @@ class NotificationService:
                     </tr>
                     <tr style="background-color: #f5f5f5;">
                         <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">센서 값</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.sensor_value:.2f if notification.sensor_value else 'N/A'}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.sensor_value if notification.sensor_value else 'N/A'}</td>
                     </tr>
                     <tr>
                         <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">임계값</td>
-                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.threshold_value:.2f if notification.threshold_value else 'N/A'}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{notification.threshold_value if notification.threshold_value else 'N/A'}</td>
                     </tr>
                 </table>
                 
