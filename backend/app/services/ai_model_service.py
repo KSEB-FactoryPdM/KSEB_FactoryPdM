@@ -7,8 +7,7 @@ from datetime import datetime, timedelta
 from collections import deque
 import pickle
 
-import torch
-import torch.nn as nn
+import xgboost as xgb
 from kafka import KafkaConsumer
 from sqlalchemy import create_engine, text
 from loguru import logger
@@ -18,7 +17,7 @@ class AIModelService:
     def __init__(self):
         # Kafka 설정
         self.kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
-        self.consumer_topic = 'sensor-data-processed'
+        self.consumer_topic = 'ai-model-input'  # data_collector에서 전송하는 토픽
         
         # 데이터베이스 설정 
         self.db_url = os.getenv('DATABASE_URL')
@@ -27,16 +26,15 @@ class AIModelService:
         self.engine = None
         
         # 모델 설정
-        self.sequence_length = 30  # 30개 데이터 포인트로 예측
-        self.input_size = 1  # 센서 값 하나
+        self.models_path = '/home/sf1/project/backend/models'
         
-        # 센서별 데이터 버퍼
+        # 센서별 데이터 버퍼 (동적으로 생성)
         self.sensor_buffers = {}
         self.buffer_size = 100
         
-        # 모델 인스턴스
-        self.anomaly_models = {}
-        self.maintenance_models = {}
+        # XGBoost 모델 인스턴스
+        self.current_model = None
+        self.vibration_model = None
         
         # 예측 임계값
         self.anomaly_threshold = 0.05
@@ -54,257 +52,172 @@ class AIModelService:
             raise
             
     def init_models(self):
-        """AI 모델 초기화"""
+        """AI 모델 초기화 (models 폴더에서 XGBoost 모델 로드)"""
         try:
-            # 센서별 모델 초기화 (current 3축 + vibration 센서)
-            sensor_ids = [
-                # CAHU (중앙공조기) 센서
-                'L-CAHU-01R_CURR_X', 'L-CAHU-01R_CURR_Y', 'L-CAHU-01R_CURR_Z', 'L-CAHU-01R_VIB',
-                'L-CAHU-02R_CURR_X', 'L-CAHU-02R_CURR_Y', 'L-CAHU-02R_CURR_Z', 'L-CAHU-02R_VIB',
-                'L-CAHU-03R_CURR_X', 'L-CAHU-03R_CURR_Y', 'L-CAHU-03R_CURR_Z', 'L-CAHU-03R_VIB',
-                
-                # PAHU (1차공조기) 센서
-                'L-PAHU-01R_CURR_X', 'L-PAHU-01R_CURR_Y', 'L-PAHU-01R_CURR_Z', 'L-PAHU-01R_VIB',
-                'L-PAHU-02R_CURR_X', 'L-PAHU-02R_CURR_Y', 'L-PAHU-02R_CURR_Z', 'L-PAHU-02R_VIB',
-                
-                # PAC (패키지 에어컨) 센서
-                'L-PAC-01R_CURR_X', 'L-PAC-01R_CURR_Y', 'L-PAC-01R_CURR_Z', 'L-PAC-01R_VIB',
-                'L-PAC-02R_CURR_X', 'L-PAC-02R_CURR_Y', 'L-PAC-02R_CURR_Z', 'L-PAC-02R_VIB',
-                'L-PAC-03R_CURR_X', 'L-PAC-03R_CURR_Y', 'L-PAC-03R_CURR_Z', 'L-PAC-03R_VIB',
-                
-                # EF (배기팬) 센서
-                'L-EF-01R_CURR_X', 'L-EF-01R_CURR_Y', 'L-EF-01R_CURR_Z', 'L-EF-01R_VIB',
-                'L-EF-02R_CURR_X', 'L-EF-02R_CURR_Y', 'L-EF-02R_CURR_Z', 'L-EF-02R_VIB',
-                
-                # SF (급기팬) 센서
-                'L-SF-01R_CURR_X', 'L-SF-01R_CURR_Y', 'L-SF-01R_CURR_Z', 'L-SF-01R_VIB',
-                'L-SF-02R_CURR_X', 'L-SF-02R_CURR_Y', 'L-SF-02R_CURR_Z', 'L-SF-02R_VIB',
-                
-                # DEF (제습배기팬) 센서
-                'L-DEF-01R_CURR_X', 'L-DEF-01R_CURR_Y', 'L-DEF-01R_CURR_Z', 'L-DEF-01R_VIB',
-                'L-DEF-02R_CURR_X', 'L-DEF-02R_CURR_Y', 'L-DEF-02R_CURR_Z', 'L-DEF-02R_VIB',
-                
-                # DSF (제습급기팬) 센서
-                'L-DSF-01R_CURR_X', 'L-DSF-01R_CURR_Y', 'L-DSF-01R_CURR_Z', 'L-DSF-01R_VIB',
-                'L-DSF-02R_CURR_X', 'L-DSF-02R_CURR_Y', 'L-DSF-02R_CURR_Z', 'L-DSF-02R_VIB'
-            ]
+            # XGBoost 모델 로드
+            self.load_xgboost_models()
             
-            for sensor_id in sensor_ids:
-                # 센서 데이터 버퍼 초기화
-                self.sensor_buffers[sensor_id] = deque(maxlen=self.buffer_size)
-                
-            # 사전 훈련된 모델 로드
-            self.load_pretrained_models()
-            
-            logger.info(f"AI 모델 초기화 완료 (센서 수: {len(sensor_ids)})")
+            logger.info("AI 모델 초기화 완료")
             
         except Exception as e:
             logger.error(f"AI 모델 초기화 실패: {e}")
             raise
             
-    def load_pretrained_models(self):
-        """사전 훈련된 모델 로드"""
-        models_dir = os.getenv('MODEL_PATH', 'models')
-        
-        if not os.path.exists(models_dir):
-            logger.error(f"모델 디렉토리가 존재하지 않습니다: {models_dir}")
-            raise FileNotFoundError(f"모델 디렉토리를 찾을 수 없습니다: {models_dir}")
-            
+    def load_xgboost_models(self):
+        """XGBoost 모델 로드 (models 폴더에서)"""
         try:
-            # current 3축 + vibration 센서들
-            sensor_ids = [
-                # CAHU (중앙공조기) 센서
-                'L-CAHU-01R_CURR_X', 'L-CAHU-01R_CURR_Y', 'L-CAHU-01R_CURR_Z', 'L-CAHU-01R_VIB',
-                'L-CAHU-02R_CURR_X', 'L-CAHU-02R_CURR_Y', 'L-CAHU-02R_CURR_Z', 'L-CAHU-02R_VIB',
-                'L-CAHU-03R_CURR_X', 'L-CAHU-03R_CURR_Y', 'L-CAHU-03R_CURR_Z', 'L-CAHU-03R_VIB',
+            # Current 센서용 XGBoost 모델 로드
+            current_model_path = os.path.join(self.models_path, 'current_xgb.pkl')
+            if os.path.exists(current_model_path):
+                with open(current_model_path, 'rb') as f:
+                    self.current_model = pickle.load(f)
+                logger.info(f"Current 센서 모델 로드 완료: {current_model_path}")
+            else:
+                logger.warning(f"Current 모델 파일을 찾을 수 없습니다: {current_model_path}")
                 
-                # PAHU (1차공조기) 센서
-                'L-PAHU-01R_CURR_X', 'L-PAHU-01R_CURR_Y', 'L-PAHU-01R_CURR_Z', 'L-PAHU-01R_VIB',
-                'L-PAHU-02R_CURR_X', 'L-PAHU-02R_CURR_Y', 'L-PAHU-02R_CURR_Z', 'L-PAHU-02R_VIB',
+            # Vibration 센서용 XGBoost 모델 로드
+            vibration_model_path = os.path.join(self.models_path, 'vibration_xgb.pkl')
+            if os.path.exists(vibration_model_path):
+                with open(vibration_model_path, 'rb') as f:
+                    self.vibration_model = pickle.load(f)
+                logger.info(f"Vibration 센서 모델 로드 완료: {vibration_model_path}")
+            else:
+                logger.warning(f"Vibration 모델 파일을 찾을 수 없습니다: {vibration_model_path}")
                 
-                # PAC (패키지 에어컨) 센서
-                'L-PAC-01R_CURR_X', 'L-PAC-01R_CURR_Y', 'L-PAC-01R_CURR_Z', 'L-PAC-01R_VIB',
-                'L-PAC-02R_CURR_X', 'L-PAC-02R_CURR_Y', 'L-PAC-02R_CURR_Z', 'L-PAC-02R_VIB',
-                'L-PAC-03R_CURR_X', 'L-PAC-03R_CURR_Y', 'L-PAC-03R_CURR_Z', 'L-PAC-03R_VIB',
+            # 최소 하나의 모델은 로드되어야 함
+            if self.current_model is None and self.vibration_model is None:
+                raise RuntimeError("사용 가능한 XGBoost 모델이 없습니다.")
                 
-                # EF (배기팬) 센서
-                'L-EF-01R_CURR_X', 'L-EF-01R_CURR_Y', 'L-EF-01R_CURR_Z', 'L-EF-01R_VIB',
-                'L-EF-02R_CURR_X', 'L-EF-02R_CURR_Y', 'L-EF-02R_CURR_Z', 'L-EF-02R_VIB',
-                
-                # SF (급기팬) 센서
-                'L-SF-01R_CURR_X', 'L-SF-01R_CURR_Y', 'L-SF-01R_CURR_Z', 'L-SF-01R_VIB',
-                'L-SF-02R_CURR_X', 'L-SF-02R_CURR_Y', 'L-SF-02R_CURR_Z', 'L-SF-02R_VIB',
-                
-                # DEF (제습배기팬) 센서
-                'L-DEF-01R_CURR_X', 'L-DEF-01R_CURR_Y', 'L-DEF-01R_CURR_Z', 'L-DEF-01R_VIB',
-                'L-DEF-02R_CURR_X', 'L-DEF-02R_CURR_Y', 'L-DEF-02R_CURR_Z', 'L-DEF-02R_VIB',
-                
-                # DSF (제습급기팬) 센서
-                'L-DSF-01R_CURR_X', 'L-DSF-01R_CURR_Y', 'L-DSF-01R_CURR_Z', 'L-DSF-01R_VIB',
-                'L-DSF-02R_CURR_X', 'L-DSF-02R_CURR_Y', 'L-DSF-02R_CURR_Z', 'L-DSF-02R_VIB'
-            ]
-                         
-            for sensor_id in sensor_ids:
-                # 이상탐지 모델 로드
-                anomaly_path = os.path.join(models_dir, f"anomaly_{sensor_id}.pth")
-                if os.path.exists(anomaly_path):
-                    self.anomaly_models[sensor_id] = torch.load(anomaly_path, map_location='cpu')
-                    self.anomaly_models[sensor_id].eval()
-                    logger.info(f"이상탐지 모델 로드 완료: {sensor_id}")
-                else:
-                    logger.warning(f"이상탐지 모델 파일을 찾을 수 없습니다: {anomaly_path}")
-                    
-                # 예지보전 모델 로드
-                maintenance_path = os.path.join(models_dir, f"maintenance_{sensor_id}.pth")
-                if os.path.exists(maintenance_path):
-                    self.maintenance_models[sensor_id] = torch.load(maintenance_path, map_location='cpu')
-                    self.maintenance_models[sensor_id].eval()
-                    logger.info(f"예지보전 모델 로드 완료: {sensor_id}")
-                else:
-                    logger.warning(f"예지보전 모델 파일을 찾을 수 없습니다: {maintenance_path}")
-                    
-            # 로드된 모델 개수 확인
-            loaded_anomaly = len(self.anomaly_models)
-            loaded_maintenance = len(self.maintenance_models)
-            logger.info(f"모델 로드 완료 - 이상탐지: {loaded_anomaly}개, 예지보전: {loaded_maintenance}개")
-            
-            if loaded_anomaly == 0 and loaded_maintenance == 0:
-                raise RuntimeError("사용 가능한 사전 훈련된 모델이 없습니다.")
+            logger.info("XGBoost 모델 로드 완료")
                     
         except Exception as e:
-            logger.error(f"모델 로드 중 오류: {e}")
+            logger.error(f"XGBoost 모델 로드 중 오류: {e}")
             raise
             
-    def preprocess_sensor_data(self, sensor_data: Dict[str, Any]) -> Optional[float]:
-        """센서 데이터 전처리"""
+    def preprocess_sensor_data(self, sensor_data: Dict[str, Any]) -> Optional[np.ndarray]:
+        """Unity 센서 데이터 전처리"""
         try:
-            value = sensor_data['data']['value']
+            sensor_type = sensor_data.get('sensor_type')
+            values = sensor_data.get('values', {})
             
-            # 기본 정규화 (센서별로 다르게 설정 가능)
-            sensor_id = sensor_data['sensor_id']
+            if sensor_type == 'current':
+                # Current 센서 (3축 데이터): x, y, z
+                feature_vector = np.array([
+                    values.get('x', 0.0),
+                    values.get('y', 0.0), 
+                    values.get('z', 0.0),
+                    sensor_data.get('magnitude', 0.0)  # 벡터 크기도 포함
+                ])
+                
+            elif sensor_type == 'vibration':
+                # Vibration 센서 (1축 데이터): vibe
+                vibe_value = values.get('vibe', 0.0)
+                feature_vector = np.array([
+                    vibe_value,
+                    vibe_value ** 2,  # 제곱값 (비선형성 포착)
+                    abs(vibe_value),  # 절댓값
+                    sensor_data.get('magnitude', 0.0)  # magnitude와 동일하지만 일관성을 위해
+                ])
+                
+            else:
+                logger.warning(f"알 수 없는 센서 타입: {sensor_type}")
+                return None
+                
+            # 기본 정규화 (0-1 스케일링)
+            # 실제 환경에서는 학습 시 사용된 스케일러를 저장해서 사용해야 함
+            feature_vector = np.clip(feature_vector / 1000.0, 0, 1)  # 임시 스케일링
             
-            # 센서별 정규화 범위 (공조기 설비 전용)
-            normalization_ranges = {}
-            
-            # 센서 타입별 기본 범위 설정 (current와 vibration만)
-            def get_normalization_range(sensor_id):
-                if 'CURR' in sensor_id:  # current 센서 (X, Y, Z)
-                    return (0, 100)    # 전류 센서: 0~100A
-                elif 'VIB' in sensor_id:  # vibration 센서
-                    return (0, 100)    # 진동 센서: 0~100mm/s
-                else:
-                    return (0, 100)    # 기본 범위
-            
-            min_val, max_val = get_normalization_range(sensor_id)
-            normalized_value = (value - min_val) / (max_val - min_val)
-            
-            # 범위 제한
-            normalized_value = max(0, min(1, normalized_value))
-            
-            return normalized_value
+            return feature_vector
             
         except Exception as e:
             logger.error(f"데이터 전처리 오류: {e}")
             return None
             
-    def detect_anomaly(self, sensor_id: str, sequence: List[float]) -> Dict[str, Any]:
-        """이상탐지 수행"""
+    def detect_anomaly(self, sensor_type: str, feature_vector: np.ndarray) -> Dict[str, Any]:
+        """XGBoost 모델을 사용한 이상탐지 수행"""
         try:
-            if sensor_id not in self.anomaly_models:
-                logger.warning(f"센서 {sensor_id}에 대한 이상탐지 모델을 찾을 수 없습니다.")
+            # 센서 타입에 따라 적절한 모델 선택
+            if sensor_type == 'current' and self.current_model is not None:
+                model = self.current_model
+            elif sensor_type == 'vibration' and self.vibration_model is not None:
+                model = self.vibration_model
+            else:
+                logger.warning(f"센서 타입 {sensor_type}에 대한 모델을 찾을 수 없습니다.")
                 return {
                     'is_anomaly': False,
-                    'reconstruction_error': 0.0,
+                    'anomaly_score': 0.0,
                     'confidence': 0.0,
                     'threshold': self.anomaly_threshold
                 }
-                
-            model = self.anomaly_models[sensor_id]
             
-            # 시퀀스를 텐서로 변환
-            input_tensor = torch.FloatTensor(sequence).unsqueeze(0).unsqueeze(-1)
+            # XGBoost 모델로 예측 (이상 확률 반환)
+            feature_vector_2d = feature_vector.reshape(1, -1)
             
-            with torch.no_grad():
-                # 모델 추론
-                output = model(input_tensor)
-                
-                # 재구성 오류 계산 (모델 출력에 따라 다를 수 있음)
-                if hasattr(output, 'shape') and len(output.shape) > 1:
-                    original = input_tensor[:, -1, :]  # 마지막 값
-                    reconstruction_error = torch.mean((original - output) ** 2).item()
-                else:
-                    reconstruction_error = float(output)
-                
-                # 이상 여부 판정
-                is_anomaly = reconstruction_error > self.anomaly_threshold
-                confidence = min(1.0, reconstruction_error / self.anomaly_threshold)
-                
+            # 모델이 predict_proba를 지원하는 경우 확률 사용, 아니면 predict 사용
+            if hasattr(model, 'predict_proba'):
+                prediction = model.predict_proba(feature_vector_2d)
+                # 이진 분류의 경우 이상 클래스 확률 (클래스 1)
+                anomaly_score = prediction[0][1] if prediction.shape[1] > 1 else prediction[0][0]
+            else:
+                prediction = model.predict(feature_vector_2d)
+                anomaly_score = float(prediction[0])
+            
+            # 이상 여부 판정
+            is_anomaly = anomaly_score > self.anomaly_threshold
+            confidence = min(1.0, anomaly_score)
+            
             return {
                 'is_anomaly': bool(is_anomaly),
-                'reconstruction_error': float(reconstruction_error),
+                'anomaly_score': float(anomaly_score),
                 'confidence': float(confidence),
                 'threshold': self.anomaly_threshold
             }
             
         except Exception as e:
-            logger.error(f"이상탐지 오류 ({sensor_id}): {e}")
+            logger.error(f"이상탐지 오류 ({sensor_type}): {e}")
             return {
                 'is_anomaly': False,
-                'reconstruction_error': 0.0,
+                'anomaly_score': 0.0,
                 'confidence': 0.0,
                 'threshold': self.anomaly_threshold
             }
             
-    def predict_remaining_life(self, sensor_id: str, sequence: List[float]) -> Dict[str, Any]:
-        """사전 훈련된 모델을 사용한 잔여 수명 예측"""
+    def predict_maintenance_need(self, sensor_type: str, feature_vector: np.ndarray, anomaly_score: float) -> Dict[str, Any]:
+        """이상 점수 기반 예지보전 예측 (간소화된 버전)"""
         try:
-            if sensor_id not in self.maintenance_models:
-                logger.warning(f"센서 {sensor_id}에 대한 예지보전 모델을 찾을 수 없습니다.")
-                return {
-                    'remaining_days': 365.0,
-                    'confidence': 0.0,
-                    'risk_level': 'unknown',
-                    'needs_maintenance': False
-                }
-                
-            model = self.maintenance_models[sensor_id]
+            # 이상 점수를 기반으로 예지보전 필요성 판단
+            # 실제 환경에서는 별도의 회귀 모델이나 더 복잡한 로직 사용 가능
             
-            # 시퀀스를 텐서로 변환
-            input_tensor = torch.FloatTensor(sequence).unsqueeze(0).unsqueeze(-1)
-            
-            with torch.no_grad():
-                # 잔여 수명 예측 (일 단위)
-                prediction = model(input_tensor)
-                predicted_days = float(prediction.item()) if hasattr(prediction, 'item') else float(prediction)
-                
-                # 음수 방지
-                predicted_days = max(0, predicted_days)
-                
-                # 신뢰도 계산 (간단한 방법)
-                confidence = 0.8 if predicted_days > 0 else 0.2
-                
-                # 위험도 판정
+            # 이상 점수에 따른 위험도 계산
+            if anomaly_score > 0.8:
+                risk_level = 'critical'
+                remaining_days = max(1, 7 - (anomaly_score - 0.8) * 35)  # 1-7일
+            elif anomaly_score > 0.6:
+                risk_level = 'high' 
+                remaining_days = 7 + (0.8 - anomaly_score) * 115  # 7-30일
+            elif anomaly_score > 0.3:
+                risk_level = 'medium'
+                remaining_days = 30 + (0.6 - anomaly_score) * 200  # 30-90일
+            else:
                 risk_level = 'low'
-                if predicted_days < 7:
-                    risk_level = 'critical'
-                elif predicted_days < 30:
-                    risk_level = 'high'
-                elif predicted_days < 90:
-                    risk_level = 'medium'
-                    
+                remaining_days = 90 + (0.3 - anomaly_score) * 900  # 90-365일
+                
+            remaining_days = max(1, min(365, remaining_days))
+            confidence = min(1.0, anomaly_score + 0.2)  # 이상 점수가 높을수록 신뢰도 높음
+            
             return {
-                'remaining_days': float(predicted_days),
+                'remaining_days': float(remaining_days),
                 'confidence': float(confidence),
                 'risk_level': risk_level,
-                'needs_maintenance': predicted_days < self.maintenance_threshold_days
+                'needs_maintenance': remaining_days < self.maintenance_threshold_days
             }
             
         except Exception as e:
-            logger.error(f"수명 예측 오류 ({sensor_id}): {e}")
+            logger.error(f"예지보전 예측 오류 ({sensor_type}): {e}")
             return {
                 'remaining_days': 365.0,
                 'confidence': 0.0,
-                'risk_level': 'unknown',
+                'risk_level': 'low',
                 'needs_maintenance': False
             }
             
@@ -315,6 +228,7 @@ class AIModelService:
             
             # 이상탐지 결과 저장
             anomaly_result = predictions['anomaly']
+            sensor_type = predictions.get('sensor_type', 'unknown')
             anomaly_query = text("""
                 INSERT INTO predictions (time, equipment_id, model_name, prediction_type, 
                                        prediction_value, confidence, threshold, is_anomaly)
@@ -326,9 +240,9 @@ class AIModelService:
                 conn.execute(anomaly_query, {
                     'time': current_time,
                     'equipment_id': equipment_id,
-                    'model_name': f'anomaly_detector_{sensor_id}',
+                    'model_name': f'xgb_{sensor_type}_anomaly',
                     'prediction_type': 'anomaly',
-                    'prediction_value': anomaly_result['reconstruction_error'],
+                    'prediction_value': anomaly_result['anomaly_score'],
                     'confidence': anomaly_result['confidence'],
                     'threshold': anomaly_result['threshold'],
                     'is_anomaly': anomaly_result['is_anomaly']
@@ -346,7 +260,7 @@ class AIModelService:
                 conn.execute(maintenance_query, {
                     'time': current_time,
                     'equipment_id': equipment_id,
-                    'model_name': f'maintenance_predictor_{sensor_id}',
+                    'model_name': f'xgb_{sensor_type}_maintenance',
                     'prediction_type': 'remaining_life',
                     'prediction_value': maintenance_result['remaining_days'],
                     'confidence': maintenance_result['confidence'],
@@ -417,46 +331,53 @@ class AIModelService:
             logger.error(f"알림 저장 오류: {e}")
             
     def process_sensor_data(self, data: Dict[str, Any]):
-        """센서 데이터 처리 및 예측 수행"""
+        """Unity 센서 데이터 처리 및 AI 모델 예측 수행"""
         try:
-            sensor_id = data['sensor_id']
-            equipment_id = data.get('equipment_id', 0)
+            sensor_id = data.get('sensor_id', 'unknown')
+            equipment_id = data.get('equipment_id', sensor_id)  # Unity device ID 사용
+            sensor_type = data.get('sensor_type', 'unknown')
             
             # 데이터 전처리
-            processed_value = self.preprocess_sensor_data(data)
-            if processed_value is None:
+            feature_vector = self.preprocess_sensor_data(data)
+            if feature_vector is None:
+                logger.warning(f"데이터 전처리 실패: {sensor_id}")
                 return
                 
-            # 버퍼에 데이터 추가
-            self.sensor_buffers[sensor_id].append(processed_value)
+            # 센서별 버퍼 동적 생성
+            if sensor_id not in self.sensor_buffers:
+                self.sensor_buffers[sensor_id] = deque(maxlen=self.buffer_size)
+                
+            # 버퍼에 특성 벡터 추가
+            self.sensor_buffers[sensor_id].append(feature_vector)
             
-            # 충분한 데이터가 있을 때만 예측 수행
-            if len(self.sensor_buffers[sensor_id]) >= self.sequence_length:
-                # 최근 시퀀스 추출
-                sequence = list(self.sensor_buffers[sensor_id])[-self.sequence_length:]
-                
-                # 이상탐지 수행
-                anomaly_result = self.detect_anomaly(sensor_id, sequence)
-                
-                # 예지보전 수행
-                maintenance_result = self.predict_remaining_life(sensor_id, sequence)
-                
-                # 결과 통합
-                predictions = {
-                    'anomaly': anomaly_result,
-                    'maintenance': maintenance_result,
-                    'timestamp': datetime.utcnow().isoformat(),
-                    'sensor_id': sensor_id
-                }
-                
-                # 결과 저장
-                self.save_prediction_to_db(sensor_id, equipment_id, predictions)
-                
-                # 알림 생성
-                self.generate_alert_if_needed(sensor_id, equipment_id, predictions)
-                
-                logger.debug(f"예측 완료: {sensor_id}, 이상: {anomaly_result['is_anomaly']}, "
-                           f"잔여수명: {maintenance_result['remaining_days']:.1f}일")
+            # 이상탐지 수행 (실시간으로 각 데이터 포인트마다 수행)
+            anomaly_result = self.detect_anomaly(sensor_type, feature_vector)
+            
+            # 예지보전 수행 (이상 점수 기반)
+            maintenance_result = self.predict_maintenance_need(
+                sensor_type, feature_vector, anomaly_result['anomaly_score']
+            )
+            
+            # 결과 통합
+            predictions = {
+                'anomaly': anomaly_result,
+                'maintenance': maintenance_result,
+                'timestamp': datetime.utcnow().isoformat(),
+                'sensor_id': sensor_id,
+                'sensor_type': sensor_type,
+                'equipment_id': equipment_id
+            }
+            
+            # 결과 저장
+            self.save_prediction_to_db(sensor_id, equipment_id, predictions)
+            
+            # 알림 생성
+            self.generate_alert_if_needed(sensor_id, equipment_id, predictions)
+            
+            logger.debug(f"AI 예측 완료: {sensor_id} ({sensor_type}), "
+                       f"이상: {anomaly_result['is_anomaly']}, "
+                       f"점수: {anomaly_result['anomaly_score']:.3f}, "
+                       f"잔여수명: {maintenance_result['remaining_days']:.1f}일")
                 
         except Exception as e:
             logger.error(f"센서 데이터 처리 오류: {e}")
