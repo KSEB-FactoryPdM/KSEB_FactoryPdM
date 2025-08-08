@@ -6,6 +6,9 @@
     "unreadAlerts": "{{count}} unread alerts",
     "user": "User",
     "toggleTheme": "Toggle theme",
+    "enableHighContrast": "Enable high contrast mode",
+    "disableHighContrast": "Disable high contrast mode",
+    "fontSize": "Base font size",
     "language": "Language",
     "datetime": "{{datetime}}",
     "userInfo": "{{username}} ({{role}})"
@@ -35,7 +38,9 @@
   },
   "filters": {
     "allPower": "All kW",
-    "allEquipment": "All Equipment"
+    "allEquipment": "All Equipment",
+    "power": "kW",
+    "equipment": "Equipment"
   },
   "status": {
     "normal": "Normal",
@@ -43,5 +48,55 @@
     "unbalance": "Rotational imbalance",
     "belt_loose": "Loose belt",
     "bearing_fault": "Bearing fault"
+  },
+  "settings": {
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "plcEndpoint": "PLC/SCADA Endpoint",
+    "mqttEndpoint": "MQTT Endpoint",
+    "opcuaEndpoint": "OPC UA Endpoint",
+    "role": "Role",
+    "roles": {
+      "admin": "Admin",
+      "operator": "Operator",
+      "viewer": "Viewer"
+    }
+  },
+  "errorBoundary": {
+    "message": "An error occurred",
+    "retry": "Retry"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "allSeverity": "All Severity",
+    "allStatus": "All Status",
+    "acknowledgeSelected": "Acknowledge Selected",
+    "clearSelected": "Clear Selected",
+    "headers": {
+      "time": "Time",
+      "kw": "kW",
+      "device": "Device",
+      "type": "Type",
+      "severity": "Severity",
+      "actions": "Actions"
+    },
+    "buttons": {
+      "acknowledge": "Acknowledge",
+      "clear": "Clear",
+      "details": "Details"
+    },
+    "noAlerts": "No alerts",
+    "filters": {
+      "severity": "Severity",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "status": "Status"
+    },
+    "status": {
+      "new": "new",
+      "acknowledged": "acknowledged",
+      "cleared": "cleared"
+    }
   }
 }

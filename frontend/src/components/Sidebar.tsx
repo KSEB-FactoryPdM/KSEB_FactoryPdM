@@ -111,7 +111,12 @@ export default function Sidebar() {
       <div className="px-4 py-4 border-t border-gray-800">
         <motion.button
           onClick={() => {
-            // TODO: 실제 로그아웃 로직 연결
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('token');
+              localStorage.removeItem('username');
+              // Optionally show confirmation toast
+              window.alert('Logged out');
+            }
             router.push('/login');
           }}
           className="group w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"

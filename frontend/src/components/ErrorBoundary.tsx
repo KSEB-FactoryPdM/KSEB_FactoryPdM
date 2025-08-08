@@ -8,7 +8,7 @@ interface State {
   hasError: boolean
 }
 
-export default class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false }
 
   static getDerivedStateFromError() {
@@ -27,9 +27,9 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-screen gap-4 p-4">
-          <p>문제가 발생했습니다</p>
+          <p>An error occurred</p>
           <button onClick={this.handleRetry} className="bg-primary text-white px-4 py-2 rounded">
-            다시 시도
+            Retry
           </button>
         </div>
       )
@@ -38,3 +38,5 @@ export default class ErrorBoundary extends Component<Props, State> {
     return this.props.children
   }
 }
+
+export default ErrorBoundary

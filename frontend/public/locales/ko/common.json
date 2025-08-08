@@ -6,6 +6,9 @@
     "unreadAlerts": "읽지 않은 알림 {{count}}개",
     "user": "사용자",
     "toggleTheme": "테마 전환",
+    "enableHighContrast": "고대비 모드 활성화",
+    "disableHighContrast": "고대비 모드 비활성화",
+    "fontSize": "기본 글꼴 크기",
     "language": "언어",
     "datetime": "{{datetime}}",
     "userInfo": "{{username}} ({{role}})"
@@ -35,7 +38,9 @@
   },
   "filters": {
     "allPower": "모든 kW",
-    "allEquipment": "모든 장비"
+    "allEquipment": "모든 장비",
+    "power": "kW",
+    "equipment": "장비"
   },
   "status": {
     "normal": "정상",
@@ -43,5 +48,55 @@
     "unbalance": "회전체불평형",
     "belt_loose": "벨트느슨함",
     "bearing_fault": "베어링불량"
+  },
+  "settings": {
+    "name": "이름",
+    "email": "이메일",
+    "password": "비밀번호",
+    "plcEndpoint": "PLC/SCADA 엔드포인트",
+    "mqttEndpoint": "MQTT 엔드포인트",
+    "opcuaEndpoint": "OPC UA 엔드포인트",
+    "role": "역할",
+    "roles": {
+      "admin": "관리자",
+      "operator": "운영자",
+      "viewer": "뷰어"
+    }
+  },
+  "errorBoundary": {
+    "message": "문제가 발생했습니다",
+    "retry": "다시 시도"
+  },
+  "alerts": {
+    "title": "알림",
+    "allSeverity": "모든 심각도",
+    "allStatus": "모든 상태",
+    "acknowledgeSelected": "선택 항목 확인",
+    "clearSelected": "선택 항목 삭제",
+    "headers": {
+      "time": "시간",
+      "kw": "kW",
+      "device": "장치",
+      "type": "유형",
+      "severity": "심각도",
+      "actions": "동작"
+    },
+    "buttons": {
+      "acknowledge": "확인",
+      "clear": "삭제",
+      "details": "세부 정보"
+    },
+    "noAlerts": "알림 없음",
+    "filters": {
+      "severity": "심각도",
+      "startDate": "시작 날짜",
+      "endDate": "종료 날짜",
+      "status": "상태"
+    },
+    "status": {
+      "new": "신규",
+      "acknowledged": "확인됨",
+      "cleared": "해결됨"
+    }
   }
 }

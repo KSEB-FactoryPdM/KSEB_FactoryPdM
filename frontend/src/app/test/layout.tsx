@@ -1,10 +1,7 @@
-'use client';
-
 import React from 'react';
 import { Noto_Sans_KR, Roboto } from 'next/font/google';
 import MockSidebar from '@/components/Sidebar';
 import './globals.css';
-import type { Metadata } from 'next';
 
 const notoSans = Noto_Sans_KR({
   weight: ['400', '700'],
@@ -16,11 +13,6 @@ const roboto = Roboto({
   subsets: ['latin'],
   variable: '--font-roboto',
 });
-
-export const metadata: Metadata = {
-  title: 'Factory PdM – Test Environment',
-  description: 'Predictive Maintenance Dashboard (Test UI)',
-};
 
 export default function TestLayout({ children }: { children: React.ReactNode }) {
   return (
