@@ -23,7 +23,7 @@ services:
       - mqtt
       - redis
     volumes:
-      - ./models:/app/models
+      - /models:/app/models:ro
     networks:
       - core-network
       - compute-network  # Compute 클러스터와 통신용

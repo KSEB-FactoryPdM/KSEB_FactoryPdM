@@ -26,7 +26,7 @@ services:
       - kafka
       - redis
     volumes:
-      - ./models:/app/models
+      - /models:/app/models:ro
     networks:
       - app-network
     healthcheck:
@@ -71,7 +71,7 @@ services:
       - kafka
       - timescaledb
     volumes:
-      - ./models:/app/models
+      - /models:/app/models:ro
     networks:
       - app-network
     restart: unless-stopped
