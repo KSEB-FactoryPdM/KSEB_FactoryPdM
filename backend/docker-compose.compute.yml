@@ -90,7 +90,7 @@ services:
     depends_on:
       - kafka
     volumes:
-      - ./models:/app/models
+      - /models:/app/models:ro
       - ai_model_cache:/app/cache
     networks:
       - compute-network

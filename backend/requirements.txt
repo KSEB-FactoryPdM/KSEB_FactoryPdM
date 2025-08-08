@@ -52,3 +52,7 @@ loguru==0.7.2
 opentelemetry-api==1.21.0
 opentelemetry-sdk==1.21.0
 opentelemetry-semantic-conventions==0.42b0
+
+# 추가 유틸리티
+python-dateutil==2.8.2
+pytz==2023.3
