@@ -1,0 +1,162 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "실시간 센서 데이터 대시보드",
+    "tags": ["sensors", "realtime", "factory"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "R-CAHU-01S 온도",
+        "type": "timeseries",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "TimescaleDB"
+            },
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-01S' AND sensor_type = 'temperature' ORDER BY time DESC LIMIT 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 1
+            },
+            "unit": "celsius"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "R-CAHU-01S 압력",
+        "type": "timeseries",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "TimescaleDB"
+            },
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-01S' AND sensor_type = 'pressure' ORDER BY time DESC LIMIT 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 1
+            },
+            "unit": "bar"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "R-CAHU-01S 진동",
+        "type": "timeseries",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "TimescaleDB"
+            },
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-01S' AND sensor_type = 'vibration' ORDER BY time DESC LIMIT 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 1
+            },
+            "unit": "mm/s"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "R-CAHU-02S 온도",
+        "type": "timeseries",
+        "targets": [
+          {
+            "refId": "A",
+            "datasource": {
+              "type": "postgres",
+              "uid": "TimescaleDB"
+            },
+            "editorMode": "code",
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-02S' AND sensor_type = 'temperature' ORDER BY time DESC LIMIT 100"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "drawStyle": "line",
+              "lineWidth": 1
+            },
+            "unit": "celsius"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        }
+      }
+    ],
+    "time": {
+      "from": "now-5m",
+      "to": "now"
+    },
+    "refresh": "5s",
+    "schemaVersion": 30,
+    "version": 0
+  }
+}

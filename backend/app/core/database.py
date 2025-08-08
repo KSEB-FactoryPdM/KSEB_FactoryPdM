@@ -63,15 +63,16 @@ async def create_timescale_tables():
         from sqlalchemy import text
         
         with engine.connect() as conn:
-            # 센서 데이터 하이퍼테이블 생성
+            # Unity 센서 데이터용 테이블 생성 (기존 테이블과 별도)
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS sensor_data (
                     time TIMESTAMPTZ NOT NULL,
-                    device_id VARCHAR(50) NOT NULL,
+                    device VARCHAR(50) NOT NULL,
                     sensor_type VARCHAR(20) NOT NULL,
                     value DOUBLE PRECISION NOT NULL,
                     unit VARCHAR(10),
-                    created_at TIMESTAMPTZ DEFAULT NOW()
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    PRIMARY KEY (time, device, sensor_type)
                 );
             """))
             
@@ -84,7 +85,24 @@ async def create_timescale_tables():
             # 인덱스 생성
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_sensor_data_device_time 
-                ON sensor_data (device_id, time DESC);
+                ON sensor_data (device, time DESC);
+            """))
+            
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_type 
+                ON sensor_data (device, sensor_type);
+            """))
+            
+            # 기존 테이블들도 유지 (호환성을 위해)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS sensor_data_legacy (
+                    time TIMESTAMPTZ NOT NULL,
+                    device_id VARCHAR(50) NOT NULL,
+                    sensor_type VARCHAR(20) NOT NULL,
+                    value DOUBLE PRECISION NOT NULL,
+                    unit VARCHAR(10),
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
             """))
             
             # 이상 이벤트 테이블

@@ -7,6 +7,8 @@ from datetime import datetime
 import paho.mqtt.client as mqtt
 from kafka import KafkaProducer
 from loguru import logger
+from sqlalchemy import text
+from app.core.database import get_timescale_engine
 
 
 class DataCollector:
@@ -24,6 +26,9 @@ class DataCollector:
         self.sensor_topic = "unity/sensors/+/data"    # MQTT 토픽 패턴 (Unity에서 전송)
         self.kafka_raw_topic = "sensor-data-raw"      # Kafka 원본 데이터 토픽
         self.kafka_ai_topic = "ai-model-input"        # AI 모델 서비스 입력 토픽
+        
+        # TimescaleDB 연결
+        self.timescale_engine = None
         
         self.running = False
         
@@ -66,6 +71,88 @@ class DataCollector:
         self.mqtt_client.on_message = on_message  
         self.mqtt_client.on_disconnect = on_disconnect
         
+    def init_timescale_connection(self):
+        """TimescaleDB 연결 초기화"""
+        try:
+            # 환경 변수에서 TimescaleDB 연결 정보 가져오기
+            timescale_url = os.getenv('TIMESCALE_URL', 'postgresql://user:password@timescaledb:5432/predictive_maintenance')
+            logger.info(f"TimescaleDB 연결 시도: {timescale_url}")
+            
+            from sqlalchemy import create_engine
+            self.timescale_engine = create_engine(timescale_url)
+            
+            # 연결 테스트
+            with self.timescale_engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            
+            logger.info("TimescaleDB 연결 성공")
+        except Exception as e:
+            logger.error(f"TimescaleDB 연결 실패: {e}")
+            raise
+
+    def save_to_timescaledb(self, sensor_id: str, data: Dict[str, Any]):
+        """Unity 센서 데이터를 TimescaleDB에 저장"""
+        try:
+            if not self.timescale_engine:
+                logger.warning("TimescaleDB 연결이 없습니다")
+                return False
+                
+            # Unity 데이터 구조: {device, timestamp, x, y, z}
+            device = data.get('device', sensor_id)
+            timestamp = data.get('timestamp')
+            
+            # x, y, z 값을 개별 센서 데이터로 저장
+            sensor_values = []
+            
+            if 'x' in data:
+                sensor_values.append({
+                    'time': timestamp,
+                    'device': device,
+                    'sensor_type': 'temperature',
+                    'value': data['x'],
+                    'unit': 'celsius'
+                })
+            
+            if 'y' in data:
+                sensor_values.append({
+                    'time': timestamp,
+                    'device': device,
+                    'sensor_type': 'pressure',
+                    'value': data['y'],
+                    'unit': 'bar'
+                })
+            
+            if 'z' in data:
+                sensor_values.append({
+                    'time': timestamp,
+                    'device': device,
+                    'sensor_type': 'vibration',
+                    'value': data['z'],
+                    'unit': 'mm/s'
+                })
+            
+            # TimescaleDB에 저장
+            with self.timescale_engine.connect() as conn:
+                for sensor_data in sensor_values:
+                    query = text("""
+                        INSERT INTO sensor_data (time, device, sensor_type, value, unit)
+                        VALUES (:time, :device, :sensor_type, :value, :unit)
+                        ON CONFLICT (time, device, sensor_type) DO UPDATE SET
+                        value = EXCLUDED.value,
+                        unit = EXCLUDED.unit
+                    """)
+                    
+                    conn.execute(query, sensor_data)
+                
+                conn.commit()
+            
+            logger.debug(f"TimescaleDB 저장 완료: {device} - {len(sensor_values)}개 센서")
+            return True
+            
+        except Exception as e:
+            logger.error(f"TimescaleDB 저장 실패: {e}")
+            return False
+
     def process_mqtt_message(self, topic: str, payload: str):
         """MQTT 메시지 처리 및 Kafka로 전송"""
         try:
@@ -79,6 +166,9 @@ class DataCollector:
                 
             # JSON 데이터 파싱
             sensor_data = json.loads(payload)
+            
+            # TimescaleDB에 직접 저장
+            self.save_to_timescaledb(sensor_id, sensor_data)
             
             # 데이터 검증 및 보강
             enriched_data = self.enrich_sensor_data(sensor_id, sensor_data)
@@ -240,6 +330,9 @@ class DataCollector:
         logger.info("스마트팩토리 데이터 수집기 시작")
         
         try:
+            # TimescaleDB 연결 초기화
+            self.init_timescale_connection()
+            
             # Kafka Producer 초기화
             self.init_kafka_producer()
             

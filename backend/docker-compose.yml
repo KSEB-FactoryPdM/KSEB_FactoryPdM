@@ -26,7 +26,7 @@ services:
       - kafka
       - redis
     volumes:
-      - /models:/app/models:ro
+      - ./models:/app/models:ro
     networks:
       - app-network
     healthcheck:
@@ -44,11 +44,14 @@ services:
       - MQTT_BROKER_HOST=mqtt
       - MQTT_BROKER_PORT=1883
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+      - TIMESCALE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
       - DEBUG=${DEBUG:-false}
       - ENVIRONMENT=${ENVIRONMENT:-local}
     depends_on:
       - mqtt
       - kafka
+      - timescaledb
     networks:
       - app-network
     restart: unless-stopped
@@ -71,7 +74,7 @@ services:
       - kafka
       - timescaledb
     volumes:
-      - /models:/app/models:ro
+      - ./models:/app/models:ro
     networks:
       - app-network
     restart: unless-stopped
