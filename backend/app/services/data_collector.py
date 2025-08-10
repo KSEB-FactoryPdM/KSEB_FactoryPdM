@@ -27,8 +27,9 @@ class DataCollector:
         self.kafka_raw_topic = "sensor-data-raw"      # Kafka 원본 데이터 토픽
         self.kafka_ai_topic = "ai-model-input"        # AI 모델 서비스 입력 토픽
         
-        # TimescaleDB 연결
+        # TimescaleDB 연결 (옵션)
         self.timescale_engine = None
+        self.direct_timescale_write = os.getenv('DIRECT_TIMESCALE_WRITE', 'false').lower() in ('1','true','yes')
         
         self.running = False
         
@@ -135,8 +136,8 @@ class DataCollector:
             with self.timescale_engine.connect() as conn:
                 for sensor_data in sensor_values:
                     query = text("""
-                        INSERT INTO sensor_data (time, device, sensor_type, value, unit)
-                        VALUES (:time, :device, :sensor_type, :value, :unit)
+                        INSERT INTO sensor_data (time, device, device_id, sensor_type, value, unit)
+                        VALUES (:time, :device, :device, :sensor_type, :value, :unit)
                         ON CONFLICT (time, device, sensor_type) DO UPDATE SET
                         value = EXCLUDED.value,
                         unit = EXCLUDED.unit
@@ -167,8 +168,9 @@ class DataCollector:
             # JSON 데이터 파싱
             sensor_data = json.loads(payload)
             
-            # TimescaleDB에 직접 저장
-            self.save_to_timescaledb(sensor_id, sensor_data)
+            # TimescaleDB에 직접 저장 (옵션: 기본 비활성화, Kafka→Timescale 싱크 서비스 사용 권장)
+            if self.direct_timescale_write:
+                self.save_to_timescaledb(sensor_id, sensor_data)
             
             # 데이터 검증 및 보강
             enriched_data = self.enrich_sensor_data(sensor_id, sensor_data)
