@@ -1,3 +1,21 @@
+## serve_ml 서빙/시뮬레이터 통합
+
+- 디렉토리: `serve_ml/<equipment_id>/<power>/<model_version>/` 구조의 번들을 자동 인식
+- API:
+  - `POST /api/v1/serve-ml/predict` { equipment_id, power?, model_version?, features{} }
+  - `GET /api/v1/serve-ml/bundles?equipment_id=&power=`
+  - `POST /api/v1/serve-ml/sync` 레지스트리 ↔ DB 동기화
+- MQTT:
+  - 입력 토픽: `serve-ml/<equipment_id>/features` (payload: { power?, model_version?, features{} })
+- DB:
+  - 테이블: `serve_ml_models`, `serve_ml_predictions` (Timescale 하이퍼테이블)
+
+FAQ 요약:
+- 원시신호 OK이지만 동일한 피처 추출 로직이 서버에도 필요. 초기에는 feature 입력 권장
+- power는 요청으로 지정하거나 자동 버킷 선택
+- case A에서 `xgb.json` 없어도 정상 (AE 게이트만 사용)
+- 싱글모달이면 해당 모달의 threshold만 적용
+
 # 🏭 스마트팩토리 공장설비 예지보전 시스템
 
 ## 📋 개요
@@ -13,9 +31,8 @@ graph TB
         B --> C[데이터 수집기]
     end
     
-    subgraph "데이터 스트리밍 계층"  
-        C --> D[Kafka]
-        D --> E[AI 모델 서비스]
+    subgraph "데이터 처리/서빙 계층"  
+        C --> E[serve_ml 서빙]
     end
     
     subgraph "데이터 저장 계층"
@@ -47,9 +64,9 @@ graph TB
 | 구성 요소 | 주요 기술 | 역할 |
 |----------|-----------|------|
 | 센서 시뮬레이터 | Unity + MQTT | 가상 센서 데이터 생성 및 Publish |
-| 데이터 수집기 | FastAPI + MQTT Client + Kafka Producer | MQTT Subscribe → Kafka Publish |
-| 데이터 버퍼링 | Apache Kafka | 스트리밍 파이프라인, 모델 연계용 Topic 운영 |
-| AI 모델 | 사전 훈련된 PyTorch 모델 + Kafka Consumer | 이상탐지/예지 모델 실시간 예측 |
+| 데이터 수집기 | FastAPI + MQTT Client | MQTT Subscribe → TimescaleDB Insert |
+| 데이터 버퍼링 | MQTT + TimescaleDB | 실시간 저장 |
+| AI 모델 | serve_ml 번들 기반 HTTP/MQTT 서빙 | 이상탐지/예지 모델 실시간 예측 |
 | DB | TimescaleDB | 예측 결과 및 원본 데이터 저장 |
 | 시각화 | Grafana + Prometheus | 모델 결과 및 시스템 상태 모니터링 |
 | 인프라 | Docker + Kubernetes (GKE) | 서비스 컨테이너화 및 오케스트레이션 |
@@ -138,8 +155,8 @@ cp .env.docker.example .env
 # models/anomaly_SENSOR_ID.pth
 # models/maintenance_SENSOR_ID.pth
 
-# Docker Compose로 모든 서비스 실행
-docker-compose up -d
+# Docker Compose로 모든 서비스 실행 (Kafka 제외)
+docker-compose up -d timescaledb mqtt redis backend frontend
 
 # 서비스 상태 확인
 docker-compose ps
@@ -160,7 +177,7 @@ cp .env.example .env
 # .env 파일에서 DATABASE_URL, SECRET_KEY 등 필수 변수 설정
 
 # 데이터베이스 및 기타 인프라 서비스만 Docker로 실행
-docker-compose up -d postgres mqtt kafka redis
+docker-compose up -d timescaledb mqtt redis
 
 # 애플리케이션 직접 실행
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -173,7 +190,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - **API 문서**: http://localhost:8000/docs
 - **Grafana**: http://localhost:3000 (admin / 설정한 비밀번호)
 - **Prometheus**: http://localhost:9090
-- **Kafka UI**: http://localhost:8080
+  
 
 ### 프로덕션 배포 (Kubernetes)
 
@@ -274,9 +291,8 @@ gcloud container clusters create smart-factory-cluster \
 ## 🔄 데이터 플로우
 
 1. **데이터 생성**: Unity 센서 시뮬레이터가 실제 공장설비 데이터를 모사하여 MQTT로 전송
-2. **데이터 수집**: 데이터 수집기가 MQTT 메시지를 구독하여 Kafka로 스트리밍
-3. **데이터 처리**: Kafka Consumer가 데이터를 소비하여 전처리 및 정규화 수행
-4. **AI 추론**: 사전 훈련된 PyTorch 모델이 실시간으로 이상탐지 및 예지보전 수행
+2. **데이터 수집**: 데이터 수집기가 MQTT 메시지를 구독하여 TimescaleDB에 저장
+3. **AI 추론**: serve_ml 번들이 실시간으로 이상탐지 수행 (HTTP 또는 MQTT 입력)
 5. **결과 저장**: 예측 결과를 TimescaleDB에 저장
 6. **알림 생성**: 임계값 초과시 자동 알림 생성
 7. **시각화**: Grafana를 통한 실시간 모니터링 및 대시보드 제공
