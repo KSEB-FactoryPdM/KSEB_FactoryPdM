@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, Any, List
 import asyncio
 from pathlib import Path
+from app.services.serve_ml_loader import serve_ml_registry
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,8 @@ class UnitySensorSimulator:
         
         # 시뮬레이션 설정
         self.publish_interval = 2.0  # 초 (실제 공장에서는 1-5초 간격)
+        # serve_ml feature 퍼블리시 여부
+        self.publish_serve_ml_features = True
         self.is_running = False
         
         # 센서 상태 관리 (자연스러운 데이터 생성을 위해)
@@ -573,6 +576,29 @@ class UnitySensorSimulator:
                     
             except Exception as e:
                 logger.error(f"❌ 데이터 발행 중 오류: {e}")
+
+        # 선택적으로 serve_ml feature 발행 (feature_spec.yaml 키 기반 예시 생성)
+        if self.publish_serve_ml_features:
+            try:
+                # serve_ml에 등록된 장비들 전체에 대해 발행
+                for equipment_id in serve_ml_registry.list_equipment():
+                    serve_ml_topic = f"serve-ml/{equipment_id}/features"
+                    topic_key = f"unity/sensors/{equipment_id}/data"
+                    # 간단한 예시 feature: vib_rms, cur_x_rms, cur_y_rms
+                    features = {
+                        "vib_rms": float(abs(sensor_data.get(topic_key, {}).get("z", 0.0))),
+                        "cur_x_rms": float(sensor_data.get(topic_key, {}).get("x", 0.0)),
+                        "cur_y_rms": float(sensor_data.get(topic_key, {}).get("y", 0.0)),
+                    }
+                    # power는 요청 명시가 가장 확실 → 첫 번째 버킷 사용, 없으면 자동 선택에 맡김
+                    powers = serve_ml_registry.list_powers(equipment_id)
+                    payload = {
+                        "power": powers[0] if powers else None,
+                        "features": features,
+                    }
+                    self.client.publish(serve_ml_topic, json.dumps(payload, ensure_ascii=False), qos=1)
+            except Exception as e:
+                logger.error(f"serve_ml feature 발행 오류: {e}")
     
     def load_json_data(self, file_path: str) -> Dict[str, Any]:
         """JSON 파일에서 센서 데이터 로드"""
