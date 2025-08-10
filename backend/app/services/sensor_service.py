@@ -28,12 +28,13 @@ class SensorService:
             engine = get_timescale_engine()
             with engine.connect() as conn:
                 query = text("""
-                    INSERT INTO sensor_data (time, device_id, sensor_type, value, unit)
-                    VALUES (:time, :device_id, :sensor_type, :value, :unit)
+                    INSERT INTO sensor_data (time, device, device_id, sensor_type, value, unit)
+                    VALUES (:time, :device, :device_id, :sensor_type, :value, :unit)
                 """)
                 
                 conn.execute(query, {
                     "time": sensor_data.time,
+                    "device": sensor_data.device_id,
                     "device_id": sensor_data.device_id,
                     "sensor_type": sensor_data.sensor_type,
                     "value": sensor_data.value,
@@ -73,11 +74,12 @@ class SensorService:
                 
                 # 배치 삽입
                 query = text("""
-                    INSERT INTO sensor_data (time, device_id, sensor_type, value, unit)
-                    VALUES (:time, :device_id, :sensor_type, :value, :unit)
+                    INSERT INTO sensor_data (time, device, device_id, sensor_type, value, unit)
+                    VALUES (:time, :device, :device_id, :sensor_type, :value, :unit)
                 """)
                 
-                conn.execute(query, data_to_insert)
+                # add 'device' field mirroring 'device_id'
+                conn.execute(query, [dict(item, device=item["device_id"]) for item in data_to_insert])
                 conn.commit()
             
             # 메트릭 기록

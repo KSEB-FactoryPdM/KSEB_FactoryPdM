@@ -68,6 +68,7 @@ async def create_timescale_tables():
                 CREATE TABLE IF NOT EXISTS sensor_data (
                     time TIMESTAMPTZ NOT NULL,
                     device VARCHAR(50) NOT NULL,
+                    device_id VARCHAR(50),
                     sensor_type VARCHAR(20) NOT NULL,
                     value DOUBLE PRECISION NOT NULL,
                     unit VARCHAR(10),
@@ -86,6 +87,10 @@ async def create_timescale_tables():
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_sensor_data_device_time 
                 ON sensor_data (device, time DESC);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_id_time 
+                ON sensor_data (device_id, time DESC);
             """))
             
             conn.execute(text("""
@@ -145,6 +150,55 @@ async def create_timescale_tables():
                     created_at TIMESTAMPTZ DEFAULT NOW(),
                     updated_at TIMESTAMPTZ DEFAULT NOW()
                 );
+            """))
+
+            # serve_ml 모델 메타 테이블 (모델 레지스트리 동기화용)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS serve_ml_models (
+                    equipment_id VARCHAR(50) NOT NULL,
+                    power VARCHAR(50) NOT NULL,
+                    model_version VARCHAR(100) NOT NULL,
+                    modalities JSONB NOT NULL,
+                    thresholds JSONB,
+                    class_map JSONB,
+                    sha256 VARCHAR(128),
+                    bundle_path TEXT NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    PRIMARY KEY (equipment_id, power, model_version)
+                );
+            """))
+
+            # serve_ml 예측 결과 하이퍼테이블
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS serve_ml_predictions (
+                    time TIMESTAMPTZ NOT NULL,
+                    equipment_id VARCHAR(50) NOT NULL,
+                    power VARCHAR(50) NOT NULL,
+                    model_version VARCHAR(100) NOT NULL,
+                    is_anomaly BOOLEAN NOT NULL,
+                    confidence DOUBLE PRECISION NOT NULL,
+                    scores JSONB,
+                    thresholds JSONB,
+                    modalities JSONB,
+                    features JSONB,
+                    bundle_path TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+
+            conn.execute(text("""
+                SELECT create_hypertable('serve_ml_predictions', 'time', if_not_exists => TRUE);
+            """))
+
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_smp_equipment_time
+                ON serve_ml_predictions (equipment_id, time DESC);
+            """))
+
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_smp_equipment_power_version
+                ON serve_ml_predictions (equipment_id, power, model_version);
             """))
             
             conn.commit()
