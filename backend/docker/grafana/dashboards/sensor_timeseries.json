@@ -1,0 +1,54 @@
+{
+  "id": null,
+  "title": "Sensor Timeseries",
+  "schemaVersion": 27,
+  "version": 1,
+  "refresh": "5s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Temperature",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+      "targets": [
+        {
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A",
+          "sql": "SELECT time AS time, value AS value, device AS metric FROM sensor_data WHERE $__timeFilter(time) AND sensor_type='temperature' ORDER BY time"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pressure",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+      "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+      "targets": [
+        {
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "B",
+          "sql": "SELECT time AS time, value AS value, device AS metric FROM sensor_data WHERE $__timeFilter(time) AND sensor_type='pressure' ORDER BY time"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Vibration",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+      "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+      "targets": [
+        {
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "C",
+          "sql": "SELECT time AS time, value AS value, device AS metric FROM sensor_data WHERE $__timeFilter(time) AND sensor_type='vibration' ORDER BY time"
+        }
+      ]
+    }
+  ]
+}
+
+
