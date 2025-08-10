@@ -8,8 +8,6 @@ from collections import deque
 import pickle
 import threading
 
-import xgboost as xgb
-from kafka import KafkaConsumer
 from sqlalchemy import create_engine, text
 from loguru import logger
 from fastapi import FastAPI, HTTPException
@@ -18,10 +16,6 @@ from pydantic import BaseModel
 
 class AIModelService:
     def __init__(self):
-        # Kafka 설정
-        self.kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
-        self.consumer_topic = 'ai-model-input'  # data_collector에서 전송하는 토픽
-        
         # 데이터베이스 설정 
         self.db_url = os.getenv('DATABASE_URL')
         if not self.db_url:
@@ -70,7 +64,7 @@ class AIModelService:
     def load_xgboost_models(self):
         """XGBoost 모델 로드 (models 폴더에서)"""
         try:
-            # Current 센서용 XGBoost 모델 로드
+            # Current 센서용 XGBoost 모델 로드 (레거시)
             current_model_path = os.path.join(self.models_path, 'current_xgb.pkl')
             if os.path.exists(current_model_path):
                 with open(current_model_path, 'rb') as f:
@@ -79,7 +73,7 @@ class AIModelService:
             else:
                 logger.warning(f"Current 모델 파일을 찾을 수 없습니다: {current_model_path}")
                 
-            # Vibration 센서용 XGBoost 모델 로드
+            # Vibration 센서용 XGBoost 모델 로드 (레거시)
             vibration_model_path = os.path.join(self.models_path, 'vibration_xgb.pkl')
             if os.path.exists(vibration_model_path):
                 with open(vibration_model_path, 'rb') as f:
@@ -415,38 +409,8 @@ class AIModelService:
             logger.error(f"센서 데이터 처리 오류: {e}")
             
     def start_kafka_consumer(self):
-        """Kafka Consumer를 별도 스레드에서 시작"""
-        logger.info("Kafka Consumer 시작")
-        
-        try:
-            # Kafka Consumer 설정
-            consumer = KafkaConsumer(
-                self.consumer_topic,
-                bootstrap_servers=self.kafka_servers.split(','),
-                value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-                group_id='ai_model_service',
-                auto_offset_reset='latest'
-            )
-            
-            self.running = True
-            logger.info("Kafka Consumer가 정상적으로 시작되었습니다")
-            
-            # 메시지 처리 루프
-            for message in consumer:
-                if not self.running:
-                    break
-                    
-                try:
-                    sensor_data = message.value
-                    self.process_sensor_data(sensor_data)
-                    
-                except Exception as e:
-                    logger.error(f"메시지 처리 오류: {e}")
-                    
-        except Exception as e:
-            logger.error(f"Kafka Consumer 실행 중 오류: {e}")
-        finally:
-            logger.info("Kafka Consumer 종료")
+        """레거시 Kafka Consumer (미사용)"""
+        logger.info("Kafka Consumer 기능은 serve_ml 경로로 대체되었습니다")
 
     async def start(self):
         """AI 모델 서비스 시작 (FastAPI와 함께 사용)"""
@@ -459,9 +423,7 @@ class AIModelService:
             # AI 모델 초기화
             self.init_models()
             
-            # Kafka Consumer를 별도 스레드에서 시작
-            self.kafka_thread = threading.Thread(target=self.start_kafka_consumer, daemon=True)
-            self.kafka_thread.start()
+            # Kafka Consumer는 사용하지 않음
             
             logger.info("AI 모델 서비스가 정상적으로 시작되었습니다")
             

@@ -2,33 +2,33 @@
 
 이 디렉토리는 Smart Factory 프로젝트의 CI/CD 워크플로우들을 관리합니다.
 
-## 🚀 활성 워크플로우
+    ## 🚀 활성 워크플로우
 
-### `core-cluster-deploy.yml`
-- **목적**: Core 서비스들을 전용 클러스터에 배포
-- **포함 서비스**: 
-  - Frontend (React)
-  - Backend (FastAPI)
-  - Redis (캐싱)
-  - MQTT (메시징)
-  - Sensor Simulator
-  - Data Collector
-  - TimescaleDB (시계열 데이터)
-- **클러스터**: `core-cluster` (us-central1)
-- **최적화**: 오토스케일러, 비용 절감 (preemptible 인스턴스)
+    ### `core-cluster-deploy.yml`
+    - **목적**: Core 서비스들을 전용 클러스터에 배포
+    - **포함 서비스**: 
+    - Frontend (React)
+    - Backend (FastAPI)
+    - Redis (캐싱)
+    - MQTT (메시징)
+    - Sensor Simulator
+    - Data Collector
+    - TimescaleDB (시계열 데이터)
+    - **클러스터**: `core-cluster` (us-central1)
+    - **최적화**: 오토스케일러, 비용 절감 (preemptible 인스턴스)
 
-### `compute-cluster-deploy.yml`
-- **목적**: 컴퓨팅 집약적 서비스들을 전용 클러스터에 배포
-- **포함 서비스**:
-  - Kafka (스트리밍 데이터)
-  - Zookeeper (Kafka 관리)
-  - AI Model Service (머신러닝)
-- **클러스터**: `compute-cluster` (us-central1)
-- **최적화**: 메모리 최적화 머신 타입 (e2-highmem)
+    ### `compute-cluster-deploy.yml`
+    - **목적**: 컴퓨팅 집약적 서비스들을 전용 클러스터에 배포
+    - **포함 서비스**:
+    - Kafka (스트리밍 데이터)
+    - Zookeeper (Kafka 관리)
+    - AI Model Service (머신러닝)
+    - **클러스터**: `compute-cluster` (us-central1)
+    - **최적화**: 메모리 최적화 머신 타입 (e2-highmem)
 
-### `frontend-ci.yml`
-- **목적**: 프론트엔드 CI/CD 파이프라인
-- **기능**: 린트, 테스트, 빌드 검증
+    ### `frontend-ci.yml`
+    - **목적**: 프론트엔드 CI/CD 파이프라인
+    - **기능**: 린트, 테스트, 빌드 검증
 
 ## 🏗️ 아키텍처 개요
 

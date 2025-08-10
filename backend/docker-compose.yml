@@ -19,7 +19,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - DEBUG=${DEBUG:-false}
       - ENVIRONMENT=${ENVIRONMENT:-local}
-      - AI_MODEL_SERVICE_ENDPOINT=http://ai-model:8001
+      
+      - SERVE_ML_ROOT=/app/serve_ml
     depends_on:
       - timescaledb
       - mqtt
@@ -27,6 +28,7 @@ services:
       - redis
     volumes:
       - ./models:/app/models:ro
+      - ./serve_ml:/app/serve_ml:ro
     networks:
       - app-network
     healthcheck:
@@ -44,6 +46,7 @@ services:
       - MQTT_BROKER_HOST=mqtt
       - MQTT_BROKER_PORT=1883
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - DIRECT_TIMESCALE_WRITE=false
       - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
       - TIMESCALE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
       - DEBUG=${DEBUG:-false}
@@ -56,34 +59,20 @@ services:
       - app-network
     restart: unless-stopped
 
-  # AI 모델 서비스 (Kafka Consumer) - 포트 8001로 변경
-  ai-model:
-    build:
-      context: .
-      dockerfile: Dockerfile.ai-service
-    ports:
-      - "8001:8001"
+  kafka-timescale-sink:
+    build: .
+    command: python -m app.services.kafka_timescale_sink
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
-      - MODEL_PATH=/app/models
-      - DEBUG=${DEBUG:-false}
-      - ENVIRONMENT=${ENVIRONMENT:-local}
-      - AI_SERVICE_PORT=8001
+      - KAFKA_SENSOR_RAW_TOPIC=sensor-data-raw
+      - TIMESCALE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
     depends_on:
       - kafka
       - timescaledb
-    volumes:
-      - ./models:/app/models:ro
     networks:
       - app-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+
 
   # Zookeeper (Kafka 의존성)
   zookeeper:
@@ -207,10 +196,13 @@ services:
       - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./docker/grafana/provisioning/dashboards.yml:/etc/grafana/provisioning/dashboards.yml
     depends_on:
       - prometheus
       - timescaledb
