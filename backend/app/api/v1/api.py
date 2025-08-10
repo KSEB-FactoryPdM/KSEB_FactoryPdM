@@ -3,7 +3,7 @@ API v1 라우터
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import devices, sensors, anomalies, rul, auth, notifications, equipment
+from app.api.v1.endpoints import devices, sensors, anomalies, rul, auth, notifications, equipment, serve_ml
 
 api_router = APIRouter()
 
@@ -15,3 +15,4 @@ api_router.include_router(anomalies.router, prefix="/anomalies", tags=["anomalie
 api_router.include_router(rul.router, prefix="/rul", tags=["rul"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(equipment.router, prefix="/equipment", tags=["equipment"]) 
+api_router.include_router(serve_ml.router, prefix="/serve-ml", tags=["serve-ml"])

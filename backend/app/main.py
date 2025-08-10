@@ -11,7 +11,9 @@ import time
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.core.monitoring import setup_monitoring
+from app.core.database import init_db
 from app.core.scheduler import model_scheduler
+from app.services.serve_ml_mqtt_infer import serve_ml_mqtt_infer
 
 
 # 로깅 설정
@@ -31,12 +33,25 @@ async def lifespan(app: FastAPI):
     # 모니터링 설정
     setup_monitoring()
     
+    # 데이터베이스 초기화 (ORM 테이블 + Timescale hypertables)
+    try:
+        await init_db()
+        logger.info("데이터베이스 초기화 완료")
+    except Exception as e:
+        logger.error(f"데이터베이스 초기화 실패: {e}")
+    
     # 모델 스케줄러 시작
     try:
         model_scheduler.start_scheduler()
         logger.info("모델 재학습 스케줄러가 시작되었습니다.")
     except Exception as e:
         logger.error(f"스케줄러 시작 실패: {e}")
+
+    # serve_ml MQTT 추론 리스너 시작
+    try:
+        serve_ml_mqtt_infer.start()
+    except Exception as e:
+        logger.error(f"serve_ml MQTT 리스너 시작 실패: {e}")
     
     yield
     
@@ -49,6 +64,12 @@ async def lifespan(app: FastAPI):
         logger.info("모델 재학습 스케줄러가 중지되었습니다.")
     except Exception as e:
         logger.error(f"스케줄러 중지 실패: {e}")
+
+    # serve_ml MQTT 추론 리스너 중지
+    try:
+        serve_ml_mqtt_infer.stop()
+    except Exception as e:
+        logger.error(f"serve_ml MQTT 리스너 중지 실패: {e}")
 
 
 # FastAPI 애플리케이션 생성
