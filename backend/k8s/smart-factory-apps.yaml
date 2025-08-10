@@ -126,61 +126,34 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-model-service
+  name: kafka-timescale-sink
   namespace: smart-factory
   labels:
-    app: ai-model-service
+    app: kafka-timescale-sink
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ai-model-service
+      app: kafka-timescale-sink
   template:
     metadata:
       labels:
-        app: ai-model-service
+        app: kafka-timescale-sink
     spec:
       containers:
-      - name: ai-model
+      - name: kafka-timescale-sink
         image: gcr.io/PROJECT_ID/smart-factory-backend:latest
-        command: ["python", "-m", "app.services.ai_model_service"]
-        env:
-        - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: smart-factory-secrets
-              key: POSTGRES_USER
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: smart-factory-secrets
-              key: POSTGRES_PASSWORD
-        - name: POSTGRES_DB
-          valueFrom:
-            secretKeyRef:
-              name: smart-factory-secrets
-              key: POSTGRES_DB
+        command: ["python", "-m", "app.services.kafka_timescale_sink"]
         envFrom:
         - configMapRef:
             name: smart-factory-config
-        volumeMounts:
-        - name: models-storage
-          mountPath: /app/models
-          readOnly: true
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "100m"
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
-      volumes:
-      - name: models-storage
-        hostPath:
-          path: /models
-          type: DirectoryOrCreate
+            memory: "512Mi"
+            cpu: "200m"
 
 ---
 apiVersion: apps/v1
