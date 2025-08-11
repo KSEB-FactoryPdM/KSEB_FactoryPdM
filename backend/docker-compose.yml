@@ -26,7 +26,7 @@ services:
       - kafka
       - redis
     volumes:
-      - /models:/app/models:ro
+      - /models:/app/models
     networks:
       - app-network
     healthcheck:
@@ -188,7 +188,7 @@ services:
       context: ../frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
       - NODE_ENV=${NODE_ENV:-development}
