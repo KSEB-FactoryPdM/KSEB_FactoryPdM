@@ -152,6 +152,21 @@ async def create_timescale_tables():
                 );
             """))
 
+            # 정비 요청 테이블
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS maintenance_requests (
+                    id SERIAL PRIMARY KEY,
+                    device_id VARCHAR(50) NOT NULL,
+                    requested_at TIMESTAMPTZ DEFAULT NOW(),
+                    status VARCHAR(20) DEFAULT 'pending',
+                    reason TEXT
+                );
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_maint_device_time
+                ON maintenance_requests (device_id, requested_at DESC);
+            """))
+
             # serve_ml 모델 메타 테이블 (모델 레지스트리 동기화용)
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS serve_ml_models (
