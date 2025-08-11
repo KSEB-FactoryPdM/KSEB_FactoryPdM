@@ -1,7 +1,8 @@
 'use client'
 import { Component, ReactNode } from 'react'
+import { withTranslation, WithTranslation } from 'react-i18next'
 
-interface Props {
+interface Props extends WithTranslation {
   children: ReactNode
 }
 interface State {
@@ -25,11 +26,12 @@ class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const { t } = this.props
       return (
         <div className="flex flex-col items-center justify-center h-screen gap-4 p-4">
-          <p>An error occurred</p>
+          <p>{t('errorBoundary.message', 'An error occurred')}</p>
           <button onClick={this.handleRetry} className="bg-primary text-white px-4 py-2 rounded">
-            Retry
+            {t('errorBoundary.retry', 'Retry')}
           </button>
         </div>
       )
@@ -39,4 +41,4 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default ErrorBoundary
+export default withTranslation('common')(ErrorBoundary)

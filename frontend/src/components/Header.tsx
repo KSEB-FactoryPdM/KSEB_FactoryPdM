@@ -82,8 +82,7 @@ export default function Header() {
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
             if (search.trim()) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              router.push(`/search?query=${encodeURIComponent(search.trim())}` as any);
+              router.push(`/search?query=${encodeURIComponent(search.trim())}`);
             }
           }}
         >
