@@ -24,12 +24,36 @@ export default function Header() {
   const [unread, setUnread] = useState<number>(0);
   const [search, setSearch] = useState('');
   const router = useRouter();
+  const [isPrimaryLight, setIsPrimaryLight] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setDateTime(new Date().toLocaleString());
     }, 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    function updateTextColor() {
+      const raw = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-primary')
+        .trim();
+      const [r, g, b] = raw.split(' ').map(Number);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      setIsPrimaryLight(brightness > 180);
+    }
+    updateTextColor();
+    const observer = new MutationObserver(updateTextColor);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    mql.addEventListener('change', updateTextColor);
+    return () => {
+      observer.disconnect();
+      mql.removeEventListener('change', updateTextColor);
+    };
   }, []);
 
   useEffect(() => {
@@ -69,7 +93,9 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="h-16 flex items-center bg-primary text-white px-4">
+    <header
+      className={`h-16 flex items-center bg-primary px-4 ${isPrimaryLight ? 'text-black' : 'text-white'}`}
+    >
       <div className="flex items-center gap-2">
         <Image src="/logo.svg" alt="Factory PMS logo" width={32} height={32} />
         <span className="text-[1.25rem] font-bold font-heading">
