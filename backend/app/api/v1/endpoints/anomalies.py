@@ -170,7 +170,9 @@ async def get_anomaly_events(
         params["limit"] = size
         params["offset"] = (page - 1) * size
         with engine.connect() as conn:
-            rows = [dict(r) for r in conn.execute(text(sql), params)]
+            result = conn.execute(text(sql), params)
+            cols = result.keys()
+            rows = [dict(zip(cols, r)) for r in result.fetchall()]
         return {"events": rows, "total": len(rows), "page": page, "size": size}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이상 이벤트 조회 실패: {str(e)}")

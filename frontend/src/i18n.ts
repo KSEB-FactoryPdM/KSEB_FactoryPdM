@@ -4,9 +4,8 @@ import en from '../public/locales/en/common.json';
 import ko from '../public/locales/ko/common.json';
 import config from '../next-i18next.config.mjs';
 
-i18n
-  .use(initReactI18next)
-  .init({
+if (!i18n.isInitialized) {
+  i18n.use(initReactI18next).init({
     resources: {
       en: { common: en },
       ko: { common: ko },
@@ -15,5 +14,6 @@ i18n
     fallbackLng: config.i18n.defaultLocale,
     interpolation: { escapeValue: false },
   });
+}
 
 export default i18n;

@@ -6,7 +6,6 @@ import QueryProvider from '@/components/QueryProvider';
 import Sidebar from '@/components/Sidebar';
 import I18nProvider from '@/components/I18nProvider';
 import LanguageListener from '@/components/LanguageListener';
-import i18n from '@/i18n';
 import './globals.css';
 
 const notoSans = Noto_Sans_KR({
@@ -32,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang={i18n.language}>
+    <html lang="ko">
       <body
         className={`${notoSans.variable} ${roboto.variable} antialiased bg-gray-100`}
       >
