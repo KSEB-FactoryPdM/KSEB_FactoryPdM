@@ -74,7 +74,7 @@ class ServeMLMqttInfer:
                         features, bundle_path
                     ) VALUES (
                         :time, :equipment_id, :power, :model_version,
-                        :is_anomaly, :confidence, CAST(:scores AS JSONB), CAST(:thresholds AS JSONB), CAST(:modalities AS TEXT[]),
+                        :is_anomaly, :confidence, CAST(:scores AS JSONB), CAST(:thresholds AS JSONB), CAST(:modalities AS JSONB),
                         CAST(:features AS JSONB), :bundle_path
                     )
                     """
@@ -89,7 +89,7 @@ class ServeMLMqttInfer:
                     "confidence": float(result.get("confidence", 0.0)),
                     "scores": _json.dumps(result.get("scores")),
                     "thresholds": _json.dumps(result.get("thresholds")),
-                    "modalities": result.get("modalities"),
+                    "modalities": _json.dumps(result.get("modalities")),
                     "features": _json.dumps(result.get("used_features")),
                     "bundle_path": str(bundle.bundle_dir),
                 }

@@ -148,9 +148,7 @@ async def get_anomaly_events(
         if device_id:
             conditions.append("equipment_id = :device_id")
             params["device_id"] = device_id
-        if severity:
-            conditions.append("severity = :severity")
-            params["severity"] = severity
+        # serve_ml_predictions 테이블에는 severity 컬럼이 없으므로 필터 제외
         if start_time:
             conditions.append("time >= :start_time")
             params["start_time"] = start_time

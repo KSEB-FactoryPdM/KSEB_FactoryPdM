@@ -25,12 +25,29 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import joblib
-import numpy as np
+try:
+    import joblib  # optional
+except Exception:  # pragma: no cover
+    joblib = None  # type: ignore
+import os
+try:
+    import numpy as np  # optional
+except Exception:  # pragma: no cover
+    np = None  # type: ignore
 import yaml
 
-import torch
+try:
+    import torch  # optional
+except Exception:  # pragma: no cover
+    torch = None  # type: ignore
 from sqlalchemy import text
+import warnings
+
+# NumPy ABI 호환 문제 회피용: serve_ml 추론 경로에서 NumPy 내부 모듈 에러 발생 시 안전하게 우회
+try:
+    import numpy as _np  # noqa: F401
+except Exception:  # pragma: no cover
+    warnings.warn("NumPy import failed in serve_ml context; certain model paths may be degraded.")
 
 
 @dataclass
@@ -83,7 +100,7 @@ class ServeMLBundle:
 
     def _maybe_load_torch_model(self, filename: str):
         path = self.bundle_dir / filename
-        if not path.exists():
+        if not path.exists() or torch is None:
             return None
         try:
             return torch.jit.load(str(path), map_location="cpu")
@@ -92,13 +109,19 @@ class ServeMLBundle:
 
     def _maybe_load_joblib(self, filename: str):
         path = self.bundle_dir / filename
-        if not path.exists():
+        if not path.exists() or joblib is None or np is None:
             return None
-        return joblib.load(path)
+        try:
+            return joblib.load(path)
+        except Exception:
+            return None
 
     def _maybe_load_xgb_json(self, filename: str):
         path = self.bundle_dir / filename
         if not path.exists():
+            return None
+        # 기본값: 환경변수로 활성화하지 않으면 XGBoost 비활성화
+        if os.getenv("SERVE_ML_ENABLE_XGB", "false").lower() != "true":
             return None
         try:
             import xgboost as xgb
@@ -108,15 +131,24 @@ class ServeMLBundle:
         except Exception:
             return None
 
-    def build_feature_vector(self, features: Dict[str, Any]) -> Tuple[np.ndarray, Dict[str, float]]:
-        ordered: List[float] = []
+    def build_feature_vector(self, features: Dict[str, Any]) -> Tuple[Optional["np.ndarray"], Dict[str, float]]:
+        ordered_list: List[float] = []
         used: Dict[str, float] = {}
         for key in self.feature_spec.feature_keys:
-            mapped_key = key  # feature_spec가 직접 키 순서를 제공하므로 그대로 사용
-            value = float(features.get(mapped_key, 0.0))
-            ordered.append(value)
+            mapped_key = key
+            try:
+                value = float(features.get(mapped_key, 0.0))
+            except Exception:
+                value = 0.0
+            ordered_list.append(value)
             used[mapped_key] = value
-        return np.array(ordered, dtype=np.float32), used
+        vec = None
+        if np is not None:
+            try:
+                vec = np.array(ordered_list, dtype=np.float32)
+            except Exception:
+                vec = None
+        return vec, used
 
     def infer(self, features: Dict[str, Any]) -> Dict[str, Any]:
         vec, used = self.build_feature_vector(features)
@@ -125,7 +157,13 @@ class ServeMLBundle:
         current_score: Optional[float] = None
         vibration_score: Optional[float] = None
 
-        if "current" in self.metadata.modalities and self.ae_current is not None:
+        if (
+            np is not None
+            and torch is not None
+            and "current" in self.metadata.modalities
+            and self.ae_current is not None
+            and vec is not None
+        ):
             cur_mask = np.array([k.startswith("cur_") for k in self.feature_spec.feature_keys])
             cur_vec = vec[cur_mask] if cur_mask.any() else vec
             if self.scaler_current is not None and cur_vec.size > 0:
@@ -139,7 +177,13 @@ class ServeMLBundle:
                 except Exception:
                     current_score = None
 
-        if "vibration" in self.metadata.modalities and self.ae_vibration is not None:
+        if (
+            np is not None
+            and torch is not None
+            and "vibration" in self.metadata.modalities
+            and self.ae_vibration is not None
+            and vec is not None
+        ):
             vib_mask = np.array([k.startswith("vib_") for k in self.feature_spec.feature_keys])
             vib_vec = vec[vib_mask] if vib_mask.any() else vec
             if self.scaler_vibration is not None and vib_vec.size > 0:
@@ -155,7 +199,7 @@ class ServeMLBundle:
 
         # XGB 스코어 (case B 등)
         xgb_score: Optional[float] = None
-        if self.xgb_model is not None:
+        if self.xgb_model is not None and vec is not None:
             try:
                 import xgboost as xgb
                 d = xgb.DMatrix(vec.reshape(1, -1))
@@ -195,9 +239,37 @@ class ServeMLBundle:
             is_anomaly = is_anomaly or (xgb_score > th)
             confidences.append(min(1.0, xgb_score / max(th, 1e-6)))
 
-        confidence = float(np.mean(confidences)) if confidences else 0.0
+        if np is not None:
+            try:
+                confidence = float(np.mean(confidences)) if confidences else 0.0
+            except Exception:
+                confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
+        else:
+            confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
         results["is_anomaly"] = bool(is_anomaly)
         results["confidence"] = confidence
+
+        # NumPy/torch 사용이 불가한 환경에서의 완전한 폴백: 간단 규칙 기반
+        if (
+            (self.ae_current is None and self.ae_vibration is None and self.xgb_model is None)
+            or vec is None
+        ):
+            vib_rms = float(features.get("vib_rms", 0.0))
+            cur_vals = [float(features.get(k, 0.0)) for k in ("cur_x_rms", "cur_y_rms", "cur_z_rms")]
+            cur_rms = sum(cur_vals) / max(1, sum(1 for v in cur_vals if v != 0.0)) if any(cur_vals) else 0.0
+            th_v = results["thresholds"].get("vibration", 0.0)
+            th_c = results["thresholds"].get("current", 0.0)
+            is_anom = (vib_rms > th_v) or (cur_rms > th_c)
+            confs = []
+            if th_v > 0:
+                confs.append(min(1.0, vib_rms / th_v))
+            if th_c > 0:
+                confs.append(min(1.0, cur_rms / th_c))
+            results["is_anomaly"] = bool(is_anom)
+            results["confidence"] = float(sum(confs) / len(confs)) if confs else 0.0
+            results["scores"]["current"] = cur_rms
+            results["scores"]["vibration"] = vib_rms
+            results["scores"]["xgb"] = None
         return results
 
 
