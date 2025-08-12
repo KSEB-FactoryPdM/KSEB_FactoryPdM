@@ -1,7 +1,4 @@
-# 통합 Docker Compose 파일 (기존 호환성 유지)
-# 새로운 클러스터 분리 구조를 원하면 start-local.sh 스크립트를 사용하세요
-
-version: '3.8'
+# 통합 Docker Compose 파일 (Core/Compute 로컬 시뮬레이션 가능)
 
 services:
   # 백엔드 API 서버
@@ -19,6 +16,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - DEBUG=${DEBUG:-false}
       - ENVIRONMENT=${ENVIRONMENT:-local}
+      - RUL_CALIB_PATH=/app/configs/rul_calib.json
       
       - SERVE_ML_ROOT=/app/serve_ml
     depends_on:
@@ -29,6 +27,7 @@ services:
     volumes:
       - ./models:/app/models:ro
       - ./serve_ml:/app/serve_ml:ro
+      - ./configs:/app/configs:ro
     networks:
       - app-network
     healthcheck:
@@ -55,6 +54,22 @@ services:
       - mqtt
       - kafka
       - timescaledb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # 센서 시뮬레이터 (MQTT 퍼블리시)
+  sensor-simulator:
+    build: .
+    command: python -m app.services.unity_sensor_simulator --host mqtt --port 1883 --mode realtime --interval 1.0
+    environment:
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - SERVE_ML_ROOT=/app/serve_ml
+    volumes:
+      - ./serve_ml:/app/serve_ml:ro
+    depends_on:
+      - mqtt
     networks:
       - app-network
     restart: unless-stopped
@@ -128,6 +143,7 @@ services:
       - "5432:5432"
     volumes:
       - timescale_data:/var/lib/postgresql/data
+      - ./scripts/init_timescaledb.sql:/docker-entrypoint-initdb.d/init_timescaledb.sql:ro
     networks:
       - app-network
 
@@ -198,11 +214,14 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - POSTGRES_USER=${POSTGRES_USER:-user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./docker/grafana/provisioning/dashboards.yml:/etc/grafana/provisioning/dashboards.yml
+      - ./docker/grafana/provisioning/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
     depends_on:
       - prometheus
       - timescaledb

@@ -15,8 +15,11 @@ RUN apt-get update && apt-get install -y \
 # Python 의존성 파일 복사
 COPY requirements.txt .
 
-# Python 패키지 설치 (torch CPU 전용)
-RUN pip install torch==2.1.1 -f https://download.pytorch.org/whl/torch_stable.html && \
+# Python 패키지 설치 (torch CPU 전용 + 긴 타임아웃)
+ENV PIP_DEFAULT_TIMEOUT=300
+# CPU 전용 휠로 설치 (경량)
+RUN pip install --no-cache-dir torch==2.1.1+cpu -f https://download.pytorch.org/whl/torch_stable.html && \
+    pip install --no-cache-dir xgboost==2.0.2 && \
     pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사
