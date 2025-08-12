@@ -17,6 +17,7 @@ import {
 } from '@/lib/dynamicRecharts'
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
+import { useTranslation } from 'react-i18next'
 
 type MyPoint = {
   time: number
@@ -92,6 +93,7 @@ const nf = new Intl.NumberFormat('ko-KR')
 const formatNum = (n: number | null | undefined, fallback = '-') =>
   typeof n === 'number' && isFinite(n) ? nf.format(n) : fallback
 
+
 const fmtTimeShort = (sec: number, rangeKey: '1h' | '24h' | '7d') => {
   const d = new Date(sec * 1000)
   if (rangeKey === '1h' || rangeKey === '24h') {
@@ -110,7 +112,14 @@ const fmtDate = (iso: string | undefined) => {
 const hasField = (list: MyType | null | undefined, key: keyof MyPoint) =>
   !!list?.length && typeof list[list.length - 1]?.[key] === 'number'
 
-function downloadCSV(rows: Record<string, any>[], filename = 'monitoring.csv') {
+const RANGE_SEC: Record<'1h' | '24h' | '7d', number> = {
+  '1h': 3600,
+  '24h': 86400,
+  '7d': 604800,
+}
+
+type CSVRow = Record<string, string | number | boolean | null | undefined>
+function downloadCSV(rows: CSVRow[], filename = 'monitoring.csv') {
   if (!rows.length) return
   const headers = Object.keys(rows[0])
   const csv =
@@ -126,11 +135,12 @@ function downloadCSV(rows: Record<string, any>[], filename = 'monitoring.csv') {
 
 export default function MonitoringPage() {
   useRequireRole(['Admin', 'Engineer', 'Viewer'])
+  const { t } = useTranslation('common')
 
   /** 가독성 보장 변수: 요약 카드 등에서 rgb(var(--color-text-primary))를 확실히 표시 */
-  const pageVars: CSSProperties = {
-    ['--color-text-primary' as any]: '15 23 42', // slate-900
-  }
+  const pageVars = {
+    '--color-text-primary': '15 23 42', // slate-900
+  } as CSSProperties
 
   // WebSocket
   const socketUrl =
@@ -175,10 +185,9 @@ export default function MonitoringPage() {
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
   const hasAnomaly = !!(snap && snap.length && snap[snap.length - 1]?.total > 0)
-  const rangeSec: Record<'1h' | '24h' | '7d', number> = { '1h': 3600, '24h': 86400, '7d': 604800 }
   const filteredData = useMemo(() => {
     if (!snap || !snap.length) return []
-    const from = latestTs - rangeSec[timeRange]
+    const from = latestTs - RANGE_SEC[timeRange]
     return snap.filter((d) => d.time >= from)
   }, [snap, latestTs, timeRange])
 
@@ -213,7 +222,7 @@ export default function MonitoringPage() {
 
   const colors = useThemeColors()
   const xTick = (v: number) => fmtTimeShort(v, timeRange)
-  const tooltipLabel = (v: any) => {
+  const tooltipLabel = (v: number | string) => {
     const sec = typeof v === 'number' ? v : Number(v)
     if (!isFinite(sec)) return String(v)
     const d = new Date(sec * 1000)
@@ -231,10 +240,10 @@ export default function MonitoringPage() {
       {/* 전역 텍스트 가시성 보장 */}
       <div style={pageVars}>
         {/* 헤더 + 제어 */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">실시간 모니터링</h1>
-            <p className="text-sm text-slate-600">장비 상태, 이상 징후, 센서 신호를 실시간으로 확인하세요.</p>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="text-center sm:text-left">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('monitoring.title')}</h1>
+            <p className="mt-1 text-base text-slate-600">{t('monitoring.subtitle')}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -248,7 +257,7 @@ export default function MonitoringPage() {
               }`}
               aria-live="polite"
             >
-              {isConnecting ? '서버 연결 중…' : isError ? '연결 오류(자동 재시도)' : '실시간 연결됨'}
+              {isConnecting ? t('monitoring.connecting') : isError ? t('monitoring.error') : t('monitoring.connected')}
             </span>
 
             <button
@@ -256,9 +265,9 @@ export default function MonitoringPage() {
               onClick={() => setPaused((p) => !p)}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
               aria-pressed={paused}
-              title={paused ? '실시간 갱신 재개' : '실시간 갱신 일시정지'}
+              title={paused ? t('monitoring.resumeTitle') : t('monitoring.pauseTitle')}
             >
-              {paused ? '재개' : '일시정지'}
+              {paused ? t('monitoring.resume') : t('monitoring.pause')}
             </button>
 
             <button
@@ -266,9 +275,9 @@ export default function MonitoringPage() {
               onClick={onExportCSV}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
               disabled={!filteredData.length}
-              title="현재 범위 데이터 CSV 저장"
+              title={t('monitoring.exportTitle')}
             >
-              CSV 내보내기
+              {t('monitoring.exportCsv')}
             </button>
           </div>
         </div>
@@ -381,7 +390,13 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} allowDecimals={false} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'total']} />
+                  <Tooltip
+                    labelFormatter={tooltipLabel}
+                    formatter={(value: unknown) => [
+                      formatNum(Number(Array.isArray(value) ? value[0] : value)),
+                      'total',
+                    ]}
+                  />
                   <Line type="monotone" dataKey="total" stroke={hasAnomaly ? colors.danger : colors.accent} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -429,7 +444,13 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'RUL']} />
+                  <Tooltip
+                    labelFormatter={tooltipLabel}
+                    formatter={(value: unknown) => [
+                      formatNum(Number(Array.isArray(value) ? value[0] : value)),
+                      'RUL',
+                    ]}
+                  />
                   <Line type="monotone" dataKey="rul" stroke={colors.ptr} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -458,7 +479,13 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), String(sensor)]} />
+                  <Tooltip
+                    labelFormatter={tooltipLabel}
+                    formatter={(value: unknown) => [
+                      formatNum(Number(Array.isArray(value) ? value[0] : value)),
+                      String(sensor),
+                    ]}
+                  />
                   <Line type="monotone" dataKey={sensor as string} stroke={hasAnomaly ? colors.danger : colors.a} dot={false} />
                 </LineChart>
               </ResponsiveContainer>

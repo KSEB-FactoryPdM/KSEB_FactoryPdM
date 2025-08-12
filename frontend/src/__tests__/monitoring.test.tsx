@@ -49,7 +49,7 @@ describe('MonitoringPage', () => {
     const title = await screen.findByText('Anomaly Count (total)')
     const card = title.closest('div')!
 
-    expect(within(card).getByText('No data')).toBeInTheDocument()
+    expect(within(card).getByText(/No data|데이터 없음/)).toBeInTheDocument()
 
     const rulCard = screen.getByText('Latest RUL').closest('div')!
     server.send(
@@ -75,7 +75,7 @@ describe('MonitoringPage', () => {
     )
 
     await waitFor(() => {
-      expect(within(card).queryByText('No data')).not.toBeInTheDocument()
+      expect(within(card).queryByText(/No data|데이터 없음/)).not.toBeInTheDocument()
     })
     await waitFor(() => {
       expect(within(rulCard).getByText('5')).toBeInTheDocument()
