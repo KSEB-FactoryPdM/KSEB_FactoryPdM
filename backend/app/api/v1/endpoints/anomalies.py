@@ -148,9 +148,7 @@ async def get_anomaly_events(
         if device_id:
             conditions.append("equipment_id = :device_id")
             params["device_id"] = device_id
-        if severity:
-            conditions.append("severity = :severity")
-            params["severity"] = severity
+        # serve_ml_predictions 테이블에는 severity 컬럼이 없으므로 필터 제외
         if start_time:
             conditions.append("time >= :start_time")
             params["start_time"] = start_time
@@ -170,7 +168,9 @@ async def get_anomaly_events(
         params["limit"] = size
         params["offset"] = (page - 1) * size
         with engine.connect() as conn:
-            rows = [dict(r) for r in conn.execute(text(sql), params)]
+            result = conn.execute(text(sql), params)
+            cols = result.keys()
+            rows = [dict(zip(cols, r)) for r in result.fetchall()]
         return {"events": rows, "total": len(rows), "page": page, "size": size}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이상 이벤트 조회 실패: {str(e)}")

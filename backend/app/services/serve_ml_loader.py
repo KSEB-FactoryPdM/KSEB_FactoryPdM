@@ -25,11 +25,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import joblib
-import numpy as np
+try:
+    import joblib  # optional
+except Exception:  # pragma: no cover
+    joblib = None  # type: ignore
+import os
+try:
+    import numpy as np  # optional
+except Exception:  # pragma: no cover
+    np = None  # type: ignore
 import yaml
 
-import torch
+try:
+    import torch  # optional
+except Exception:  # pragma: no cover
+    torch = None  # type: ignore
 from sqlalchemy import text
 from loguru import logger
 from app.models.ae_defs import AE
@@ -107,8 +117,9 @@ class ServeMLBundle:
 
     def _maybe_load_torch_model(self, filename: str):
         path = self.bundle_dir / filename
-        if not path.exists():
-            logger.debug(f"AE 모델 파일 없음: {path}")
+        if not path.exists() or torch is None:
+            if not path.exists():
+                logger.debug(f"AE 모델 파일 없음: {path}")
             return None
         try:
             # 1) TorchScript 로드 시도
@@ -193,22 +204,24 @@ class ServeMLBundle:
 
     def _maybe_load_joblib(self, filename: str):
         path = self.bundle_dir / filename
-        if not path.exists():
+        if not path.exists() or joblib is None or np is None:
             return None
         try:
             return joblib.load(path)
         except Exception:
             class _IdentityScaler:
                 def transform(self, X):
-                    import numpy as _np
-                    X = _np.asarray(X, dtype=_np.float32)
-                    return _np.clip(X, -1e6, 1e6)
+                    X = np.asarray(X, dtype=np.float32)
+                    return np.clip(X, -1e6, 1e6)
             return _IdentityScaler()
 
     def _maybe_load_xgb_json(self, filename: str):
         path = self.bundle_dir / filename
         if not path.exists():
             logger.debug(f"XGB 모델 파일 없음: {path}")
+            return None
+        # 기본값: 환경변수로 활성화하지 않으면 XGBoost 비활성화
+        if os.getenv("SERVE_ML_ENABLE_XGB", "false").lower() != "true":
             return None
         try:
             import xgboost as xgb
@@ -280,8 +293,8 @@ class ServeMLBundle:
             logger.warning(f"재구성 MSE 계산 실패: {e}")
             return None
 
-    def build_feature_vector(self, features: Dict[str, Any]) -> Tuple[np.ndarray, Dict[str, float]]:
-        ordered: List[float] = []
+    def build_feature_vector(self, features: Dict[str, Any]) -> Tuple[Optional["np.ndarray"], Dict[str, float]]:
+        ordered_list: List[float] = []
         used: Dict[str, float] = {}
         mapping = self.feature_spec.mapping or {}
         order_keys: List[str]
@@ -295,18 +308,24 @@ class ServeMLBundle:
             order_keys = list(self.feature_spec.feature_keys or [])
         # 마지막 방어: 그래도 비어있으면 입력 features 키의 정렬된 목록 사용
         if not order_keys:
-            order_keys = sorted(list(features.keys()))
+            order_keys = sorted([k for k in features.keys()])
         # 벡터 생성
         for key in order_keys:
             try:
                 value = float(features.get(key, 0.0))
             except Exception:
                 value = 0.0
-            ordered.append(value)
+            ordered_list.append(value)
             used[key] = value
         # 순서 캐시
         self._order_keys = order_keys
-        return np.array(ordered, dtype=np.float32), used
+        vec = None
+        if np is not None:
+            try:
+                vec = np.array(ordered_list, dtype=np.float32)
+            except Exception:
+                vec = None
+        return vec, used
 
     def infer(self, features: Dict[str, Any]) -> Dict[str, Any]:
         vec, used = self.build_feature_vector(features)
@@ -319,7 +338,13 @@ class ServeMLBundle:
             self._ensure_current_loaded()
         _use_current = "current" in self.metadata.modalities
         logger.debug(f"current 모달리티 사용 여부={_use_current}, 모델 로드={(self.ae_current is not None)}")
-        if _use_current and self.ae_current is not None:
+        if (
+            np is not None
+            and torch is not None
+            and _use_current
+            and self.ae_current is not None
+            and vec is not None
+        ):
             # modal_map 우선 마스크 구성
             mapping = self.feature_spec.mapping or {}
             order_keys = self._order_keys or list(used.keys())
@@ -332,25 +357,34 @@ class ServeMLBundle:
             cur_vec = vec[cur_mask] if cur_mask.any() else np.array([], dtype=np.float32)
             if cur_vec.size > 0:
                 try:
-                    cur_vec = (self.scaler_current.transform(cur_vec.reshape(1, -1)) if self.scaler_current else np.clip(cur_vec, -1e6, 1e6)).reshape(-1)
+                    cur_vec = (
+                        self.scaler_current.transform(cur_vec.reshape(1, -1))
+                        if self.scaler_current
+                        else np.clip(cur_vec, -1e6, 1e6)
+                    ).reshape(-1)
                 except Exception:
                     cur_vec = np.clip(cur_vec, -1e6, 1e6)
-            with torch.no_grad():
-                try:
-                    if cur_vec.size > 0:
+                with torch.no_grad():
+                    try:
                         t = torch.from_numpy(cur_vec.astype(np.float32)).unsqueeze(0)
                         recon = self.ae_current(t)
                         current_score = self._compute_reconstruction_mse(t, recon)
                         logger.debug(f"current 스코어 계산 완료: {current_score}")
-                except Exception as e:
-                    logger.warning(f"current AE 추론 실패: {e}")
-                    current_score = None
+                    except Exception as e:
+                        logger.warning(f"current AE 추론 실패: {e}")
+                        current_score = None
 
         if "vibration" in self.metadata.modalities:
             self._ensure_vibration_loaded()
         _use_vibration = "vibration" in self.metadata.modalities
         logger.debug(f"vibration 모달리티 사용 여부={_use_vibration}, 모델 로드={(self.ae_vibration is not None)}")
-        if _use_vibration and self.ae_vibration is not None:
+        if (
+            np is not None
+            and torch is not None
+            and _use_vibration
+            and self.ae_vibration is not None
+            and vec is not None
+        ):
             mapping = self.feature_spec.mapping or {}
             order_keys = self._order_keys or list(used.keys())
             vib_names = list(mapping.get("vibration", []) or [])
@@ -361,24 +395,27 @@ class ServeMLBundle:
             vib_vec = vec[vib_mask] if vib_mask.any() else np.array([], dtype=np.float32)
             if vib_vec.size > 0:
                 try:
-                    vib_vec = (self.scaler_vibration.transform(vib_vec.reshape(1, -1)) if self.scaler_vibration else np.clip(vib_vec, -1e6, 1e6)).reshape(-1)
+                    vib_vec = (
+                        self.scaler_vibration.transform(vib_vec.reshape(1, -1))
+                        if self.scaler_vibration
+                        else np.clip(vib_vec, -1e6, 1e6)
+                    ).reshape(-1)
                 except Exception:
                     vib_vec = np.clip(vib_vec, -1e6, 1e6)
-            with torch.no_grad():
-                try:
-                    if vib_vec.size > 0:
+                with torch.no_grad():
+                    try:
                         t = torch.from_numpy(vib_vec.astype(np.float32)).unsqueeze(0)
                         recon = self.ae_vibration(t)
                         vibration_score = self._compute_reconstruction_mse(t, recon)
                         logger.debug(f"vibration 스코어 계산 완료: {vibration_score}")
-                except Exception as e:
-                    logger.warning(f"vibration AE 추론 실패: {e}")
-                    vibration_score = None
+                    except Exception as e:
+                        logger.warning(f"vibration AE 추론 실패: {e}")
+                        vibration_score = None
 
         # XGB 스코어 (case B 등)
         xgb_score: Optional[float] = None
         self._ensure_xgb_loaded()
-        if self.xgb_model is not None:
+        if self.xgb_model is not None and vec is not None:
             try:
                 import xgboost as xgb
                 xgb_input = vec
@@ -463,9 +500,37 @@ class ServeMLBundle:
             is_anomaly = is_anomaly or (xgb_score > th)
             confidences.append(min(1.0, xgb_score / max(th, 1e-6)))
 
-        confidence = float(np.mean(confidences)) if confidences else 0.0
+        if np is not None:
+            try:
+                confidence = float(np.mean(confidences)) if confidences else 0.0
+            except Exception:
+                confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
+        else:
+            confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
         results["is_anomaly"] = bool(is_anomaly)
         results["confidence"] = confidence
+
+        # NumPy/torch 사용이 불가한 환경에서의 완전한 폴백: 간단 규칙 기반
+        if (
+            (self.ae_current is None and self.ae_vibration is None and self.xgb_model is None)
+            or vec is None
+        ):
+            vib_rms = float(features.get("vib_rms", 0.0))
+            cur_vals = [float(features.get(k, 0.0)) for k in ("cur_x_rms", "cur_y_rms", "cur_z_rms")]
+            cur_rms = sum(cur_vals) / max(1, sum(1 for v in cur_vals if v != 0.0)) if any(cur_vals) else 0.0
+            th_v = results["thresholds"].get("vibration", 0.0)
+            th_c = results["thresholds"].get("current", 0.0)
+            is_anom = (vib_rms > th_v) or (cur_rms > th_c)
+            confs = []
+            if th_v > 0:
+                confs.append(min(1.0, vib_rms / th_v))
+            if th_c > 0:
+                confs.append(min(1.0, cur_rms / th_c))
+            results["is_anomaly"] = bool(is_anom)
+            results["confidence"] = float(sum(confs) / len(confs)) if confs else 0.0
+            results["scores"]["current"] = cur_rms
+            results["scores"]["vibration"] = vib_rms
+            results["scores"]["xgb"] = None
         return results
 
 

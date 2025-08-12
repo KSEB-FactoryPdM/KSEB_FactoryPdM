@@ -48,7 +48,9 @@ async def list_maintenance(
         params["limit"] = size
         params["offset"] = (page - 1) * size
         with engine.connect() as conn:
-            rows = [dict(r) for r in conn.execute(text(sql), params)]
+            res = conn.execute(text(sql), params)
+            cols = res.keys()
+            rows = [dict(zip(cols, r)) for r in res.fetchall()]
         return {"items": rows, "total": len(rows), "page": page, "size": size}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"정비 목록 조회 실패: {e}")
