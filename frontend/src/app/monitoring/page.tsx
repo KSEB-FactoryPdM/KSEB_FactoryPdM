@@ -17,6 +17,7 @@ import {
 } from '@/lib/dynamicRecharts'
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
+import { useTranslation } from 'react-i18next'
 
 type MyPoint = {
   time: number
@@ -126,6 +127,7 @@ function downloadCSV(rows: Record<string, any>[], filename = 'monitoring.csv') {
 
 export default function MonitoringPage() {
   useRequireRole(['Admin', 'Engineer', 'Viewer'])
+  const { t } = useTranslation('common')
 
   /** 가독성 보장 변수: 요약 카드 등에서 rgb(var(--color-text-primary))를 확실히 표시 */
   const pageVars: CSSProperties = {
@@ -231,10 +233,10 @@ export default function MonitoringPage() {
       {/* 전역 텍스트 가시성 보장 */}
       <div style={pageVars}>
         {/* 헤더 + 제어 */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">실시간 모니터링</h1>
-            <p className="text-sm text-slate-600">장비 상태, 이상 징후, 센서 신호를 실시간으로 확인하세요.</p>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="text-center sm:text-left">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{t('monitoring.title')}</h1>
+            <p className="mt-1 text-base text-slate-600">{t('monitoring.subtitle')}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -248,7 +250,7 @@ export default function MonitoringPage() {
               }`}
               aria-live="polite"
             >
-              {isConnecting ? '서버 연결 중…' : isError ? '연결 오류(자동 재시도)' : '실시간 연결됨'}
+              {isConnecting ? t('monitoring.connecting') : isError ? t('monitoring.error') : t('monitoring.connected')}
             </span>
 
             <button
@@ -256,9 +258,9 @@ export default function MonitoringPage() {
               onClick={() => setPaused((p) => !p)}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
               aria-pressed={paused}
-              title={paused ? '실시간 갱신 재개' : '실시간 갱신 일시정지'}
+              title={paused ? t('monitoring.resumeTitle') : t('monitoring.pauseTitle')}
             >
-              {paused ? '재개' : '일시정지'}
+              {paused ? t('monitoring.resume') : t('monitoring.pause')}
             </button>
 
             <button
@@ -266,9 +268,9 @@ export default function MonitoringPage() {
               onClick={onExportCSV}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
               disabled={!filteredData.length}
-              title="현재 범위 데이터 CSV 저장"
+              title={t('monitoring.exportTitle')}
             >
-              CSV 내보내기
+              {t('monitoring.exportCsv')}
             </button>
           </div>
         </div>

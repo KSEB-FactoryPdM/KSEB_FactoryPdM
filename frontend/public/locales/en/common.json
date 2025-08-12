@@ -98,5 +98,18 @@
       "acknowledged": "acknowledged",
       "cleared": "cleared"
     }
+  },
+  "monitoring": {
+    "title": "Real-time Monitoring",
+    "subtitle": "Check equipment status, anomalies, and sensor signals in real time.",
+    "connecting": "Connecting to server…",
+    "error": "Connection error (retrying)",
+    "connected": "Live connection",
+    "resume": "Resume",
+    "pause": "Pause",
+    "exportCsv": "Export CSV",
+    "resumeTitle": "Resume live updates",
+    "pauseTitle": "Pause live updates",
+    "exportTitle": "Save current range as CSV"
   }
 }
