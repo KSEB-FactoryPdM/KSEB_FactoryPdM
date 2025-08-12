@@ -16,8 +16,8 @@ class SlackBotService:
     """슬랙 봇 서비스 - 다이렉트 메시지 전송"""
     
     def __init__(self):
-        self.bot_token = settings.SLACK_BOT_TOKEN
-        self.admin_user_id = settings.SLACK_ADMIN_USER_ID
+        self.bot_token = getattr(settings, 'SLACK_BOT_TOKEN', None)
+        self.admin_user_id = getattr(settings, 'SLACK_ADMIN_USER_ID', None)
         self.base_url = "https://slack.com/api"
         
     def send_direct_message(self, notification: Notification) -> bool:

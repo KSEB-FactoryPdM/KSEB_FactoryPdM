@@ -10,8 +10,12 @@ import time
 from threading import Thread
 
 from app.core.config import settings
-from app.services.model_service import ModelService
-from app.services.data_service import DataService
+try:
+    from app.services.model_service import ModelService
+    from app.services.data_service import DataService
+except Exception:
+    ModelService = None  # 레거시 경로: serve_ml 서빙에서는 미사용
+    DataService = None
 from app.core.monitoring import record_model_training
 
 logger = logging.getLogger(__name__)
@@ -21,13 +25,16 @@ class ModelScheduler:
     """모델 재학습 스케줄러"""
     
     def __init__(self):
-        self.model_service = ModelService()
-        self.data_service = DataService()
+        self.model_service = ModelService() if ModelService else None
+        self.data_service = DataService() if DataService else None
         self.is_running = False
         self.scheduler_thread = None
         
     def start_scheduler(self):
         """스케줄러 시작"""
+        if not settings.ENABLE_MODEL_TRAINING:
+            logger.info("모델 재학습 스케줄러 비활성화(ENABLE_MODEL_TRAINING=false)")
+            return
         if self.is_running:
             logger.warning("스케줄러가 이미 실행 중입니다.")
             return
@@ -46,6 +53,9 @@ class ModelScheduler:
     
     def _run_scheduler(self):
         """스케줄러 실행"""
+        if not (self.model_service and self.data_service):
+            logger.info("모델 스케줄러 의존성이 없어 실행하지 않습니다.")
+            return
         # 매주 일요일 새벽 2시에 재학습 수행
         schedule.every().sunday.at("02:00").do(self._retrain_models)
         

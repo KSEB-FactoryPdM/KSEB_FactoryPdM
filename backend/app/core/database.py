@@ -62,16 +62,23 @@ async def create_timescale_tables():
     try:
         from sqlalchemy import text
         
-        with engine.connect() as conn:
-            # Unity 센서 데이터용 테이블 생성 (기존 테이블과 별도)
+        # Timescale 전용 엔진을 사용해 하이퍼테이블을 생성한다.
+        # DATABASE_URL과 TIMESCALE_URL이 다를 수 있으므로 반드시 Timescale 엔진을 사용.
+        ts_engine = get_timescale_engine()
+        with ts_engine.connect() as conn:
+            # Timescale 확장 보장
+            conn.execute(text("""
+                CREATE EXTENSION IF NOT EXISTS timescaledb;
+            """))
+            # Unity 센서 데이터용 테이블 생성 (프로젝트 포맷: x,y,z,vibe)
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS sensor_data (
                     time TIMESTAMPTZ NOT NULL,
-                    device VARCHAR(50) NOT NULL,
-                    device_id VARCHAR(50),
-                    sensor_type VARCHAR(20) NOT NULL,
+                    device TEXT NOT NULL,
+                    device_id TEXT,
+                    sensor_type TEXT NOT NULL, -- x|y|z|vibe
                     value DOUBLE PRECISION NOT NULL,
-                    unit VARCHAR(10),
+                    unit TEXT,
                     created_at TIMESTAMPTZ DEFAULT NOW(),
                     PRIMARY KEY (time, device, sensor_type)
                 );
@@ -96,6 +103,15 @@ async def create_timescale_tables():
             conn.execute(text("""
                 CREATE INDEX IF NOT EXISTS idx_sensor_data_device_type 
                 ON sensor_data (device, sensor_type);
+            """))
+
+            # 타입 베스트프랙티스 적용 (기존 VARCHAR → TEXT로 변경)
+            conn.execute(text("""
+                ALTER TABLE IF EXISTS sensor_data 
+                    ALTER COLUMN device TYPE TEXT,
+                    ALTER COLUMN device_id TYPE TEXT,
+                    ALTER COLUMN sensor_type TYPE TEXT,
+                    ALTER COLUMN unit TYPE TEXT;
             """))
             
             # 기존 테이블들도 유지 (호환성을 위해)

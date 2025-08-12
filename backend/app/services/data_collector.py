@@ -22,8 +22,8 @@ class DataCollector:
         self.kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')
         self.kafka_producer = None
         
-        # 토픽 설정
-        self.sensor_topic = "unity/sensors/+/data"    # MQTT 토픽 패턴 (Unity에서 전송)
+        # 토픽 설정: current(/data), vibration(/vibration) 모두 수신
+        self.sensor_topic = "unity/sensors/+/+"    # MQTT 토픽 패턴 (Unity에서 전송)
         self.kafka_raw_topic = "sensor-data-raw"      # Kafka 원본 데이터 토픽
         self.kafka_ai_topic = "ai-model-input"        # AI 모델 서비스 입력 토픽
         
@@ -35,26 +35,36 @@ class DataCollector:
         
     def init_kafka_producer(self):
         """Kafka Producer 초기화"""
-        try:
-            self.kafka_producer = KafkaProducer(
-                bootstrap_servers=self.kafka_servers.split(','),
-                value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-                key_serializer=lambda k: k.encode('utf-8') if k else None,
-                acks='all',
-                retries=3,
-                max_in_flight_requests_per_connection=1
-            )
-            logger.info(f"Kafka Producer 연결 성공: {self.kafka_servers}")
-        except Exception as e:
-            logger.error(f"Kafka Producer 연결 실패: {e}")
-            raise
+        import time
+        attempts = 0
+        last_err = None
+        while attempts < 30:
+            try:
+                self.kafka_producer = KafkaProducer(
+                    bootstrap_servers=self.kafka_servers.split(','),
+                    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+                    key_serializer=lambda k: k.encode('utf-8') if k else None,
+                    acks='all',
+                    retries=3,
+                    max_in_flight_requests_per_connection=1
+                )
+                logger.info(f"Kafka Producer 연결 성공: {self.kafka_servers}")
+                return
+            except Exception as e:
+                last_err = e
+                attempts += 1
+                logger.warning(f"Kafka 연결 재시도 {attempts}/30: {e}")
+                time.sleep(2)
+        logger.error(f"Kafka Producer 연결 실패: {last_err}")
+        raise last_err
             
     def init_mqtt_client(self):
         """MQTT 클라이언트 초기화"""
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
                 logger.info(f"MQTT 브로커 연결 성공: {self.mqtt_host}:{self.mqtt_port}")
-                client.subscribe(self.sensor_topic)
+                # 반드시 MQTT 연결 후 구독
+                client.subscribe(self.sensor_topic, qos=1)
                 logger.info(f"MQTT 토픽 구독: {self.sensor_topic}")
             else:
                 logger.error(f"MQTT 브로커 연결 실패. 코드: {rc}")
@@ -85,11 +95,55 @@ class DataCollector:
             # 연결 테스트
             with self.timescale_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
+                # 스키마 보장: sensor_data 없으면 생성
+                self.ensure_timescale_schema(conn)
             
             logger.info("TimescaleDB 연결 성공")
         except Exception as e:
             logger.error(f"TimescaleDB 연결 실패: {e}")
             raise
+
+    def ensure_timescale_schema(self, conn):
+        try:
+            conn.execute(text("""
+                CREATE EXTENSION IF NOT EXISTS timescaledb;
+                CREATE TABLE IF NOT EXISTS sensor_data (
+                    time TIMESTAMPTZ NOT NULL,
+                    device TEXT NOT NULL,
+                    device_id TEXT,
+                    sensor_type TEXT NOT NULL,
+                    value DOUBLE PRECISION NOT NULL,
+                    unit TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    PRIMARY KEY (time, device, sensor_type)
+                );
+            """))
+            conn.execute(text("""
+                SELECT create_hypertable('sensor_data','time', if_not_exists => TRUE);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_time 
+                ON sensor_data (device, time DESC);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_id_time 
+                ON sensor_data (device_id, time DESC);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_type 
+                ON sensor_data (device, sensor_type);
+            """))
+            # 기존 컬럼 타입을 TEXT로 변경
+            conn.execute(text("""
+                ALTER TABLE IF EXISTS sensor_data 
+                    ALTER COLUMN device TYPE TEXT,
+                    ALTER COLUMN device_id TYPE TEXT,
+                    ALTER COLUMN sensor_type TYPE TEXT,
+                    ALTER COLUMN unit TYPE TEXT;
+            """))
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"Timescale 스키마 보장 실패(무시하고 진행): {e}")
 
     def save_to_timescaledb(self, sensor_id: str, data: Dict[str, Any]):
         """Unity 센서 데이터를 TimescaleDB에 저장"""
@@ -98,37 +152,47 @@ class DataCollector:
                 logger.warning("TimescaleDB 연결이 없습니다")
                 return False
                 
-            # Unity 데이터 구조: {device, timestamp, x, y, z}
+            # Unity 데이터 구조:
+            #  - Current:  {device, timestamp, x, y, z}
+            #  - Vibration:{device, timestamp, vibe}
             device = data.get('device', sensor_id)
             timestamp = data.get('timestamp')
             
-            # x, y, z 값을 개별 센서 데이터로 저장
+            # x, y, z, vibe 값을 개별 센서 데이터로 저장
             sensor_values = []
             
             if 'x' in data:
                 sensor_values.append({
                     'time': timestamp,
                     'device': device,
-                    'sensor_type': 'temperature',
+                    'sensor_type': 'x',
                     'value': data['x'],
-                    'unit': 'celsius'
+                    'unit': ''
                 })
             
             if 'y' in data:
                 sensor_values.append({
                     'time': timestamp,
                     'device': device,
-                    'sensor_type': 'pressure',
+                    'sensor_type': 'y',
                     'value': data['y'],
-                    'unit': 'bar'
+                    'unit': ''
                 })
             
             if 'z' in data:
                 sensor_values.append({
                     'time': timestamp,
                     'device': device,
-                    'sensor_type': 'vibration',
+                    'sensor_type': 'z',
                     'value': data['z'],
+                    'unit': ''
+                })
+            if 'vibe' in data:
+                sensor_values.append({
+                    'time': timestamp,
+                    'device': device,
+                    'sensor_type': 'vibe',
+                    'value': data['vibe'],
                     'unit': 'mm/s'
                 })
             
@@ -157,10 +221,11 @@ class DataCollector:
     def process_mqtt_message(self, topic: str, payload: str):
         """MQTT 메시지 처리 및 Kafka로 전송"""
         try:
-            # 토픽에서 센서 ID 추출 (unity/sensors/SENSOR_ID/data)
+            # 토픽에서 센서 ID/타입 추출 (unity/sensors/{id}/{data|vibration})
             topic_parts = topic.split('/')
-            if len(topic_parts) >= 3:
+            if len(topic_parts) >= 4:
                 sensor_id = topic_parts[2]
+                leaf = topic_parts[3]
             else:
                 logger.warning(f"잘못된 토픽 형식: {topic}")
                 return
@@ -275,26 +340,15 @@ class DataCollector:
             sensor_data = data['data']
             device_id = sensor_data.get('device', 'unknown')
             
-            # 데이터 타입 분류
-            if 'x' in sensor_data and 'y' in sensor_data and 'z' in sensor_data:
-                # Current 센서 데이터 (3축)
+            # 데이터 타입 분류 (프로젝트 포맷)
+            if all(k in sensor_data for k in ('x','y','z')):
                 processed['sensor_type'] = 'current'
-                processed['values'] = {
-                    'x': sensor_data['x'],
-                    'y': sensor_data['y'], 
-                    'z': sensor_data['z']
-                }
-                # 3축 벡터 크기 계산
+                processed['values'] = {'x': sensor_data['x'],'y': sensor_data['y'],'z': sensor_data['z']}
                 import math
-                magnitude = math.sqrt(sensor_data['x']**2 + sensor_data['y']**2 + sensor_data['z']**2)
-                processed['magnitude'] = magnitude
-                
+                processed['magnitude'] = math.sqrt(sensor_data['x']**2 + sensor_data['y']**2 + sensor_data['z']**2)
             elif 'vibe' in sensor_data:
-                # Vibration 센서 데이터
                 processed['sensor_type'] = 'vibration'
-                processed['values'] = {
-                    'vibe': sensor_data['vibe']
-                }
+                processed['values'] = {'vibe': sensor_data['vibe']}
                 processed['magnitude'] = sensor_data['vibe']
                 
             else:
@@ -332,17 +386,23 @@ class DataCollector:
         logger.info("스마트팩토리 데이터 수집기 시작")
         
         try:
-            # TimescaleDB 연결 초기화
-            self.init_timescale_connection()
+            # TimescaleDB 연결 초기화 (선택)
+            if self.direct_timescale_write:
+                self.init_timescale_connection()
             
             # Kafka Producer 초기화
             self.init_kafka_producer()
             
-            # MQTT 클라이언트 초기화
+            # MQTT 클라이언트 초기화 및 연결 재시도
             self.init_mqtt_client()
-            
-            # MQTT 브로커 연결
-            self.mqtt_client.connect(self.mqtt_host, self.mqtt_port, 60)
+            import time
+            for i in range(30):
+                try:
+                    self.mqtt_client.connect(self.mqtt_host, self.mqtt_port, 60)
+                    break
+                except Exception as e:
+                    logger.warning(f"MQTT 연결 재시도 {i+1}/30: {e}")
+                    time.sleep(2)
             
             # MQTT 클라이언트 루프 시작
             self.mqtt_client.loop_start()

@@ -15,6 +15,7 @@ from app.core.websocket_manager import websocket_manager
 from app.models.notification import Notification
 from app.schemas.notification import NotificationCreate
 from app.services.slack_bot_service import slack_bot_service
+from app.services.tts_service import tts_service
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,16 @@ class NotificationService:
             # 4. 이메일 알림 전송
             self.send_email_notification(notification)
             
-            # 5. 웹 알림 이벤트 생성
+            # 5. TTS 파일 생성 (선택)
+            try:
+                tts_text = f"경고. {device_id} 장비 이상 탐지. 심각도 {severity}."
+                tts_path = tts_service.speak(tts_text)
+                if tts_path:
+                    logger.info(f"TTS 생성 완료: {tts_path}")
+            except Exception as e:
+                logger.warning(f"TTS 생성 실패: {e}")
+
+            # 6. 웹 알림 이벤트 생성
             self.create_web_notification_event(notification)
             
             logger.info(f"통합 알림 전송 완료: {device_id} - {severity}")

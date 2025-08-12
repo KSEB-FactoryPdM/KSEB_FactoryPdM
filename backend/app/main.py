@@ -40,10 +40,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"데이터베이스 초기화 실패: {e}")
     
-    # 모델 스케줄러 시작
+    # 모델 스케줄러 시작 (옵션)
     try:
         model_scheduler.start_scheduler()
-        logger.info("모델 재학습 스케줄러가 시작되었습니다.")
     except Exception as e:
         logger.error(f"스케줄러 시작 실패: {e}")
 
@@ -58,7 +57,7 @@ async def lifespan(app: FastAPI):
     # 종료 시 실행
     logger.info("애플리케이션 종료 중...")
     
-    # 스케줄러 중지
+    # 스케줄러 중지 (옵션)
     try:
         model_scheduler.stop_scheduler()
         logger.info("모델 재학습 스케줄러가 중지되었습니다.")
