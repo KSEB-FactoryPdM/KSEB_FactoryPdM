@@ -31,6 +31,8 @@ import yaml
 
 import torch
 from sqlalchemy import text
+from loguru import logger
+from app.models.ae_defs import AE
 
 
 @dataclass
@@ -53,11 +55,33 @@ class ServeMLBundle:
         self.bundle_dir = bundle_dir
         self.metadata: ModelMetadata = self._load_metadata()
         self.feature_spec: FeatureSpec = self._load_feature_spec()
-        self.ae_current = self._maybe_load_torch_model("ae_current.pt")
-        self.ae_vibration = self._maybe_load_torch_model("ae_vibration.pt")
-        self.scaler_current = self._maybe_load_joblib("standard_scaler_current.joblib")
-        self.scaler_vibration = self._maybe_load_joblib("standard_scaler_vibration.joblib")
-        self.xgb_model = self._maybe_load_xgb_json("xgb.json")
+        # 모델/스케일러는 지연 로딩으로 전환하여 불필요한 의존성 문제를 회피
+        self.ae_current = None
+        self.ae_vibration = None
+        self.scaler_current = None
+        self.scaler_vibration = None
+        self.xgb_model = None
+        # 입력 벡터 키 순서를 캐시 (modal_map 우선)
+        self._order_keys: List[str] = []
+        # XGB 메타
+        self.xgb_feature_names: Optional[List[str]] = None
+        self.xgb_num_features: Optional[int] = None
+
+    def _ensure_current_loaded(self):
+        if self.ae_current is None:
+            self.ae_current = self._maybe_load_torch_model("ae_current.pt")
+        if self.scaler_current is None:
+            self.scaler_current = self._maybe_load_joblib("standard_scaler_current.joblib")
+
+    def _ensure_vibration_loaded(self):
+        if self.ae_vibration is None:
+            self.ae_vibration = self._maybe_load_torch_model("ae_vibration.pt")
+        if self.scaler_vibration is None:
+            self.scaler_vibration = self._maybe_load_joblib("standard_scaler_vibration.joblib")
+
+    def _ensure_xgb_loaded(self):
+        if self.xgb_model is None:
+            self.xgb_model = self._maybe_load_xgb_json("xgb.json")
 
     def _load_metadata(self) -> ModelMetadata:
         meta_path = self.bundle_dir / "metadata.json"
@@ -84,38 +108,204 @@ class ServeMLBundle:
     def _maybe_load_torch_model(self, filename: str):
         path = self.bundle_dir / filename
         if not path.exists():
+            logger.debug(f"AE 모델 파일 없음: {path}")
             return None
         try:
-            return torch.jit.load(str(path), map_location="cpu")
-        except Exception:
-            return None
+            # 1) TorchScript 로드 시도
+            model = torch.jit.load(str(path), map_location="cpu")
+            try:
+                model.eval()
+            except Exception:
+                pass
+            logger.info(f"AE 모델 로드 성공(TorchScript): {path}")
+            return model
+        except Exception as e_ts:
+            # 2) 일반 PyTorch pickle 로드로 폴백
+            try:
+                obj = torch.load(str(path), map_location="cpu")
+                # state_dict로 저장된 경우 AE 구조 재구성
+                import collections
+                if isinstance(obj, (collections.OrderedDict, dict)):
+                    try:
+                        # 입력 차원 및 기본 hidden/latent 설정
+                        if "current" in filename:
+                            input_dim = sum(1 for k in self.feature_spec.feature_keys if k.startswith("cur_"))
+                            ae_key = "ae_current"
+                            hidden_default = [128, 64]
+                        else:
+                            input_dim = sum(1 for k in self.feature_spec.feature_keys if k.startswith("vib_"))
+                            ae_key = "ae_vibration"
+                            hidden_default = [256, 128]
+
+                        # metadata.json에서 하이퍼파라미터 추출 시도
+                        cfg = {}
+                        try:
+                            meta_json = json.loads((self.bundle_dir / "metadata.json").read_text(encoding="utf-8"))
+                            cfg = meta_json.get(ae_key, {}) or {}
+                        except Exception:
+                            cfg = {}
+
+                        hidden = cfg.get("hidden", hidden_default)
+                        if isinstance(hidden, str) and "," in hidden:
+                            try:
+                                hidden = [int(s.strip()) for s in hidden.split(",")]
+                            except Exception:
+                                hidden = hidden_default
+                        elif isinstance(hidden, int):
+                            hidden = [hidden]
+                        elif not isinstance(hidden, list):
+                            hidden = hidden_default
+                        latent_dim = int(cfg.get("latent_dim", 16))
+
+                        model = AE(input_dim=input_dim, hidden=hidden, latent_dim=latent_dim)
+                        state_dict = obj
+                        # DataParallel 저장 대비 'module.' 접두 제거
+                        if any(k.startswith("module.") for k in state_dict.keys()):
+                            state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
+                        missing, unexpected = model.load_state_dict(state_dict, strict=False)
+                        if missing:
+                            logger.warning(f"AE state_dict 로드: 누락 파라미터 {len(missing)}개")
+                        if unexpected:
+                            logger.warning(f"AE state_dict 로드: 예상치 못한 파라미터 {len(unexpected)}개")
+                        try:
+                            model.eval()
+                        except Exception:
+                            pass
+                        logger.info(
+                            f"AE 모델 재구성 및 state_dict 로드 성공: {path} (input_dim={input_dim}, hidden={hidden}, latent={latent_dim})"
+                        )
+                        return model
+                    except Exception as e_recon:
+                        logger.warning(f"AE state_dict 로드 실패(재구성 불가): {path} - {e_recon}")
+                        return None
+
+                # nn.Module로 저장된 경우 그대로 사용
+                model = obj
+                try:
+                    model.eval()
+                except Exception:
+                    pass
+                logger.info(f"AE 모델 로드 성공(torch.load 폴백): {path}")
+                return model
+            except Exception as e_pk:
+                logger.warning(f"AE 모델 로드 실패: {path} - TorchScript: {e_ts} / torch.load: {e_pk}")
+                return None
 
     def _maybe_load_joblib(self, filename: str):
         path = self.bundle_dir / filename
         if not path.exists():
             return None
-        return joblib.load(path)
+        try:
+            return joblib.load(path)
+        except Exception:
+            class _IdentityScaler:
+                def transform(self, X):
+                    import numpy as _np
+                    X = _np.asarray(X, dtype=_np.float32)
+                    return _np.clip(X, -1e6, 1e6)
+            return _IdentityScaler()
 
     def _maybe_load_xgb_json(self, filename: str):
         path = self.bundle_dir / filename
         if not path.exists():
+            logger.debug(f"XGB 모델 파일 없음: {path}")
             return None
         try:
             import xgboost as xgb
             booster = xgb.Booster()
             booster.load_model(str(path))
+            logger.info(f"XGB 모델 로드 성공: {path}")
+            # feature names/num_feature 파악
+            try:
+                names = booster.feature_names
+            except Exception:
+                names = None
+            if names:
+                self.xgb_feature_names = list(names)
+                logger.debug(f"XGB feature_names 감지: {len(self.xgb_feature_names)}개")
+            try:
+                import json as _json
+                cfg = _json.loads(booster.save_config())
+                nfeat = cfg.get('learner', {}).get('learner_model_param', {}).get('num_feature')
+                if nfeat is not None:
+                    self.xgb_num_features = int(nfeat)
+                    logger.debug(f"XGB num_feature 감지: {self.xgb_num_features}")
+            except Exception:
+                pass
             return booster
-        except Exception:
+        except Exception as e:
+            logger.warning(f"XGB 모델 로드 실패: {path} - {e}")
+            return None
+
+    def _extract_tensor_output(self, output):
+        """모델 출력에서 텐서를 추출한다. (tuple/list/dict 대응)"""
+        try:
+            # list/tuple → 첫 요소 사용
+            if isinstance(output, (list, tuple)) and len(output) > 0:
+                output = output[0]
+            # dict → 자주 쓰는 키 우선 사용, 없으면 첫 값
+            elif isinstance(output, dict):
+                for key in ("recon", "output", "x_hat", "decoded", "y"):
+                    if key in output:
+                        output = output[key]
+                        break
+                if isinstance(output, dict):
+                    # 키를 못 찾았으면 첫 값
+                    output = next(iter(output.values()))
+            if not torch.is_tensor(output):
+                output = torch.as_tensor(output)
+            return output
+        except Exception as e:
+            logger.warning(f"모델 출력 텐서 변환 실패: {e}")
+            return None
+
+    def _compute_reconstruction_mse(self, t: torch.Tensor, recon_output) -> Optional[float]:
+        """재구성 MSE를 안전하게 계산한다."""
+        try:
+            recon = self._extract_tensor_output(recon_output)
+            if recon is None:
+                return None
+            # 배치 차원 정규화
+            if recon.ndim == 1:
+                recon = recon.unsqueeze(0)
+            if t.shape != recon.shape:
+                if recon.numel() == t.numel():
+                    recon = recon.reshape_as(t)
+                else:
+                    logger.warning(f"AE 출력/입력 shape 불일치: input={tuple(t.shape)}, output={tuple(recon.shape)}")
+                    return None
+            mse = torch.mean((t - recon) ** 2).item()
+            return float(mse)
+        except Exception as e:
+            logger.warning(f"재구성 MSE 계산 실패: {e}")
             return None
 
     def build_feature_vector(self, features: Dict[str, Any]) -> Tuple[np.ndarray, Dict[str, float]]:
         ordered: List[float] = []
         used: Dict[str, float] = {}
-        for key in self.feature_spec.feature_keys:
-            mapped_key = key  # feature_spec가 직접 키 순서를 제공하므로 그대로 사용
-            value = float(features.get(mapped_key, 0.0))
+        mapping = self.feature_spec.mapping or {}
+        order_keys: List[str]
+        # modal_map/mapping이 있으면 현재/진동 순서대로 결합
+        if isinstance(mapping, dict) and (mapping.get("current") or mapping.get("vibration")):
+            cur_keys = list(mapping.get("current", []) or [])
+            vib_keys = list(mapping.get("vibration", []) or [])
+            order_keys = cur_keys + vib_keys
+        else:
+            # feature_keys가 있으면 그대로 사용
+            order_keys = list(self.feature_spec.feature_keys or [])
+        # 마지막 방어: 그래도 비어있으면 입력 features 키의 정렬된 목록 사용
+        if not order_keys:
+            order_keys = sorted(list(features.keys()))
+        # 벡터 생성
+        for key in order_keys:
+            try:
+                value = float(features.get(key, 0.0))
+            except Exception:
+                value = 0.0
             ordered.append(value)
-            used[mapped_key] = value
+            used[key] = value
+        # 순서 캐시
+        self._order_keys = order_keys
         return np.array(ordered, dtype=np.float32), used
 
     def infer(self, features: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,42 +315,120 @@ class ServeMLBundle:
         current_score: Optional[float] = None
         vibration_score: Optional[float] = None
 
-        if "current" in self.metadata.modalities and self.ae_current is not None:
-            cur_mask = np.array([k.startswith("cur_") for k in self.feature_spec.feature_keys])
-            cur_vec = vec[cur_mask] if cur_mask.any() else vec
-            if self.scaler_current is not None and cur_vec.size > 0:
-                cur_vec = self.scaler_current.transform(cur_vec.reshape(1, -1)).reshape(-1)
+        if "current" in self.metadata.modalities:
+            self._ensure_current_loaded()
+        _use_current = "current" in self.metadata.modalities
+        logger.debug(f"current 모달리티 사용 여부={_use_current}, 모델 로드={(self.ae_current is not None)}")
+        if _use_current and self.ae_current is not None:
+            # modal_map 우선 마스크 구성
+            mapping = self.feature_spec.mapping or {}
+            order_keys = self._order_keys or list(used.keys())
+            cur_names = list(mapping.get("current", []) or [])
+            if not cur_names:
+                # 접두사 기반 추정
+                cur_names = [k for k in order_keys if isinstance(k, str) and k.startswith("cur_")]
+            cur_set = set(cur_names)
+            cur_mask = np.array([k in cur_set for k in order_keys])
+            cur_vec = vec[cur_mask] if cur_mask.any() else np.array([], dtype=np.float32)
+            if cur_vec.size > 0:
+                try:
+                    cur_vec = (self.scaler_current.transform(cur_vec.reshape(1, -1)) if self.scaler_current else np.clip(cur_vec, -1e6, 1e6)).reshape(-1)
+                except Exception:
+                    cur_vec = np.clip(cur_vec, -1e6, 1e6)
             with torch.no_grad():
                 try:
-                    t = torch.from_numpy(cur_vec.astype(np.float32)).unsqueeze(0)
-                    recon = self.ae_current(t)
-                    mse = torch.mean((t - recon) ** 2).item()
-                    current_score = float(mse)
-                except Exception:
+                    if cur_vec.size > 0:
+                        t = torch.from_numpy(cur_vec.astype(np.float32)).unsqueeze(0)
+                        recon = self.ae_current(t)
+                        current_score = self._compute_reconstruction_mse(t, recon)
+                        logger.debug(f"current 스코어 계산 완료: {current_score}")
+                except Exception as e:
+                    logger.warning(f"current AE 추론 실패: {e}")
                     current_score = None
 
-        if "vibration" in self.metadata.modalities and self.ae_vibration is not None:
-            vib_mask = np.array([k.startswith("vib_") for k in self.feature_spec.feature_keys])
-            vib_vec = vec[vib_mask] if vib_mask.any() else vec
-            if self.scaler_vibration is not None and vib_vec.size > 0:
-                vib_vec = self.scaler_vibration.transform(vib_vec.reshape(1, -1)).reshape(-1)
+        if "vibration" in self.metadata.modalities:
+            self._ensure_vibration_loaded()
+        _use_vibration = "vibration" in self.metadata.modalities
+        logger.debug(f"vibration 모달리티 사용 여부={_use_vibration}, 모델 로드={(self.ae_vibration is not None)}")
+        if _use_vibration and self.ae_vibration is not None:
+            mapping = self.feature_spec.mapping or {}
+            order_keys = self._order_keys or list(used.keys())
+            vib_names = list(mapping.get("vibration", []) or [])
+            if not vib_names:
+                vib_names = [k for k in order_keys if isinstance(k, str) and k.startswith("vib_")]
+            vib_set = set(vib_names)
+            vib_mask = np.array([k in vib_set for k in order_keys])
+            vib_vec = vec[vib_mask] if vib_mask.any() else np.array([], dtype=np.float32)
+            if vib_vec.size > 0:
+                try:
+                    vib_vec = (self.scaler_vibration.transform(vib_vec.reshape(1, -1)) if self.scaler_vibration else np.clip(vib_vec, -1e6, 1e6)).reshape(-1)
+                except Exception:
+                    vib_vec = np.clip(vib_vec, -1e6, 1e6)
             with torch.no_grad():
                 try:
-                    t = torch.from_numpy(vib_vec.astype(np.float32)).unsqueeze(0)
-                    recon = self.ae_vibration(t)
-                    mse = torch.mean((t - recon) ** 2).item()
-                    vibration_score = float(mse)
-                except Exception:
+                    if vib_vec.size > 0:
+                        t = torch.from_numpy(vib_vec.astype(np.float32)).unsqueeze(0)
+                        recon = self.ae_vibration(t)
+                        vibration_score = self._compute_reconstruction_mse(t, recon)
+                        logger.debug(f"vibration 스코어 계산 완료: {vibration_score}")
+                except Exception as e:
+                    logger.warning(f"vibration AE 추론 실패: {e}")
                     vibration_score = None
 
         # XGB 스코어 (case B 등)
         xgb_score: Optional[float] = None
+        self._ensure_xgb_loaded()
         if self.xgb_model is not None:
             try:
                 import xgboost as xgb
-                d = xgb.DMatrix(vec.reshape(1, -1))
+                xgb_input = vec
+                expected = self.xgb_num_features
+                # 현재 순서/이름들
+                order_keys = self._order_keys or list(used.keys())
+                mapping = self.feature_spec.mapping or {}
+                cur_names = list(mapping.get("current", []) or [])
+                vib_names = list(mapping.get("vibration", []) or [])
+                if not cur_names:
+                    cur_names = [k for k in order_keys if isinstance(k, str) and k.startswith("cur_")]
+                if not vib_names:
+                    vib_names = [k for k in order_keys if isinstance(k, str) and k.startswith("vib_")]
+
+                # 1) feature_names가 있으면 그 순서대로 매핑
+                if self.xgb_feature_names:
+                    vals: List[float] = []
+                    missing = 0
+                    for fname in self.xgb_feature_names:
+                        v = used.get(fname)
+                        if v is None:
+                            missing += 1
+                            v = 0.0
+                        vals.append(float(v))
+                    if missing:
+                        logger.warning(f"XGB feature_names 중 입력에 없는 키 {missing}개를 0으로 채움")
+                    xgb_input = np.asarray(vals, dtype=np.float32)
+                # 2) 기대 열 수가 있으면 휴리스틱 매핑
+                elif expected is not None and expected != vec.size:
+                    # 이름 기반 벡터 구성
+                    name_to_val = used
+                    cur_vec = np.asarray([float(name_to_val.get(n, 0.0)) for n in cur_names], dtype=np.float32) if cur_names else np.array([], dtype=np.float32)
+                    vib_vec = np.asarray([float(name_to_val.get(n, 0.0)) for n in vib_names], dtype=np.float32) if vib_names else np.array([], dtype=np.float32)
+                    if vib_vec.size == expected:
+                        xgb_input = vib_vec
+                        logger.debug("XGB 입력: vibration 벡터 사용")
+                    elif cur_vec.size == expected:
+                        xgb_input = cur_vec
+                        logger.debug("XGB 입력: current 벡터 사용")
+                    elif (cur_vec.size + vib_vec.size) == expected:
+                        xgb_input = np.concatenate([cur_vec, vib_vec], axis=0)
+                        logger.debug("XGB 입력: current+vibration 결합 사용")
+                    else:
+                        logger.warning(f"XGB 기대 특성수 {expected}와 입력 {vec.size} 불일치. 선두 {expected}개로 절삭")
+                        xgb_input = vec[:expected]
+
+                d = xgb.DMatrix(xgb_input.reshape(1, -1))
                 xgb_score = float(self.xgb_model.predict(d)[0])
-            except Exception:
+            except Exception as e:
+                logger.warning(f"XGB 추론 실패: {e}")
                 xgb_score = None
 
         # 임계값
