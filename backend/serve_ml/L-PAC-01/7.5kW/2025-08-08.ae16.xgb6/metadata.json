@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-PAC-01",
+  "power": "7.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "bearing"
+  ],
+  "th_ae": {
+    "current": 1.2969601154327393,
+    "vibration": 3.747114896774292
+  },
+  "files_sha256": {
+    "metadata.json": "337df379d6c0c8227375b39feee9f5ee2c5d2abf869bbae38b1723ccec750962",
+    "ae_vibration.pt": "1e0e594e33b530048e67c5b009e75fecef9410a8aafe263ce002a337faa66124",
+    "ae_current.pt": "94c805505120c398738101038729378ffb63c2361c96a23a494d9f9efab354f1",
+    "standard_scaler_vibration.joblib": "8fe9442ebbcfd0ca16d75551796107882ac5f52c5ead5cde8fbf24b9b4b63856",
+    "xgb.json": "c2348f72e1499ed7f3ee00511af01ad4016265ac69e0f75de42a50e85f86c367",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "f2bb3487635864a60bc7f627ad3c5586f957f6ba521565ecfdab0a215bd1f4a8"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "bearing"
+  },
+  "metrics": {
+    "accuracy": 0.9973474801061007,
+    "f1_macro": 0.8743333333333334,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1-score": 0.75,
+        "support": 5.0
+      },
+      "bearing": {
+        "precision": 0.9973368841544608,
+        "recall": 1.0,
+        "f1-score": 0.9986666666666667,
+        "support": 749.0
+      },
+      "accuracy": 0.9973474801061007,
+      "macro avg": {
+        "precision": 0.9986684420772304,
+        "recall": 0.8,
+        "f1-score": 0.8743333333333334,
+        "support": 754.0
+      },
+      "weighted avg": {
+        "precision": 0.9973545440738609,
+        "recall": 0.9973474801061007,
+        "f1-score": 0.9970176834659594,
+        "support": 754.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        3,
+        2
+      ],
+      [
+        0,
+        749
+      ]
+    ]
+  }
+}

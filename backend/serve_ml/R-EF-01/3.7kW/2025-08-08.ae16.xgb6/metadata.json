@@ -1,0 +1,68 @@
+{
+  "equipment_id": "R-EF-01",
+  "power": "3.7kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 1.8810992240905762,
+    "vibration": null
+  },
+  "files_sha256": {
+    "metadata.json": "87b836c86a2d6025875e94e1e2589c231b00c0c3af07ae65600d395f0114f81a",
+    "ae_current.pt": "5fc552c62b10543887ce14f0379c9be3ab94aedc02496b6c8137503083981109",
+    "xgb.json": "384e1a89b0d8ac47db8dd4bb29e2e716da9b48b1e259d1f8843c838578184bb2",
+    "feature_spec.yaml": "2776c717af2ec613692cbc7af3b21c99f381fde37d870fc88fdf8024f9435c5d",
+    "standard_scaler_current.joblib": "03c84ccd4ed9bb30ad3ed3bcb5b3834924aaccc903885165f7214d0859f9dbf5"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.9982698961937716,
+    "f1_macro": 0.49956709956709955,
+    "classification_report": {
+      "normal": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 1.0
+      },
+      "misalign": {
+        "precision": 0.9982698961937716,
+        "recall": 1.0,
+        "f1-score": 0.9991341991341991,
+        "support": 577.0
+      },
+      "accuracy": 0.9982698961937716,
+      "macro avg": {
+        "precision": 0.4991349480968858,
+        "recall": 0.5,
+        "f1-score": 0.49956709956709955,
+        "support": 578.0
+      },
+      "weighted avg": {
+        "precision": 0.9965427856467236,
+        "recall": 0.9982698961937716,
+        "f1-score": 0.9974055932533441,
+        "support": 578.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        577
+      ]
+    ]
+  }
+}

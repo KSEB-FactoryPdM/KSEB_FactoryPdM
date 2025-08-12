@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-DSF-01",
+  "power": "2.2kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 40.634971618652344,
+    "vibration": 8.620895385742188
+  },
+  "files_sha256": {
+    "metadata.json": "120a4452d18bedf36b50580ed8e688f809ed67d55eba0a88cc3082a537c50bbc",
+    "ae_vibration.pt": "16aa3271619b8c7f936c5cd1fe1bc7d7fedd80efd0e18e3a308c18fa7aec0689",
+    "ae_current.pt": "78887c162047f7bb6d760e5a8582558c624257edb63a0481bdb55c8c916bda5c",
+    "standard_scaler_vibration.joblib": "e756278deb0c1c27ca1d22e42a453d0f5c9e0b3673d7d44db323da6282679dff",
+    "xgb.json": "5d7fbce60e3798c55d0aa7bc61cff8f170860315048f3c93f4dc900c9199f2c3",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "4b8e8f0bad4badc8f1d19c0146379463c976b0b9b353fcee02f08165786cd372"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.9559543230016313,
+    "f1_macro": 0.9302778187332814,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9727272727272728,
+        "recall": 0.816793893129771,
+        "f1-score": 0.8879668049792531,
+        "support": 131.0
+      },
+      "misalign": {
+        "precision": 0.952286282306163,
+        "recall": 0.9937759336099585,
+        "f1-score": 0.9725888324873097,
+        "support": 482.0
+      },
+      "accuracy": 0.9559543230016313,
+      "macro avg": {
+        "precision": 0.9625067775167179,
+        "recall": 0.9052849133698648,
+        "f1-score": 0.9302778187332814,
+        "support": 613.0
+      },
+      "weighted avg": {
+        "precision": 0.9566545853162207,
+        "recall": 0.9559543230016313,
+        "f1-score": 0.9545048429219664,
+        "support": 613.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        107,
+        24
+      ],
+      [
+        3,
+        479
+      ]
+    ]
+  }
+}

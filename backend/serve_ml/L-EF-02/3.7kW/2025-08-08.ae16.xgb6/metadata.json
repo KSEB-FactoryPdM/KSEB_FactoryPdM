@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-EF-02",
+  "power": "3.7kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "bearing"
+  ],
+  "th_ae": {
+    "current": 2.5892765522003174,
+    "vibration": 7.737681865692139
+  },
+  "files_sha256": {
+    "metadata.json": "b0284b7fb0ca50f65a09d50a8e7c33590990448ae804c9cd7884d23fb512959a",
+    "ae_vibration.pt": "6888c60df53a4047e584544f0f45bfad05cecd5675de46f773facf3dfa5408b2",
+    "ae_current.pt": "e58bd80fdb9a3432e43d758bde8be4d304df3d9e968274e1943975eb96aa4f5b",
+    "standard_scaler_vibration.joblib": "af6f9b156af04941563b7b2e63cbdaadc46e9d778c97db4d62dc6b8952d99b38",
+    "xgb.json": "a33cff6287073956837c0d9b076da42849e378424ccacb663615616e714e1154",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "e9b27e88086efa1943c892f12247e9b9d5527a74260502aaadcd5c85b9eb9258"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "bearing"
+  },
+  "metrics": {
+    "accuracy": 1.0,
+    "f1_macro": 1.0,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 23.0
+      },
+      "bearing": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 539.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 562.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 562.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        23,
+        0
+      ],
+      [
+        0,
+        539
+      ]
+    ]
+  }
+}

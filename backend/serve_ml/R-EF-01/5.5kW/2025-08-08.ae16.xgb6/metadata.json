@@ -1,0 +1,20 @@
+{
+  "equipment_id": "R-EF-01",
+  "power": "5.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current"
+  ],
+  "case": "A",
+  "faults": [],
+  "th_ae": {
+    "current": 73.67837524414062,
+    "vibration": null
+  },
+  "files_sha256": {
+    "metadata.json": "1f420d5b1e98f47e69efe9e8e00fa98471051a1b1f9a598ee5fe846394f488a3",
+    "ae_current.pt": "1770d18dcb11056e5eb70828fbc93e3b1d714e35b14e1701c17b2c5bb159251f",
+    "feature_spec.yaml": "2776c717af2ec613692cbc7af3b21c99f381fde37d870fc88fdf8024f9435c5d",
+    "standard_scaler_current.joblib": "25239aebead799cba839c6a3c753a442fc0daff17ca3d3a416058aed90e002ab"
+  }
+}

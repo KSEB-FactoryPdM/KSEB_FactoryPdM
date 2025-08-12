@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-PAC-01",
+  "power": "3.7kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "unbalance"
+  ],
+  "th_ae": {
+    "current": 0.9173135161399841,
+    "vibration": 10.175566673278809
+  },
+  "files_sha256": {
+    "metadata.json": "cbe3bbb89d51cb0d54d31abb7e56cace78df593b48f62811521ff645d7d731ec",
+    "ae_vibration.pt": "362103a388134d6ab73bb80ff43cb5b6f767e3836dd8c7176f5ebe2e409c96e3",
+    "ae_current.pt": "28cd901d0d452c310ea5d2671cb55a62271b85f2f04471be15426aeb52aae9b7",
+    "standard_scaler_vibration.joblib": "fe9e76a4f0359366030f3df07c3811459015e3854a4536f02e73a0da1ae07f34",
+    "xgb.json": "7556a7c3e48ee53be564a412face39eb85249c0b3fd0978b2d230d0bd40ac35d",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "bd2df73f5bfe747906f179c8978c6b29cb336a2824fbf29df6d837fbda99f223"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "unbalance"
+  },
+  "metrics": {
+    "accuracy": 0.9987878787878788,
+    "f1_macro": 0.4996967859308672,
+    "classification_report": {
+      "normal": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 1.0
+      },
+      "unbalance": {
+        "precision": 0.9987878787878788,
+        "recall": 1.0,
+        "f1-score": 0.9993935718617344,
+        "support": 824.0
+      },
+      "accuracy": 0.9987878787878788,
+      "macro avg": {
+        "precision": 0.4993939393939394,
+        "recall": 0.5,
+        "f1-score": 0.4996967859308672,
+        "support": 825.0
+      },
+      "weighted avg": {
+        "precision": 0.9975772268135904,
+        "recall": 0.9987878787878788,
+        "f1-score": 0.9981821857140232,
+        "support": 825.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        824
+      ]
+    ]
+  }
+}

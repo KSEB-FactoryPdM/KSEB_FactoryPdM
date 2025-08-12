@@ -1,0 +1,23 @@
+{
+  "equipment_id": "L-CAHU-03R",
+  "power": "11kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "A",
+  "faults": [],
+  "th_ae": {
+    "current": 22.581083297729492,
+    "vibration": 6.798672199249268
+  },
+  "files_sha256": {
+    "metadata.json": "cd1e60e4a05b866c61ef96a8a71ef3dca1845c1e9e53713cb4421d574561b9b0",
+    "ae_vibration.pt": "da365bfa9a64f9cf70e256b075801588fdf51046e5858ebd0961e5522ef638e8",
+    "ae_current.pt": "0633558448bce29cf8d0c022d6f4ea498b0a831e924b845593e376241c81afa7",
+    "standard_scaler_vibration.joblib": "f6cb3e68ad89154744929a76597fba18087fba5cb802c58225bd9a32716490a3",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "b01b6d9b71b0ad5f15a45582f6bace8e0336918dda8a0ce225623d0f635a60dd"
+  }
+}

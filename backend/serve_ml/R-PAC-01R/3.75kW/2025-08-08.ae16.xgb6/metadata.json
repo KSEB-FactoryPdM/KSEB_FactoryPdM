@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-PAC-01R",
+  "power": "3.75kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 1.849523663520813,
+    "vibration": 2.4519553184509277
+  },
+  "files_sha256": {
+    "metadata.json": "34273722d0c4966e8d458febc8e07b8b9f24b816b99906ac67cdd0937e04248d",
+    "ae_vibration.pt": "8b52c628d3a59002ab333ca631e2c7d69ea2b57c997c9e20b1a3fa1b7de3b4ce",
+    "ae_current.pt": "1dd86814ec5ca2666245ac07772e5830ae04cdcdde7afca7a6772c51aed9899d",
+    "standard_scaler_vibration.joblib": "b39f7451617056beaacc929c1612f616d33dde8bf537185bace0fb0b010bd5be",
+    "xgb.json": "e518e985e0301c68bd40eaf99758e1d8668982aca7e475176eaa8396100bfeee",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "9bf91b92c71c56612659ccf8d905f1d144c1c2c0812506200dba632aa2469372"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.9325997248968363,
+    "f1_macro": 0.915108345705373,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9509433962264151,
+        "recall": 0.9563567362428842,
+        "f1-score": 0.9536423841059603,
+        "support": 527.0
+      },
+      "misalign": {
+        "precision": 0.883248730964467,
+        "recall": 0.87,
+        "f1-score": 0.8765743073047859,
+        "support": 200.0
+      },
+      "accuracy": 0.9325997248968363,
+      "macro avg": {
+        "precision": 0.917096063595441,
+        "recall": 0.913178368121442,
+        "f1-score": 0.915108345705373,
+        "support": 727.0
+      },
+      "weighted avg": {
+        "precision": 0.9323203796481625,
+        "recall": 0.9325997248968363,
+        "f1-score": 0.932440712358732,
+        "support": 727.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        504,
+        23
+      ],
+      [
+        26,
+        174
+      ]
+    ]
+  }
+}

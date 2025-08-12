@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-CAHU-02S",
+  "power": "18.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "bearing"
+  ],
+  "th_ae": {
+    "current": 3.154203176498413,
+    "vibration": 3.448240041732788
+  },
+  "files_sha256": {
+    "metadata.json": "e28c1932cbe71f868fcf6ecd9764b7fa3a5373128a507ad2b5dd988996e3be53",
+    "ae_vibration.pt": "7bc3bc13e73b5f3f2b0e39b4d2beb627d57bd0f3b845b9ade50d1867ecd4710a",
+    "ae_current.pt": "746a016b07558c312618b1650d42436f58d5b96e7da59d60f73fecc66f018f05",
+    "standard_scaler_vibration.joblib": "9175bda6225e0051bec477656cadf0a106e537f8c8290d64e83e0bcb9d35a1bc",
+    "xgb.json": "036cf92fe1348c341ccbbe50544fa8df942fe026beb2f82a3ba5bd91ebda2943",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "7022331d5184b32ae025b9736c696ffe3e9dc6523bb5d0149c9c86f999f56168"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "bearing"
+  },
+  "metrics": {
+    "accuracy": 0.961890243902439,
+    "f1_macro": 0.9595747460480617,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9367588932806324,
+        "recall": 0.9634146341463414,
+        "f1-score": 0.9498997995991983,
+        "support": 246.0
+      },
+      "bearing": {
+        "precision": 0.9776674937965261,
+        "recall": 0.9609756097560975,
+        "f1-score": 0.9692496924969249,
+        "support": 410.0
+      },
+      "accuracy": 0.961890243902439,
+      "macro avg": {
+        "precision": 0.9572131935385793,
+        "recall": 0.9621951219512195,
+        "f1-score": 0.9595747460480617,
+        "support": 656.0
+      },
+      "weighted avg": {
+        "precision": 0.962326768603066,
+        "recall": 0.961890243902439,
+        "f1-score": 0.9619934826602776,
+        "support": 656.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        237,
+        9
+      ],
+      [
+        16,
+        394
+      ]
+    ]
+  }
+}

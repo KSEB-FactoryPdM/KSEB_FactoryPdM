@@ -1,0 +1,86 @@
+{
+  "equipment_id": "L-CAHU-01R",
+  "power": "11kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "C",
+  "faults": [
+    "misalign",
+    "unbalance"
+  ],
+  "th_ae": {
+    "current": 6.200181484222412,
+    "vibration": 22.01820182800293
+  },
+  "files_sha256": {
+    "metadata.json": "30bb79e9177dd28ce0981d9c25544349cf3211df95fd8679b2718ad633873b99",
+    "ae_vibration.pt": "11a967658d10c39e810d0e4bced9a004a9877137d001fe0eb7edcff5d2a61a12",
+    "ae_current.pt": "6b9f31c48c28546124cdb0c24eb93a1f1367d29782defe6e96ac2f8a141727c3",
+    "standard_scaler_vibration.joblib": "f8f7cf022f18183e0dde5afae1f52918aeaea604caaa7a04554bfe093066d47c",
+    "xgb.json": "0b4918d2ebaf6f792fdd9e82c4101180ba3fc7dcd6984a483ee5cc71f2f6326a",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "51a83ce29381ab8245a01dfc5d1dd087d51ffff8599aebac86e90d4bf61ac011"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign",
+    "2": "unbalance"
+  },
+  "metrics": {
+    "accuracy": 0.9779874213836478,
+    "f1_macro": 0.9749522328232972,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9465020576131687,
+        "recall": 0.9663865546218487,
+        "f1-score": 0.9563409563409564,
+        "support": 238.0
+      },
+      "misalign": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 380.0
+      },
+      "unbalance": {
+        "precision": 0.9758308157099698,
+        "recall": 0.9613095238095238,
+        "f1-score": 0.9685157421289355,
+        "support": 336.0
+      },
+      "accuracy": 0.9779874213836478,
+      "macro avg": {
+        "precision": 0.9741109577743794,
+        "recall": 0.9758986928104575,
+        "f1-score": 0.9749522328232972,
+        "support": 954.0
+      },
+      "weighted avg": {
+        "precision": 0.9781411360487253,
+        "recall": 0.9779874213836478,
+        "f1-score": 0.978019325958564,
+        "support": 954.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        230,
+        0,
+        8
+      ],
+      [
+        0,
+        380,
+        0
+      ],
+      [
+        13,
+        0,
+        323
+      ]
+    ]
+  }
+}

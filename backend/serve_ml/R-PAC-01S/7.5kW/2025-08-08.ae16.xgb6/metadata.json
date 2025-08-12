@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-PAC-01S",
+  "power": "7.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 13.278596878051758,
+    "vibration": 12.123408317565918
+  },
+  "files_sha256": {
+    "metadata.json": "7ab00c8a71a68754c7760d0cd48e65f0891b260e470143972bb3cdf99da8a621",
+    "ae_vibration.pt": "f147e2937e7aa7aee2b7f38b7610deda88c2c7c81e23957c70c5ecd44bc30242",
+    "ae_current.pt": "cc525bc9cd000be577f0b5e5242b7404d155cd769c08ecd874b918ab16197343",
+    "standard_scaler_vibration.joblib": "a558a23eb59f58343865992df22132749ff6660f84050a05d095911ff1b0eb83",
+    "xgb.json": "cd553dee8a3e3e29548d8ab6a233dc471cf55c46a985a046ba104f0e55ffdce0",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "3d44684d977e4cfa8460b7310583bb1a9630733aaa555a13dafbcb724d1543b9"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.9806949806949807,
+    "f1_macro": 0.7364612775579423,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 0.3181818181818182,
+        "f1-score": 0.4827586206896552,
+        "support": 22.0
+      },
+      "misalign": {
+        "precision": 0.9805194805194806,
+        "recall": 1.0,
+        "f1-score": 0.9901639344262295,
+        "support": 755.0
+      },
+      "accuracy": 0.9806949806949807,
+      "macro avg": {
+        "precision": 0.9902597402597403,
+        "recall": 0.6590909090909091,
+        "f1-score": 0.7364612775579423,
+        "support": 777.0
+      },
+      "weighted avg": {
+        "precision": 0.981071052499624,
+        "recall": 0.9806949806949807,
+        "f1-score": 0.9757972460064038,
+        "support": 777.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        7,
+        15
+      ],
+      [
+        0,
+        755
+      ]
+    ]
+  }
+}
