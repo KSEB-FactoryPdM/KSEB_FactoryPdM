@@ -7,6 +7,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 import { useAuthStore } from '@/store/useAuthStore';
 import LanguageSwitcher from './LanguageSwitcher';
 import LogoutButton from './LogoutButton';
@@ -115,7 +116,7 @@ export default function Header() {
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
             if (search.trim()) {
-              router.push(`/search?query=${encodeURIComponent(search.trim())}`);
+              router.push(`/search?query=${encodeURIComponent(search.trim())}` as Route);
             }
           }}
         >

@@ -93,6 +93,7 @@ const nf = new Intl.NumberFormat('ko-KR')
 const formatNum = (n: number | null | undefined, fallback = '-') =>
   typeof n === 'number' && isFinite(n) ? nf.format(n) : fallback
 
+
 const fmtTimeShort = (sec: number, rangeKey: '1h' | '24h' | '7d') => {
   const d = new Date(sec * 1000)
   if (rangeKey === '1h' || rangeKey === '24h') {
@@ -137,9 +138,9 @@ export default function MonitoringPage() {
   const { t } = useTranslation('common')
 
   /** 가독성 보장 변수: 요약 카드 등에서 rgb(var(--color-text-primary))를 확실히 표시 */
-  const pageVars: CSSProperties = {
+  const pageVars = {
     '--color-text-primary': '15 23 42', // slate-900
-  }
+  } as CSSProperties
 
   // WebSocket
   const socketUrl =
@@ -389,7 +390,13 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} allowDecimals={false} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(value: number | string) => [formatNum(Number(value)), 'total']} />
+                  <Tooltip
+                    labelFormatter={tooltipLabel}
+                    formatter={(value: unknown) => [
+                      formatNum(Number(Array.isArray(value) ? value[0] : value)),
+                      'total',
+                    ]}
+                  />
                   <Line type="monotone" dataKey="total" stroke={hasAnomaly ? colors.danger : colors.accent} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -437,7 +444,13 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(value: number | string) => [formatNum(Number(value)), 'RUL']} />
+                  <Tooltip
+                    labelFormatter={tooltipLabel}
+                    formatter={(value: unknown) => [
+                      formatNum(Number(Array.isArray(value) ? value[0] : value)),
+                      'RUL',
+                    ]}
+                  />
                   <Line type="monotone" dataKey="rul" stroke={colors.ptr} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -466,7 +479,13 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(value: number | string) => [formatNum(Number(value)), String(sensor)]} />
+                  <Tooltip
+                    labelFormatter={tooltipLabel}
+                    formatter={(value: unknown) => [
+                      formatNum(Number(Array.isArray(value) ? value[0] : value)),
+                      String(sensor),
+                    ]}
+                  />
                   <Line type="monotone" dataKey={sensor as string} stroke={hasAnomaly ? colors.danger : colors.a} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
