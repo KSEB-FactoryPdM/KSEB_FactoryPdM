@@ -48,7 +48,7 @@ export default function Header() {
   const router = useRouter();
 
   // i18n에서 현재 적용된 언어(해결된 언어 우선)
-  const locale = (i18n as any)?.resolvedLanguage || i18n.language || 'en';
+  const locale = i18n.resolvedLanguage || i18n.language || 'en';
 
   // 시간(1초마다 업데이트)
   useEffect(() => {
@@ -115,8 +115,7 @@ export default function Header() {
           onSubmit={(e: FormEvent) => {
             e.preventDefault();
             if (search.trim()) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              router.push(`/search?query=${encodeURIComponent(search.trim())}` as any);
+              router.push(`/search?query=${encodeURIComponent(search.trim())}`);
             }
           }}
         >

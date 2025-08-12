@@ -111,7 +111,14 @@ const fmtDate = (iso: string | undefined) => {
 const hasField = (list: MyType | null | undefined, key: keyof MyPoint) =>
   !!list?.length && typeof list[list.length - 1]?.[key] === 'number'
 
-function downloadCSV(rows: Record<string, any>[], filename = 'monitoring.csv') {
+const RANGE_SEC: Record<'1h' | '24h' | '7d', number> = {
+  '1h': 3600,
+  '24h': 86400,
+  '7d': 604800,
+}
+
+type CSVRow = Record<string, string | number | boolean | null | undefined>
+function downloadCSV(rows: CSVRow[], filename = 'monitoring.csv') {
   if (!rows.length) return
   const headers = Object.keys(rows[0])
   const csv =
@@ -131,7 +138,7 @@ export default function MonitoringPage() {
 
   /** 가독성 보장 변수: 요약 카드 등에서 rgb(var(--color-text-primary))를 확실히 표시 */
   const pageVars: CSSProperties = {
-    ['--color-text-primary' as any]: '15 23 42', // slate-900
+    '--color-text-primary': '15 23 42', // slate-900
   }
 
   // WebSocket
@@ -177,10 +184,9 @@ export default function MonitoringPage() {
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
   const hasAnomaly = !!(snap && snap.length && snap[snap.length - 1]?.total > 0)
-  const rangeSec: Record<'1h' | '24h' | '7d', number> = { '1h': 3600, '24h': 86400, '7d': 604800 }
   const filteredData = useMemo(() => {
     if (!snap || !snap.length) return []
-    const from = latestTs - rangeSec[timeRange]
+    const from = latestTs - RANGE_SEC[timeRange]
     return snap.filter((d) => d.time >= from)
   }, [snap, latestTs, timeRange])
 
@@ -215,7 +221,7 @@ export default function MonitoringPage() {
 
   const colors = useThemeColors()
   const xTick = (v: number) => fmtTimeShort(v, timeRange)
-  const tooltipLabel = (v: any) => {
+  const tooltipLabel = (v: number | string) => {
     const sec = typeof v === 'number' ? v : Number(v)
     if (!isFinite(sec)) return String(v)
     const d = new Date(sec * 1000)
@@ -383,7 +389,7 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} allowDecimals={false} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'total']} />
+                  <Tooltip labelFormatter={tooltipLabel} formatter={(value: number | string) => [formatNum(Number(value)), 'total']} />
                   <Line type="monotone" dataKey="total" stroke={hasAnomaly ? colors.danger : colors.accent} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -431,7 +437,7 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'RUL']} />
+                  <Tooltip labelFormatter={tooltipLabel} formatter={(value: number | string) => [formatNum(Number(value)), 'RUL']} />
                   <Line type="monotone" dataKey="rul" stroke={colors.ptr} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -460,7 +466,7 @@ export default function MonitoringPage() {
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), String(sensor)]} />
+                  <Tooltip labelFormatter={tooltipLabel} formatter={(value: number | string) => [formatNum(Number(value)), String(sensor)]} />
                   <Line type="monotone" dataKey={sensor as string} stroke={hasAnomaly ? colors.danger : colors.a} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
