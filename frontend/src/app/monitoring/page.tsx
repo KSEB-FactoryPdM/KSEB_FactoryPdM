@@ -1,4 +1,3 @@
-// 실시간 모니터링 페이지
 'use client'
 
 import DashboardLayout from '@/components/DashboardLayout'
@@ -6,7 +5,7 @@ import ChartCard from '@/components/ChartCard'
 import SummaryCard from '@/components/SummaryCard'
 import { TimeRangeSelector, EquipmentFilter, SensorFilter } from '@/components/filters'
 import { useQuery } from '@tanstack/react-query'
-import { useState, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState, CSSProperties } from 'react'
 import {
   LineChart,
   Line,
@@ -19,7 +18,7 @@ import {
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 
-type MyType = Array<{
+type MyPoint = {
   time: number
   total: number
   A: number
@@ -35,23 +34,19 @@ type MyType = Array<{
   size50: number
   size90: number
   size99: number
-}>
+}
+type MyType = Array<MyPoint>
 
 import type { Machine } from '@/components/filters/EquipmentFilter'
 
-interface Anomaly {
-  id: number
-  status: string
-}
-
+interface Anomaly { id: number; status: string }
 interface EventItem {
   id: number
   time: string
   device: string
   type: string
-  severity: string
+  severity: 'low' | 'medium' | 'high' | string
 }
-
 interface MaintenanceItem {
   id: number
   equipmentId: string
@@ -59,400 +54,429 @@ interface MaintenanceItem {
   status: string
 }
 
+/** CSS 변수 안전 폴백 */
+function useThemeColors() {
+  const [colors, setColors] = useState({
+    accent: '#3b82f6',
+    danger: '#dc2626',
+    text: '#334155',
+    a: '#16a34a',
+    zone: '#8b5cf6',
+    ptr: '#0ea5e9',
+    soa: '#f59e0b',
+    srv: '#10b981',
+    txt: '#ef4444',
+  })
+  useEffect(() => {
+    const root = document.documentElement
+    const read = (name: string, fallback: string) => {
+      const v = getComputedStyle(root).getPropertyValue(name).trim()
+      return v ? (v.includes(' ') ? `rgb(${v})` : v) : fallback
+    }
+    setColors({
+      accent: read('--color-accent', '#3b82f6'),
+      danger: read('--color-danger', '#dc2626'),
+      text: read('--color-text-primary', '#334155'),
+      a: read('--chart-a', '#16a34a'),
+      zone: read('--chart-zone', '#8b5cf6'),
+      ptr: read('--chart-ptr', '#0ea5e9'),
+      soa: read('--chart-soa', '#f59e0b'),
+      srv: read('--chart-srv', '#10b981'),
+      txt: read('--chart-txt', '#ef4444'),
+    })
+  }, [])
+  return colors
+}
+
+const nf = new Intl.NumberFormat('ko-KR')
+const formatNum = (n: number | null | undefined, fallback = '-') =>
+  typeof n === 'number' && isFinite(n) ? nf.format(n) : fallback
+
+const fmtTimeShort = (sec: number, rangeKey: '1h' | '24h' | '7d') => {
+  const d = new Date(sec * 1000)
+  if (rangeKey === '1h' || rangeKey === '24h') {
+    return new Intl.DateTimeFormat('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' }).format(d)
+  }
+  return new Intl.DateTimeFormat('ko-KR', {
+    month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit',
+  }).format(d)
+}
+const fmtDate = (iso: string | undefined) => {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+}
+const hasField = (list: MyType | null | undefined, key: keyof MyPoint) =>
+  !!list?.length && typeof list[list.length - 1]?.[key] === 'number'
+
+function downloadCSV(rows: Record<string, any>[], filename = 'monitoring.csv') {
+  if (!rows.length) return
+  const headers = Object.keys(rows[0])
+  const csv =
+    [headers.join(','), ...rows.map((r) => headers.map((h) => JSON.stringify(r[h] ?? '')).join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function MonitoringPage() {
   useRequireRole(['Admin', 'Engineer', 'Viewer'])
-  // 환경변수 NEXT_PUBLIC_WEBSOCKET_URL 사용, 없으면 로컬로 폴백
+
+  /** 가독성 보장 변수: 요약 카드 등에서 rgb(var(--color-text-primary))를 확실히 표시 */
+  const pageVars: CSSProperties = {
+    ['--color-text-primary' as any]: '15 23 42', // slate-900
+  }
+
+  // WebSocket
   const socketUrl =
     (typeof localStorage !== 'undefined' && localStorage.getItem('socketUrl')) ||
     process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
     'ws://localhost:8080'
-  // 자동 재연결 옵션 추가
   const { data, status } = useWebSocket<MyType>(socketUrl, { autoReconnect: true })
-  const hasAnomaly =
-    data != null && data[data.length - 1]?.total != null && data[data.length - 1]!.total > 0
 
-  // Fetch static mock lists with short caching to reduce network traffic.
-    const { data: machines } = useQuery<Machine[]>({
-      queryKey: ['machines'],
-      queryFn: () => fetch('/machines.json').then((res) => res.json() as Promise<Machine[]>),
-      staleTime: 30000,
-      gcTime: 300000,
-    })
+  // 실시간 일시정지 스냅샷
+  const [paused, setPaused] = useState(false)
+  const [snap, setSnap] = useState<MyType | null>(null)
+  useEffect(() => { if (!paused && data) setSnap(data) }, [data, paused])
+
+  // 정적 목록
+  const { data: machines } = useQuery<Machine[]>({
+    queryKey: ['machines'],
+    queryFn: () => fetch('/machines.json').then((r) => r.json() as Promise<Machine[]>),
+    staleTime: 30000, gcTime: 300000,
+  })
   const { data: anomalies } = useQuery<Anomaly[]>({
     queryKey: ['anomalies'],
-    queryFn: () =>
-      fetch('/mock-anomalies.json').then((res) => res.json() as Promise<Anomaly[]>),
-    staleTime: 30000,
-    gcTime: 300000,
+    queryFn: () => fetch('/mock-anomalies.json').then((r) => r.json() as Promise<Anomaly[]>),
+    staleTime: 30000, gcTime: 300000,
   })
   const { data: events } = useQuery<EventItem[]>({
     queryKey: ['alertEvents'],
-    queryFn: () =>
-      fetch('/mock-alerts.json').then((res) => res.json() as Promise<EventItem[]>),
-    staleTime: 30000,
-    gcTime: 300000,
+    queryFn: () => fetch('/mock-alerts.json').then((r) => r.json() as Promise<EventItem[]>),
+    staleTime: 30000, gcTime: 300000,
   })
   const { data: maintenance } = useQuery<MaintenanceItem[]>({
     queryKey: ['maintenance'],
-    queryFn: () =>
-      fetch('/mock-maintenance.json').then((res) => res.json() as Promise<MaintenanceItem[]>),
-    staleTime: 30000,
-    gcTime: 300000,
+    queryFn: () => fetch('/mock-maintenance.json').then((r) => r.json() as Promise<MaintenanceItem[]>),
+    staleTime: 30000, gcTime: 300000,
   })
 
-  const [timeRange, setTimeRange] = useState('24h')
-    const [power, setPower] = useState('')
-    const [selectedEquipment, setSelectedEquipment] = useState('')
-  const [sensor, setSensor] = useState('size50')
+  // 필터
+  const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d'>('24h')
+  const [power, setPower] = useState('')
+  const [selectedEquipment, setSelectedEquipment] = useState('')
+  const [sensor, setSensor] = useState<keyof MyPoint>('size50')
 
+  // 파생 값
+  const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
+  const hasAnomaly = !!(snap && snap.length && snap[snap.length - 1]?.total > 0)
+  const rangeSec: Record<'1h' | '24h' | '7d', number> = { '1h': 3600, '24h': 86400, '7d': 604800 }
   const filteredData = useMemo(() => {
-    if (!data) return null
-    const latest = data[data.length - 1]?.time ?? 0
-    const map: Record<string, number> = { '1h': 3600, '24h': 86400, '7d': 604800 }
-    const range = map[timeRange] ?? 0
-    return data.filter((d) => d.time >= latest - range)
-  }, [data, timeRange])
+    if (!snap || !snap.length) return []
+    const from = latestTs - rangeSec[timeRange]
+    return snap.filter((d) => d.time >= from)
+  }, [snap, latestTs, timeRange])
 
-    const equipmentCount = machines?.length ?? 0
+  const equipmentCount = machines?.length ?? 0
   const activeAlerts = anomalies?.filter((a) => a.status === 'open').length ?? 0
-  const predictedToday = data?.[data.length - 1]?.total ?? 0
-  const latestRul = data?.[data.length - 1]?.rul ?? 0
+  const predictedToday = snap?.[snap.length - 1]?.total ?? 0
+  const latestRul = snap?.[snap.length - 1]?.rul ?? 0
   const upcomingMaintenance = useMemo(() => {
-    if (!maintenance) return '-'
+    if (!maintenance?.length) return '-'
     const pending = maintenance.filter((m) => m.status === 'pending')
-    if (pending.length === 0) return '-'
-    return pending.sort((a, b) =>
-      a.scheduledDate.localeCompare(b.scheduledDate)
-    )[0].scheduledDate
+    if (!pending.length) return '-'
+    pending.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
+    return fmtDate(pending[0].scheduledDate)
   }, [maintenance])
+
+  const filteredEvents = useMemo(() => {
+    if (!events?.length) return []
+    return events.filter((e) => (selectedEquipment ? e.device === selectedEquipment : true))
+  }, [events, selectedEquipment])
+
+  const onExportCSV = useCallback(() => {
+    if (!filteredData.length) return
+    downloadCSV(
+      filteredData.map((d) => ({
+        time: new Date(d.time * 1000).toISOString(),
+        total: d.total, A: d.A, AAAA: d.AAAA, PTR: d.PTR, SOA: d.SOA, SRV: d.SRV, TXT: d.TXT,
+        zone1: d.zone1, zone2: d.zone2, zone3: d.zone3, rul: d.rul, size50: d.size50, size90: d.size90, size99: d.size99,
+      })),
+      `monitoring_${timeRange}.csv`,
+    )
+  }, [filteredData, timeRange])
+
+  const colors = useThemeColors()
+  const xTick = (v: number) => fmtTimeShort(v, timeRange)
+  const tooltipLabel = (v: any) => {
+    const sec = typeof v === 'number' ? v : Number(v)
+    if (!isFinite(sec)) return String(v)
+    const d = new Date(sec * 1000)
+    return new Intl.DateTimeFormat('ko-KR', {
+      hour12: false, year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).format(d)
+  }
+  const axisStyle = { fill: colors.text, fontSize: 12 }
+  const isConnecting = status === 'connecting'
+  const isError = status === 'error'
 
   return (
     <DashboardLayout>
-
-      {status === 'connecting' && (
-        <div className="bg-blue-100 text-blue-800 p-2 rounded-md mb-2">
-          Connecting to server...
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="bg-red-100 text-red-800 p-2 rounded-md mb-2">
-          Connection error. Retrying...
-        </div>
-      )}
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
-        <SummaryCard label="Total Equipment" value={equipmentCount} />
-        <SummaryCard label="Active Alerts" value={activeAlerts} />
-        <SummaryCard label="Today's Predicted" value={predictedToday} />
-        <SummaryCard label="Latest RUL" value={latestRul} />
-        <SummaryCard label="Next Maintenance" value={upcomingMaintenance} />
-      </div>
-
-      {/* Recent Anomaly Events */}
-      <ChartCard title="Recent Anomaly Events">
-        <table className="w-full text-sm">
-          <thead className="text-left">
-            <tr>
-              <th className="py-2">Time</th>
-              <th className="py-2">Device</th>
-              <th className="py-2">Sensor</th>
-              <th className="py-2">Severity</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events?.map((e) => (
-              <tr key={e.id} className="border-t">
-                <td className="py-2">{e.time}</td>
-                <td className="py-2">{e.device}</td>
-                <td className="py-2">{e.type}</td>
-                <td className="py-2">{e.severity}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </ChartCard>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
-        <EquipmentFilter
-          machines={machines ?? []}
-          power={power}
-          device={selectedEquipment}
-          onPowerChange={setPower}
-          onDeviceChange={setSelectedEquipment}
-        />
-        <SensorFilter
-          options={[
-            'size50',
-            'size90',
-            'size99',
-            'rul',
-            'A',
-            'AAAA',
-            'PTR',
-            'SOA',
-            'SRV',
-            'TXT',
-          ]}
-          value={sensor}
-          onChange={setSensor}
-        />
-      </div>
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* 1. Anomaly Count (total) */}
-        <ChartCard title="Anomaly Count (total)" danger={hasAnomaly}>
-          {data == null ? (
-            <div className="h-[200px] flex items-center justify-center text-text-primary">
-              No data
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={filteredData ?? data}>
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Time', position: 'insideBottomRight' }}
-                />
-                <YAxis
-                  domain={[0, 1.5]}
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  domain={[0, 1.5]}
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="total"
-                  stroke={hasAnomaly ? '#dc2626' : 'var(--color-accent)'}
-                  dot={false}
-                />
-                <Tooltip />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        {/* 2. Anomaly Count (by type) */}
-        <ChartCard title="Anomaly Count (by type)">
-          {data == null ? (
-            <div className="h-[200px] flex items-center justify-center text-text-primary">
-              No data
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={filteredData ?? data}>
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Time', position: 'insideBottomRight' }}
-                />
-                <YAxis
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="A"
-                  stroke="rgb(var(--chart-a))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="AAAA"
-                  stroke="var(--color-accent)"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="PTR"
-                  stroke="rgb(var(--chart-ptr))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="SOA"
-                  stroke="rgb(var(--chart-soa))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="SRV"
-                  stroke="rgb(var(--chart-srv))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="TXT"
-                  stroke="rgb(var(--chart-txt))"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        {/* 3. Anomaly Count (by zone) */}
-        <ChartCard title="Anomaly Count (by zone)">
-          {data == null ? (
-            <div className="h-[200px] flex items-center justify-center text-text-primary">
-              No data
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={filteredData ?? data}>
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Time', position: 'insideBottomRight' }}
-                />
-                <YAxis
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="zone1"
-                  stroke="rgb(var(--chart-zone))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="zone2"
-                  stroke="rgb(var(--chart-zone))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="zone3"
-                  stroke="rgb(var(--chart-zone))"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        {/* 4. Prediction (Remaining Useful Life) */}
-        <ChartCard title="Prediction (Remaining Useful Life)">
-          {data == null ? (
-            <div className="h-[200px] flex items-center justify-center text-text-primary">
-              No data
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={filteredData ?? data}>
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Time', position: 'insideBottomRight' }}
-                />
-                <YAxis
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'RUL', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="rul"
-                  stroke="rgb(var(--chart-ptr))"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        {/* 5. Sensor Data (size, temperature) */}
-        <ChartCard title="Sensor Data (size, temperature)">
-          {data == null ? (
-            <div className="h-[200px] flex items-center justify-center text-text-primary">
-              No data
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={filteredData ?? data}>
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Time', position: 'insideBottomRight' }}
-                />
-                <YAxis
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="size50"
-                  stroke="rgb(var(--chart-a))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="size90"
-                  stroke="rgb(var(--chart-zone))"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="size99"
-                  stroke="var(--color-accent)"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </ChartCard>
-
-        {/* 6. Sensor Data (size, vibration) */}
-        <ChartCard title="Sensor Data (size, vibration)">
-          <div className="h-[200px] flex items-center justify-center text-text-primary">
-            No data
+      {/* 전역 텍스트 가시성 보장 */}
+      <div style={pageVars}>
+        {/* 헤더 + 제어 */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">실시간 모니터링</h1>
+            <p className="text-sm text-slate-600">장비 상태, 이상 징후, 센서 신호를 실시간으로 확인하세요.</p>
           </div>
-        </ChartCard>
 
-        {/* 7. Real-Time Signal */}
-        <ChartCard title="Real-Time Signal" danger={hasAnomaly}>
-          {data == null ? (
-            <div className="h-[200px] flex items-center justify-center text-text-primary">
-              No data
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${
+                isError
+                  ? 'bg-red-50 text-red-700 ring-red-200'
+                  : isConnecting
+                  ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                  : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+              }`}
+              aria-live="polite"
+            >
+              {isConnecting ? '서버 연결 중…' : isError ? '연결 오류(자동 재시도)' : '실시간 연결됨'}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setPaused((p) => !p)}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+              aria-pressed={paused}
+              title={paused ? '실시간 갱신 재개' : '실시간 갱신 일시정지'}
+            >
+              {paused ? '재개' : '일시정지'}
+            </button>
+
+            <button
+              type="button"
+              onClick={onExportCSV}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+              disabled={!filteredData.length}
+              title="현재 범위 데이터 CSV 저장"
+            >
+              CSV 내보내기
+            </button>
+          </div>
+        </div>
+
+        {/* 요약 카드: 강제 고대비 적용 */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 [&_*]:text-slate-900">
+          <SummaryCard label="Total Equipment" value={formatNum(equipmentCount, '0')} />
+          <SummaryCard label="Active Alerts" value={formatNum(activeAlerts, '0')} />
+          <SummaryCard label="Today's Predicted" value={formatNum(predictedToday, '0')} />
+          <SummaryCard label="Latest RUL" value={formatNum(latestRul, '0')} />
+          <SummaryCard label="Next Maintenance" value={upcomingMaintenance} />
+        </div>
+
+        {/* 최근 이벤트: 내부 세로 스크롤/thead sticky 전부 제거 → 페이지 스크롤과 완전 동기화 */}
+        <ChartCard title="Recent Anomaly Events">
+          {!events?.length ? (
+            <div className="h-[220px] flex items-center justify-center text-slate-500">
+              최근 이벤트가 없습니다.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={filteredData ?? data}>
-                <XAxis
-                  dataKey="time"
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Time', position: 'insideBottomRight' }}
-                />
-                <YAxis
-                  tick={{ fill: 'rgb(var(--color-text-primary))' }}
-                  label={{ value: 'Signal', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey={sensor}
-                  stroke={hasAnomaly ? '#dc2626' : 'rgb(var(--chart-a))'}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="overflow-x-auto rounded-md border border-slate-200">
+              <table className="w-full table-fixed text-sm">
+                {/* 👍 컬럼 고정폭으로 헤더/바디 완전 정렬 */}
+                <colgroup>
+                  <col style={{ width: '28%' }} />
+                  <col style={{ width: '24%' }} />
+                  <col style={{ width: '28%' }} />
+                  <col style={{ width: '20%' }} />
+                </colgroup>
+                <thead className="bg-slate-50 text-left text-slate-700">
+                  <tr className="whitespace-nowrap">
+                    <th className="py-2 px-3 font-medium">Time</th>
+                    <th className="py-2 px-3 font-medium">Device</th>
+                    <th className="py-2 px-3 font-medium">Sensor</th>
+                    <th className="py-2 px-3 font-medium">Severity</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-900">
+                  {filteredEvents.map((e) => (
+                    <tr key={e.id} className="border-t border-slate-100 align-middle">
+                      <td className="py-2 px-3">{e.time}</td>
+                      <td className="py-2 px-3">{e.device}</td>
+                      <td className="py-2 px-3">{e.type}</td>
+                      <td className="py-2 px-3">
+                        <span
+                          className={[
+                            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1',
+                            e.severity === 'high'
+                              ? 'bg-red-50 text-red-700 ring-red-200'
+                              : e.severity === 'medium'
+                              ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                              : 'bg-slate-50 text-slate-600 ring-slate-200',
+                          ].join(' ')}
+                        >
+                          {e.severity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </ChartCard>
+
+        {/* 필터 */}
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <TimeRangeSelector value={timeRange} onChange={(v: string) => setTimeRange(v as '1h' | '24h' | '7d')} />
+          <EquipmentFilter
+            machines={machines ?? []}
+            power={power}
+            device={selectedEquipment}
+            onPowerChange={(v: string) => setPower(v)}
+            onDeviceChange={(v: string) => setSelectedEquipment(v)}
+          />
+          <SensorFilter
+            options={['size50', 'size90', 'size99', 'rul', 'A', 'AAAA', 'PTR', 'SOA', 'SRV', 'TXT']}
+            value={sensor as string}
+            onChange={(v) => setSensor(v as keyof MyPoint)}
+          />
+        </div>
+
+        {/* 활성 필터 배지 */}
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
+            기간: {timeRange}
+          </span>
+          {selectedEquipment && (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
+              장비: {selectedEquipment}
+            </span>
+          )}
+          {power && (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
+              전력: {power}
+            </span>
+          )}
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
+            센서: {sensor}
+          </span>
+        </div>
+
+        {/* 차트들 */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ChartCard title="Anomaly Count (total)" danger={hasAnomaly}>
+            {!filteredData.length ? (
+              <div className="h-[240px] flex items-center justify-center text-slate-500">데이터 없음</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
+                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                  <YAxis tick={axisStyle} width={48} allowDecimals={false} />
+                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'total']} />
+                  <Line type="monotone" dataKey="total" stroke={hasAnomaly ? colors.danger : colors.accent} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          {(['A', 'AAAA', 'PTR', 'SOA', 'SRV', 'TXT'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
+            <ChartCard title="Anomaly Count (by type)">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
+                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                  <YAxis tick={axisStyle} width={48} allowDecimals={false} />
+                  <Tooltip labelFormatter={tooltipLabel} />
+                  <Legend />
+                  <Line type="monotone" dataKey="A" stroke={colors.a} dot={false} />
+                  <Line type="monotone" dataKey="AAAA" stroke={colors.accent} dot={false} />
+                  <Line type="monotone" dataKey="PTR" stroke={colors.ptr} dot={false} />
+                  <Line type="monotone" dataKey="SOA" stroke={colors.soa} dot={false} />
+                  <Line type="monotone" dataKey="SRV" stroke={colors.srv} dot={false} />
+                  <Line type="monotone" dataKey="TXT" stroke={colors.txt} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+
+          {(['zone1', 'zone2', 'zone3'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
+            <ChartCard title="Anomaly Count (by zone)">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
+                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                  <YAxis tick={axisStyle} width={48} allowDecimals={false} />
+                  <Tooltip labelFormatter={tooltipLabel} />
+                  <Legend />
+                  <Line type="monotone" dataKey="zone1" stroke={colors.zone} dot={false} />
+                  <Line type="monotone" dataKey="zone2" stroke={colors.ptr} dot={false} />
+                  <Line type="monotone" dataKey="zone3" stroke={colors.a} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+
+          {hasField(filteredData, 'rul') && (
+            <ChartCard title="Prediction (Remaining Useful Life)">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
+                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                  <YAxis tick={axisStyle} width={48} />
+                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'RUL']} />
+                  <Line type="monotone" dataKey="rul" stroke={colors.ptr} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+
+          {(['size50', 'size90', 'size99'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
+            <ChartCard title="Sensor Data (size)">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
+                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                  <YAxis tick={axisStyle} width={48} />
+                  <Tooltip labelFormatter={tooltipLabel} />
+                  <Legend />
+                  <Line type="monotone" dataKey="size50" stroke={colors.a} dot={false} />
+                  <Line type="monotone" dataKey="size90" stroke={colors.zone} dot={false} />
+                  <Line type="monotone" dataKey="size99" stroke={colors.accent} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+
+          {hasField(filteredData, sensor) && (
+            <ChartCard title="Real-Time Signal (selected)" danger={hasAnomaly}>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
+                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                  <YAxis tick={axisStyle} width={48} />
+                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), String(sensor)]} />
+                  <Line type="monotone" dataKey={sensor as string} stroke={hasAnomaly ? colors.danger : colors.a} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+        </div>
+
+        {/* 연결 상태 안내 */}
+        {isConnecting && (
+          <div className="mt-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800 ring-1 ring-blue-200">
+            서버에 연결 중입니다…
+          </div>
+        )}
+        {isError && (
+          <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200">
+            연결 오류가 발생했습니다. 자동으로 재시도합니다.
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )
