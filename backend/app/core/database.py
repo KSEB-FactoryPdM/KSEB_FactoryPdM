@@ -186,9 +186,9 @@ async def create_timescale_tables():
             # serve_ml 모델 메타 테이블 (모델 레지스트리 동기화용)
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS serve_ml_models (
-                    equipment_id VARCHAR(50) NOT NULL,
-                    power VARCHAR(50) NOT NULL,
-                    model_version VARCHAR(100) NOT NULL,
+                    equipment_id TEXT NOT NULL,
+                    power TEXT NOT NULL,
+                    model_version TEXT NOT NULL,
                     modalities JSONB NOT NULL,
                     thresholds JSONB,
                     class_map JSONB,
@@ -200,13 +200,13 @@ async def create_timescale_tables():
                 );
             """))
 
-            # serve_ml 예측 결과 하이퍼테이블
+            # serve_ml 예측 결과 하이퍼테이블 (TEXT 타입 권장 사항 반영)
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS serve_ml_predictions (
                     time TIMESTAMPTZ NOT NULL,
-                    equipment_id VARCHAR(50) NOT NULL,
-                    power VARCHAR(50) NOT NULL,
-                    model_version VARCHAR(100) NOT NULL,
+                    equipment_id TEXT NOT NULL,
+                    power TEXT NOT NULL,
+                    model_version TEXT NOT NULL,
                     is_anomaly BOOLEAN NOT NULL,
                     confidence DOUBLE PRECISION NOT NULL,
                     scores JSONB,
@@ -218,8 +218,22 @@ async def create_timescale_tables():
                 );
             """))
 
+            # 기존 배포에서 VARCHAR로 생성된 경우 TEXT로 변환 (무해한 반복 실행 가능)
             conn.execute(text("""
-                SELECT create_hypertable('serve_ml_predictions', 'time', if_not_exists => TRUE);
+                ALTER TABLE IF EXISTS serve_ml_predictions
+                    ALTER COLUMN equipment_id TYPE TEXT,
+                    ALTER COLUMN power TYPE TEXT,
+                    ALTER COLUMN model_version TYPE TEXT;
+            """))
+            conn.execute(text("""
+                ALTER TABLE IF EXISTS serve_ml_models
+                    ALTER COLUMN equipment_id TYPE TEXT,
+                    ALTER COLUMN power TYPE TEXT,
+                    ALTER COLUMN model_version TYPE TEXT;
+            """))
+
+            conn.execute(text("""
+                SELECT create_hypertable('serve_ml_predictions', 'time', if_not_exists => TRUE, migrate_data => TRUE);
             """))
 
             conn.execute(text("""
