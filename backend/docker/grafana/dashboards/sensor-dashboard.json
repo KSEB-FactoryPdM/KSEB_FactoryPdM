@@ -1,162 +1,55 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "실시간 센서 데이터 대시보드",
-    "tags": ["sensors", "realtime", "factory"],
-    "style": "dark",
-    "timezone": "browser",
-    "panels": [
+  "id": null,
+  "title": "실시간 센서 데이터 대시보드",
+  "tags": ["sensors", "realtime", "factory"],
+  "style": "dark",
+  "timezone": "browser",
+  "templating": {
+    "list": [
       {
-        "id": 1,
-        "title": "R-CAHU-01S 온도",
-        "type": "timeseries",
-        "targets": [
-          {
-            "refId": "A",
-            "datasource": {
-              "type": "postgres",
-              "uid": "TimescaleDB"
-            },
-            "editorMode": "code",
-            "format": "time_series",
-            "rawQuery": true,
-            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-01S' AND sensor_type = 'temperature' ORDER BY time DESC LIMIT 100"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "drawStyle": "line",
-              "lineWidth": 1
-            },
-            "unit": "celsius"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "id": 2,
-        "title": "R-CAHU-01S 압력",
-        "type": "timeseries",
-        "targets": [
-          {
-            "refId": "A",
-            "datasource": {
-              "type": "postgres",
-              "uid": "TimescaleDB"
-            },
-            "editorMode": "code",
-            "format": "time_series",
-            "rawQuery": true,
-            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-01S' AND sensor_type = 'pressure' ORDER BY time DESC LIMIT 100"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "drawStyle": "line",
-              "lineWidth": 1
-            },
-            "unit": "bar"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 0
-        }
-      },
-      {
-        "id": 3,
-        "title": "R-CAHU-01S 진동",
-        "type": "timeseries",
-        "targets": [
-          {
-            "refId": "A",
-            "datasource": {
-              "type": "postgres",
-              "uid": "TimescaleDB"
-            },
-            "editorMode": "code",
-            "format": "time_series",
-            "rawQuery": true,
-            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-01S' AND sensor_type = 'vibration' ORDER BY time DESC LIMIT 100"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "drawStyle": "line",
-              "lineWidth": 1
-            },
-            "unit": "mm/s"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 8
-        }
-      },
-      {
-        "id": 4,
-        "title": "R-CAHU-02S 온도",
-        "type": "timeseries",
-        "targets": [
-          {
-            "refId": "A",
-            "datasource": {
-              "type": "postgres",
-              "uid": "TimescaleDB"
-            },
-            "editorMode": "code",
-            "format": "time_series",
-            "rawQuery": true,
-            "rawSql": "SELECT time, value FROM sensor_data WHERE device = 'R-CAHU-02S' AND sensor_type = 'temperature' ORDER BY time DESC LIMIT 100"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "drawStyle": "line",
-              "lineWidth": 1
-            },
-            "unit": "celsius"
-          }
-        },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 8
-        }
+        "name": "device",
+        "type": "query",
+        "label": "Device",
+        "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+        "query": "SELECT DISTINCT device FROM sensor_data ORDER BY device",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {"text": "All", "value": ["$__all"]}
       }
-    ],
-    "time": {
-      "from": "now-5m",
-      "to": "now"
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "$device Current (x,y,z)",
+      "type": "timeseries",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 0},
+      "repeat": "device",
+      "maxPerRow": 2,
+      "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+      "targets": [
+        {"refId": "X", "alias": "x", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\", 'x' AS metric FROM sensor_data WHERE sensor_type='x' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"},
+        {"refId": "Y", "alias": "y", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\", 'y' AS metric FROM sensor_data WHERE sensor_type='y' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"},
+        {"refId": "Z", "alias": "z", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\", 'z' AS metric FROM sensor_data WHERE sensor_type='z' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"}
+      ]
     },
-    "refresh": "5s",
-    "schemaVersion": 30,
-    "version": 0
-  }
+    {
+      "id": 2,
+      "title": "$device Vibration (vibe)",
+      "type": "timeseries",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 10},
+      "repeat": "device",
+      "maxPerRow": 2,
+      "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+      "targets": [
+        {"refId": "V", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\" FROM sensor_data WHERE sensor_type='vibe' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"}
+      ]
+    }
+  ],
+  "time": {"from": "now-5m", "to": "now"},
+  "refresh": "5s",
+  "schemaVersion": 30,
+  "version": 0
 }

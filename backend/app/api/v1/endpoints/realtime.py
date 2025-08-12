@@ -87,10 +87,10 @@ async def ws_device_series(websocket: WebSocket, device_id: str):
             try:
                 with engine.connect() as conn:
                     sql = text(
-                        """
+                    """
                         SELECT EXTRACT(EPOCH FROM time)::int AS ts, value
                         FROM sensor_data
-                        WHERE device = :device AND sensor_type = 'vibration'
+                        WHERE device = :device AND sensor_type = 'vibe'
                         ORDER BY time DESC
                         LIMIT 50
                         """
