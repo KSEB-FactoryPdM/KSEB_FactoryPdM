@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-CAHU-03S",
+  "power": "15kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "belt_loose"
+  ],
+  "th_ae": {
+    "current": 4.203986167907715,
+    "vibration": 3.8154218196868896
+  },
+  "files_sha256": {
+    "metadata.json": "3354c4af8cdef165051eb69fb96438d6a3c2fbdeb1ed165f3f27bdf6681893df",
+    "ae_vibration.pt": "36a8a4afdf99e0a6d9bbbaa1da3ef4c0c5b482188e0078120aee44151bcf8205",
+    "ae_current.pt": "860743c91f23cf0c61a62a7b12a742e4732d2e943b2774af1519dc0598795765",
+    "standard_scaler_vibration.joblib": "c23701102d71711ce4648a162eea9bd4b583e1d6d6a5dc09cff5b4988ed8e466",
+    "xgb.json": "5ebbf70197c59e73c41c7c0378001e9fe22fb57264481f1ffef6478aa6fde26e",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "7977f0ed24b6ac25dc77e6aa1dc47aa03ca7d984e8025ec32141478a84134c7c"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "belt_loose"
+  },
+  "metrics": {
+    "accuracy": 0.9946524064171123,
+    "f1_macro": 0.9929931055155876,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 0.979381443298969,
+        "f1-score": 0.9895833333333334,
+        "support": 97.0
+      },
+      "belt_loose": {
+        "precision": 0.992831541218638,
+        "recall": 1.0,
+        "f1-score": 0.9964028776978417,
+        "support": 277.0
+      },
+      "accuracy": 0.9946524064171123,
+      "macro avg": {
+        "precision": 0.9964157706093191,
+        "recall": 0.9896907216494846,
+        "f1-score": 0.9929931055155876,
+        "support": 374.0
+      },
+      "weighted avg": {
+        "precision": 0.9946907404212907,
+        "recall": 0.9946524064171123,
+        "f1-score": 0.9946341723412715,
+        "support": 374.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        95,
+        2
+      ],
+      [
+        0,
+        277
+      ]
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-PAHU-04S",
+  "power": "55kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "belt_loose"
+  ],
+  "th_ae": {
+    "current": 10.379280090332031,
+    "vibration": 13.251178741455078
+  },
+  "files_sha256": {
+    "metadata.json": "9961de31de867b88bdc4f75e678ee246279295e6cef4da0e626b49d838afc136",
+    "ae_vibration.pt": "2c41b8c0d98f17395148d33dc09e503f725b1d9c48d334469f9d77985e356ea1",
+    "ae_current.pt": "c5fe0bf9a2db9e2341069974013e837b22ab05a96ae38d713093008e12946d49",
+    "standard_scaler_vibration.joblib": "6439cfe5c58e4c367a071d3449765e6a69d77d254d1730bf535295d1c2b86a5d",
+    "xgb.json": "564345750a9f83c78784128255fee70238bacc7b2d2df1f903c7aadb6d40f32b",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "d38e64664502f381a5b803f3c26d60891d427abe205415ec8c19c80134c520b8"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "belt_loose"
+  },
+  "metrics": {
+    "accuracy": 1.0,
+    "f1_macro": 1.0,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 117.0
+      },
+      "belt_loose": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 258.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 375.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 375.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        117,
+        0
+      ],
+      [
+        0,
+        258
+      ]
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "id": null,
+  "title": "실시간 센서 데이터 대시보드",
+  "tags": ["sensors", "realtime", "factory"],
+  "style": "dark",
+  "timezone": "browser",
+  "templating": {
+    "list": [
+      {
+        "name": "device",
+        "type": "query",
+        "label": "Device",
+        "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+        "query": "SELECT DISTINCT device FROM sensor_data ORDER BY device",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "current": {"text": "All", "value": ["$__all"]}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "$device Current (x,y,z)",
+      "type": "timeseries",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 0},
+      "repeat": "device",
+      "maxPerRow": 2,
+      "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+      "targets": [
+        {"refId": "X", "alias": "x", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\", 'x' AS metric FROM sensor_data WHERE sensor_type='x' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"},
+        {"refId": "Y", "alias": "y", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\", 'y' AS metric FROM sensor_data WHERE sensor_type='y' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"},
+        {"refId": "Z", "alias": "z", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\", 'z' AS metric FROM sensor_data WHERE sensor_type='z' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"}
+      ]
+    },
+    {
+      "id": 2,
+      "title": "$device Vibration (vibe)",
+      "type": "timeseries",
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 10},
+      "repeat": "device",
+      "maxPerRow": 2,
+      "datasource": {"type": "postgres", "uid": "TimescaleDB"},
+      "targets": [
+        {"refId": "V", "editorMode": "code", "format": "time_series", "rawQuery": true, "rawSql": "SELECT time AS \"time\", value AS \"value\" FROM sensor_data WHERE sensor_type='vibe' AND device = ${device:singlequote} AND $__timeFilter(time) ORDER BY 1"}
+      ]
+    }
+  ],
+  "time": {"from": "now-5m", "to": "now"},
+  "refresh": "5s",
+  "schemaVersion": 30,
+  "version": 0
+}

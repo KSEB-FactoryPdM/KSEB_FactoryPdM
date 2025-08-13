@@ -8,6 +8,8 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.services.sensor_service import SensorService
+from app.services.serve_ml_loader import serve_ml_registry
+from fastapi import Body
 from app.schemas.sensor import (
     SensorDataCreate,
     SensorDataResponse,
@@ -33,6 +35,29 @@ async def save_sensor_data(
             raise HTTPException(status_code=500, detail="센서 데이터 저장 실패")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"센서 데이터 저장 실패: {str(e)}")
+
+
+@router.post("/serve-ml/predict", response_model=dict)
+async def serve_ml_predict_inline(
+    equipment_id: str = Query(..., description="장비 ID"),
+    power: Optional[str] = Query(None, description="전력 버킷 (없으면 자동)"),
+    model_version: Optional[str] = Query(None, description="모델 버전 (없으면 최신)"),
+    features: dict = Body(..., description="feature_spec.yaml 키-값")
+):
+    try:
+        sel_power = power or serve_ml_registry.select_power_by_rule(equipment_id, features)
+        bundle = serve_ml_registry.resolve_bundle(equipment_id, sel_power, model_version)
+        result = bundle.infer(features)
+        return {
+            "equipment_id": equipment_id,
+            "power": sel_power or "auto",
+            "model_version": model_version or bundle.bundle_dir.name,
+            "result": result,
+        }
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"서빙 오류: {e}")
 
 
 @router.post("/data/batch", response_model=dict)

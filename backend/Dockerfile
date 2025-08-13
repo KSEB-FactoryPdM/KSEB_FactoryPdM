@@ -1,5 +1,4 @@
-# Python 3.9 베이스 이미지 사용
-FROM python:3.9-slim
+FROM python:3.11
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -15,8 +14,15 @@ RUN apt-get update && apt-get install -y \
 # Python 의존성 파일 복사
 COPY requirements.txt .
 
-# Python 패키지 설치 (torch CPU 전용)
-RUN pip install torch==2.1.1 -f https://download.pytorch.org/whl/torch_stable.html && \
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=300 \
+    PIP_PREFER_BINARY=1
+
+# Python 패키지 설치 (torch CPU 전용 + xgboost 선설치 후 나머지 의존성)
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir torch==2.1.1+cpu -f https://download.pytorch.org/whl/torch_stable.html && \
+    pip install --no-cache-dir xgboost==2.0.2 && \
     pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사

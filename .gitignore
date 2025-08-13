@@ -83,3 +83,4 @@ htmlcov/
 scripts/
 ai/
 .venv/
+serve_ml/backend/scripts

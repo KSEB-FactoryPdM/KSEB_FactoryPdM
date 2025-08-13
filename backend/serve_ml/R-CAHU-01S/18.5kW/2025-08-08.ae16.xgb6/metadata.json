@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-CAHU-01S",
+  "power": "18.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "belt_loose"
+  ],
+  "th_ae": {
+    "current": 25.643983840942383,
+    "vibration": 3.676405191421509
+  },
+  "files_sha256": {
+    "metadata.json": "8ab029f474fe3ca39a18d1340becefd6d6d95eff46ea9b4160265d5748f79fe9",
+    "ae_vibration.pt": "b2b31bf6782a364831e61fe81473c15c499bba6dae182a2470e91d2e698a1136",
+    "ae_current.pt": "85005fd9fef54afebeae45b99f0818e06d62447ed16978e56aed273107a85d54",
+    "standard_scaler_vibration.joblib": "185e884a7dd0af95f8697c6fbf92cf394a188f6637cb1ff32a92c2faff50c909",
+    "xgb.json": "3c040844b26b8a517c9fdf1de18b8ba2139a90efd0dbf53494f69f4091707427",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "27f0702f70394c3e704db3387edc18710628b2dbf8b6eb38d52179e6dc424847"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "belt_loose"
+  },
+  "metrics": {
+    "accuracy": 0.9977064220183486,
+    "f1_macro": 0.9730980440550379,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1-score": 0.9473684210526315,
+        "support": 10.0
+      },
+      "belt_loose": {
+        "precision": 0.9976580796252927,
+        "recall": 1.0,
+        "f1-score": 0.9988276670574443,
+        "support": 426.0
+      },
+      "accuracy": 0.9977064220183486,
+      "macro avg": {
+        "precision": 0.9988290398126464,
+        "recall": 0.95,
+        "f1-score": 0.9730980440550379,
+        "support": 436.0
+      },
+      "weighted avg": {
+        "precision": 0.9977117933953549,
+        "recall": 0.9977064220183486,
+        "f1-score": 0.9976474091215541,
+        "support": 436.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        9,
+        1
+      ],
+      [
+        0,
+        426
+      ]
+    ]
+  }
+}

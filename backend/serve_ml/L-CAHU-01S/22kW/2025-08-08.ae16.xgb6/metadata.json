@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-CAHU-01S",
+  "power": "22kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 93.10440826416016,
+    "vibration": 4.490619659423828
+  },
+  "files_sha256": {
+    "metadata.json": "cb5434f3571df93f595f44428c2ce427ad1728212b4d16fbd686ce8c7d44e49f",
+    "ae_vibration.pt": "ed487f5fadf729b6f8c1e025784c1e4f5428d0bd8d5551dc25ea20250c89955f",
+    "ae_current.pt": "89d55357a7c0f920d0ed4a6536ee5f08e15160134d01837786bf1a6bba3b7c63",
+    "standard_scaler_vibration.joblib": "b120b57eeb4a205bedae58f477b7fc79855490b0a4df6dc4b8a8101582cfe36b",
+    "xgb.json": "b84938b3879cd82a116478c52d4161effbde056fc6d6a32e1cc349951743eacf",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "d36f66e7e22592893ace468b6e5909d0b740c05e4c15c20f948b04499072fb79"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.8025134649910234,
+    "f1_macro": 0.5078240472977316,
+    "classification_report": {
+      "normal": {
+        "precision": 0.24242424242424243,
+        "recall": 0.08602150537634409,
+        "f1-score": 0.12698412698412698,
+        "support": 93.0
+      },
+      "misalign": {
+        "precision": 0.8377862595419847,
+        "recall": 0.9461206896551724,
+        "f1-score": 0.888663967611336,
+        "support": 464.0
+      },
+      "accuracy": 0.8025134649910234,
+      "macro avg": {
+        "precision": 0.5401052509831136,
+        "recall": 0.5160710975157582,
+        "f1-score": 0.5078240472977316,
+        "support": 557.0
+      },
+      "weighted avg": {
+        "precision": 0.7383811112620027,
+        "recall": 0.8025134649910234,
+        "f1-score": 0.7614894161242077,
+        "support": 557.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        8,
+        85
+      ],
+      [
+        25,
+        439
+      ]
+    ]
+  }
+}

@@ -69,6 +69,8 @@ class Settings(BaseSettings):
         default=0.7,
         env="RUL_PREDICTION_CONFIDENCE_THRESHOLD"
     )
+    # 모델 재학습/스케줄러 사용 여부 (기본 비활성화)
+    ENABLE_MODEL_TRAINING: bool = Field(default=False, env="ENABLE_MODEL_TRAINING")
     
     # 알림 설정
     EMAIL_SMTP_SERVER: str = Field(
@@ -78,24 +80,15 @@ class Settings(BaseSettings):
     EMAIL_SMTP_PORT: int = Field(default=587, env="EMAIL_SMTP_PORT")
     EMAIL_USERNAME: Optional[str] = Field(default=None, env="EMAIL_USERNAME")
     EMAIL_PASSWORD: Optional[str] = Field(default=None, env="EMAIL_PASSWORD")
-    ADMIN_EMAIL: str = Field(default="admin@kseb-factory.com", env="ADMIN_EMAIL")
-    
-    # 슬랙 알림 설정
-    SLACK_WEBHOOK_URL: Optional[str] = Field(default=None, env="SLACK_WEBHOOK_URL")
+    # Slack 설정(선택)
     SLACK_BOT_TOKEN: Optional[str] = Field(default=None, env="SLACK_BOT_TOKEN")
     SLACK_ADMIN_USER_ID: Optional[str] = Field(default=None, env="SLACK_ADMIN_USER_ID")
     
-
     
     # 모니터링 설정
     PROMETHEUS_PORT: int = Field(default=9090, env="PROMETHEUS_PORT")
     GRAFANA_PORT: int = Field(default=3000, env="GRAFANA_PORT")
     
-    # AWS 설정 (배포용) - 환경변수에서만
-    AWS_ACCESS_KEY_ID: Optional[str] = Field(default=None, env="AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(default=None, env="AWS_SECRET_ACCESS_KEY")
-    AWS_REGION: str = Field(default="ap-northeast-2", env="AWS_REGION")
-    AWS_EC2_INSTANCE_ID: Optional[str] = Field(default=None, env="AWS_EC2_INSTANCE_ID")
     
     # 성능 목표 설정
     MAX_CONCURRENT_DEVICES: int = Field(default=1000, env="MAX_CONCURRENT_DEVICES")
@@ -105,7 +98,9 @@ class Settings(BaseSettings):
     model_config = {
         "env_file": ".env",
         "case_sensitive": True,
-        "extra": "allow"
+        "extra": "allow",
+        # Pydantic v2 경고 억제: 예약 네임스페이스 비활성화
+        "protected_namespaces": ()
     }
 
     def __init__(self, **kwargs):

@@ -1,5 +1,24 @@
-# 🏭 스마트팩토리 공장설비 예지보전 시스템
+## 🏭 스마트팩토리 공장설비 예지보전 시스템 (Backend)
 
+---
+
+## serve_ml 서빙/시뮬레이터 통합 (코드 기준)
+
+- 번들 디렉토리 구조: `serve_ml/<equipment_id>/<power>/<model_version>/`
+- HTTP API:
+  - `POST /api/v1/serve-ml/predict` { equipment_id, power?, model_version?, features{} }
+  - `GET /api/v1/serve-ml/bundles?equipment_id=&power=`
+  - `POST /api/v1/serve-ml/sync`
+- MQTT 입력 토픽(기본): `serve-ml/+/features` (와일드카드 포함, payload: { power?, model_version?, features{} })
+- DB 테이블: `serve_ml_models`, `serve_ml_predictions` (Timescale hypertable)
+- 환경변수:
+  - `SERVE_ML_ROOT` 번들 루트 경로 (기본: `/app/serve_ml`)
+  - `SERVE_ML_ENABLE_XGB` XGBoost 사용 여부("true"일 때만 활성)
+
+FAQ:
+- power는 요청 지정 또는 자동 버킷 선택
+- case A에서 `xgb.json` 없어도 정상(오토인코더 게이트만 사용)
+- 싱글 모달의 경우 해당 모달 임계값만 적용
 ## 📋 개요
 
 이 프로젝트는 스마트팩토리 환경에서 공장설비의 예지보전을 위한 종합적인 AI 기반 시스템입니다. 실시간 센서 데이터 수집, 처리, 이상탐지, 고장 예측을 통해 설비의 안정적인 운영과 효율적인 유지보수를 지원합니다.
@@ -13,9 +32,8 @@ graph TB
         B --> C[데이터 수집기]
     end
     
-    subgraph "데이터 스트리밍 계층"  
-        C --> D[Kafka]
-        D --> E[AI 모델 서비스]
+    subgraph "데이터 처리/서빙 계층"  
+        C --> E[serve_ml 서빙]
     end
     
     subgraph "데이터 저장 계층"
@@ -40,16 +58,16 @@ graph TB
     end
 ```
 
-## 🔧 기술 스택
+## 🔧 기술 스택(실사용)
 
 ### 핵심 구성 요소
 
 | 구성 요소 | 주요 기술 | 역할 |
 |----------|-----------|------|
 | 센서 시뮬레이터 | Unity + MQTT | 가상 센서 데이터 생성 및 Publish |
-| 데이터 수집기 | FastAPI + MQTT Client + Kafka Producer | MQTT Subscribe → Kafka Publish |
-| 데이터 버퍼링 | Apache Kafka | 스트리밍 파이프라인, 모델 연계용 Topic 운영 |
-| AI 모델 | 사전 훈련된 PyTorch 모델 + Kafka Consumer | 이상탐지/예지 모델 실시간 예측 |
+| 데이터 수집기 | FastAPI + MQTT Client | MQTT Subscribe → TimescaleDB Insert |
+| 데이터 버퍼링 | MQTT + TimescaleDB | 실시간 저장 |
+| AI 모델 | serve_ml 번들 기반 HTTP/MQTT 서빙 | 이상탐지/예지 모델 실시간 예측 |
 | DB | TimescaleDB | 예측 결과 및 원본 데이터 저장 |
 | 시각화 | Grafana + Prometheus | 모델 결과 및 시스템 상태 모니터링 |
 | 인프라 | Docker + Kubernetes (GKE) | 서비스 컨테이너화 및 오케스트레이션 |
@@ -66,9 +84,10 @@ graph TB
 - **Pydantic** - 데이터 검증 및 직렬화
 
 #### AI/ML
-- **사전 훈련된 PyTorch 모델** - 완성된 이상탐지/예지보전 모델 사용
-- **NumPy & Pandas** - 데이터 처리
-- **TSLearn** - 시계열 분석
+- **PyTorch, scikit-learn, XGBoost**
+- **NumPy & Pandas**
+  
+주: TSLearn은 사용하지 않습니다(코드/요구사항에 없음).
 
 #### 메시징 & 스트리밍
 - **Apache Kafka** - 대용량 실시간 데이터 스트리밍
@@ -106,7 +125,7 @@ graph TB
 - **WebSocket** - 실시간 웹 알림
 - **OpenTelemetry** - 분산 추적
 
-## 🚀 빠른 시작
+## 🚀 빠른 시작(Compose)
 
 ### 사전 요구사항
 
@@ -138,8 +157,8 @@ cp .env.docker.example .env
 # models/anomaly_SENSOR_ID.pth
 # models/maintenance_SENSOR_ID.pth
 
-# Docker Compose로 모든 서비스 실행
-docker-compose up -d
+# Docker Compose로 모든 서비스 실행 (Kafka 제외)
+docker-compose up -d timescaledb mqtt redis backend frontend
 
 # 서비스 상태 확인
 docker-compose ps
@@ -160,7 +179,7 @@ cp .env.example .env
 # .env 파일에서 DATABASE_URL, SECRET_KEY 등 필수 변수 설정
 
 # 데이터베이스 및 기타 인프라 서비스만 Docker로 실행
-docker-compose up -d postgres mqtt kafka redis
+docker-compose up -d timescaledb mqtt redis
 
 # 애플리케이션 직접 실행
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -169,11 +188,11 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ### 접근 정보
 
-- **API 서버**: http://localhost:8000
-- **API 문서**: http://localhost:8000/docs
-- **Grafana**: http://localhost:3000 (admin / 설정한 비밀번호)
+- **API 서버**: http://localhost:8000 (문서: /docs)
+- **Grafana**: http://localhost:3001 (admin / ${GRAFANA_PASSWORD:-admin})
 - **Prometheus**: http://localhost:9090
-- **Kafka UI**: http://localhost:8080
+  
+주의: Prometheus 메트릭은 FastAPI의 `/metrics` 경로가 아닌, 내장 서버(포트 9090)에서 노출됩니다.
 
 ### 프로덕션 배포 (Kubernetes)
 
@@ -206,37 +225,57 @@ gcloud container clusters create smart-factory-cluster \
 ./scripts/deploy.sh gke YOUR_PROJECT_ID
 ```
 
-## 📡 API 엔드포인트
+## 📡 API 엔드포인트(코드 기준)
 
-### 인증
-- `POST /api/v1/auth/login` - 로그인
-- `POST /api/v1/auth/register` - 회원가입
-- `POST /api/v1/auth/refresh` - 토큰 갱신
+### 헬스
+- `GET /health`
 
-### 설비 관리
-- `GET /api/v1/equipment` - 설비 목록 조회
-- `POST /api/v1/equipment` - 설비 등록
-- `GET /api/v1/equipment/{id}` - 설비 상세 조회
-- `PUT /api/v1/equipment/{id}` - 설비 정보 수정
+### 인증(auth)
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
 
-### 센서 데이터
-- `GET /api/v1/sensors` - 센서 목록 조회
-- `GET /api/v1/sensors/{id}/data` - 센서 데이터 조회
-- `POST /api/v1/sensors/{id}/data` - 센서 데이터 등록
+### 설비/센서(equipment, sensors)
+- `GET /api/v1/equipment`, `POST /api/v1/equipment`, CRUD 일체
+- `GET /api/v1/equipment/{equipment_id}/with-sensors`
+- `GET /api/v1/sensors/data/{device_id}`
+- `GET /api/v1/sensors/data/{device_id}/latest`
+- `POST /api/v1/sensors/data`
+- `POST /api/v1/sensors/serve-ml/predict`
 
-### 예측 및 알림
-- `GET /api/v1/predictions` - 예측 결과 조회
-- `GET /api/v1/alerts` - 알림 목록 조회
-- `PUT /api/v1/alerts/{id}` - 알림 상태 업데이트
+### 이상탐지(anomalies)
+- `POST /api/v1/anomalies/detect`
+- `GET /api/v1/anomalies/events`
+- `GET /api/v1/anomalies/stats`
+- `POST /api/v1/anomalies/train-with-data`
+- `POST /api/v1/anomalies/upload-and-train`
+- `GET /api/v1/anomalies/model-performance`
 
-### 모니터링
-- `GET /health` - 헬스 체크
-- `GET /metrics` - Prometheus 메트릭
+### serve_ml
+- `POST /api/v1/serve-ml/predict`
+- `GET /api/v1/serve-ml/bundles`
+- `POST /api/v1/serve-ml/sync`
 
-### 알림 시스템
-- `POST /api/v1/notifications/test-slack-bot` - 슬랙 봇 테스트
-- `GET /api/v1/notifications` - 알림 목록 조회
-- `PUT /api/v1/notifications/{id}` - 알림 상태 업데이트
+### RUL / RUL-lite
+- `POST /api/v1/rul/predict`
+- `GET /api/v1/rul/predictions`
+- `GET /api/v1/rul/health/{device_id}`
+- `POST /api/v1/rul/train`
+- `GET /api/v1/rul/stats`
+- `POST /api/v1/rul/ingest`
+- `GET  /api/v1/rul/status`
+
+### 알림/알럿(notifications, alerts)
+- `GET /api/v1/alerts`, `GET /api/v1/alerts/{alert_id}`
+- `GET /api/v1/notifications`
+- `POST /api/v1/notifications/test-slack-bot`, `POST /api/v1/notifications/test-email`
+- WebSocket: `GET /api/v1/notifications/ws/notifications`
+
+### 실시간 WS(realtime)
+- `GET /api/v1/ws/stream`
+- `GET /api/v1/ws/devices/{device_id}`
+
+주: 기존 README의 `GET /metrics`, `PUT /alerts/{id}`, `GET /api/v1/predictions` 등은 구현되어 있지 않아 제거/수정했습니다.
 
 ## 🧠 AI 모델
 
@@ -267,16 +306,15 @@ gcloud container clusters create smart-factory-cluster \
 - **시스템 성능 메트릭**
 
 ### 접근 정보
-- **Grafana**: http://localhost:3000 (admin/admin)
+- **Grafana**: http://localhost:3001
 - **Prometheus**: http://localhost:9090
 - **API 문서**: http://localhost:8000/docs
 
 ## 🔄 데이터 플로우
 
 1. **데이터 생성**: Unity 센서 시뮬레이터가 실제 공장설비 데이터를 모사하여 MQTT로 전송
-2. **데이터 수집**: 데이터 수집기가 MQTT 메시지를 구독하여 Kafka로 스트리밍
-3. **데이터 처리**: Kafka Consumer가 데이터를 소비하여 전처리 및 정규화 수행
-4. **AI 추론**: 사전 훈련된 PyTorch 모델이 실시간으로 이상탐지 및 예지보전 수행
+2. **데이터 수집**: 데이터 수집기가 MQTT 메시지를 구독하여 TimescaleDB에 저장
+3. **AI 추론**: serve_ml 번들이 실시간으로 이상탐지 수행 (HTTP 또는 MQTT 입력)
 5. **결과 저장**: 예측 결과를 TimescaleDB에 저장
 6. **알림 생성**: 임계값 초과시 자동 알림 생성
 7. **시각화**: Grafana를 통한 실시간 모니터링 및 대시보드 제공
@@ -491,17 +529,6 @@ http://localhost:8000/docs
 - 설비 잔여 수명이 임계값 이하로 떨어질 때
 - 시스템 오류가 발생할 때
 
-### 6. ML 모델 연동 (향후 추가 예정)
-```bash
-# ML 모델 파일 추가
-backend/app/models/
-├── anomaly_detection_model.pkl    # 이상 탐지 모델
-└── rul_prediction_model.pkl       # 잔여 수명 예측 모델
-
-# 고급 통합 테스트 (ML + 알림)
-python3 test_integrated_notifications.py
-# 선택: 2 (고급 통합 테스트)
-```
 
 #### ML 모델 연동 기능:
 - **이상 탐지**: 센서 데이터 기반 실시간 이상 탐지

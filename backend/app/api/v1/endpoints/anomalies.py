@@ -10,7 +10,8 @@ import os
 import tempfile
 import shutil
 
-from app.core.database import get_db
+from app.core.database import get_db, get_timescale_engine
+from sqlalchemy import text
 from app.ml.anomaly_detection import anomaly_model
 from app.schemas.anomaly import (
     AnomalyDetectionRequest,
@@ -141,15 +142,36 @@ async def get_anomaly_events(
 ):
     """이상 이벤트 조회"""
     try:
-        # 실제 구현에서는 데이터베이스에서 이상 이벤트를 조회
-        # 여기서는 예시 응답을 반환
-        return {
-            "events": [],
-            "total": 0,
-            "page": page,
-            "size": size,
-            "message": "이상 이벤트 조회 기능은 구현 예정입니다"
-        }
+        engine = get_timescale_engine()
+        conditions = []
+        params = {}
+        if device_id:
+            conditions.append("equipment_id = :device_id")
+            params["device_id"] = device_id
+        # serve_ml_predictions 테이블에는 severity 컬럼이 없으므로 필터 제외
+        if start_time:
+            conditions.append("time >= :start_time")
+            params["start_time"] = start_time
+        if end_time:
+            conditions.append("time <= :end_time")
+            params["end_time"] = end_time
+
+        where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        sql = f"""
+            SELECT time AS event_time, equipment_id AS device_id, is_anomaly, confidence,
+                   scores, thresholds, modalities
+            FROM serve_ml_predictions
+            {where_sql}
+            ORDER BY time DESC
+            LIMIT :limit OFFSET :offset
+        """
+        params["limit"] = size
+        params["offset"] = (page - 1) * size
+        with engine.connect() as conn:
+            result = conn.execute(text(sql), params)
+            cols = result.keys()
+            rows = [dict(zip(cols, r)) for r in result.fetchall()]
+        return {"events": rows, "total": len(rows), "page": page, "size": size}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"이상 이벤트 조회 실패: {str(e)}")
 

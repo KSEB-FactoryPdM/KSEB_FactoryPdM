@@ -1,17 +1,6 @@
 name: Compute Cluster Deploy to GKE
 on:
-  push:
-    branches: [ main, develop ]
-    paths: 
-      - 'backend/app/services/ai_model_service.py'
-      - 'backend/app/ml/**'
-      - '.github/workflows/compute-cluster-deploy.yml'
-  pull_request:
-    branches: [ main ]
-    paths: 
-      - 'backend/app/services/ai_model_service.py'
-      - 'backend/app/ml/**'
-      - '.github/workflows/compute-cluster-deploy.yml'
+  workflow_dispatch:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -19,8 +8,6 @@ env:
   GKE_REGION: us-central1
   GKE_ZONE: us-central1-c
   AI_MODEL_SERVICE_IMAGE: smart-factory-ai-model-service
-  KAFKA_IMAGE: confluentinc/cp-kafka:7.4.0
-  ZOOKEEPER_IMAGE: confluentinc/cp-zookeeper:7.4.0
 
 jobs:
   build-and-test:
@@ -42,7 +29,7 @@ jobs:
         pip install -r backend/requirements.txt
         pip install pytest pytest-asyncio torch scikit-learn
 
-    - name: Run AI/ML service tests
+    - name: Run AI service import (legacy)
       run: |
         cd backend
         # AI/ML 서비스 모듈 import 테스트
@@ -64,14 +51,7 @@ jobs:
             print(f'❌ PyTorch import 실패: {e}')
             exit(1)
             
-        try:
-            from app.ml.anomaly_detection import anomaly_model
-            print('✅ 이상탐지 모델 import 성공')
-        except Exception as e:
-            print(f'❌ 이상탐지 모델 import 실패: {e}')
-            exit(1)
-        
-        print('✅ Compute Cluster AI/ML 모듈 import 성공!')
+         print('✅ Compute Cluster 레거시 경로 import 확인 완료!')
         "
       env:
         KAFKA_BOOTSTRAP_SERVERS: localhost:9092
@@ -206,7 +186,7 @@ jobs:
       run: |-
         docker push "gcr.io/$PROJECT_ID/$AI_MODEL_SERVICE_IMAGE:$GITHUB_SHA"
 
-    - name: Deploy Compute Infrastructure
+    - name: Deploy Compute Infrastructure (Kafka/AI, legacy)
       run: |-
         cd backend
         
@@ -524,7 +504,7 @@ jobs:
         
         # Kafka 서비스 외부 IP 확인
         KAFKA_EXTERNAL_IP=$(kubectl get svc kafka-service -n smart-factory-compute -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
-        echo "Kafka 외부 IP: $KAFKA_EXTERNAL_IP"
+        echo "Kafka 외부 IP: $KAFKA_EXTERNAL_IP (external listener 9093)"
         
         # AI 모델 서비스 외부 IP 확인
         AI_EXTERNAL_IP=$(kubectl get svc ai-model-service -n smart-factory-compute -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
@@ -566,5 +546,5 @@ jobs:
         
         echo "✅ 클러스터 간 통신 설정 완료"
         echo "Core Cluster에서 다음 엔드포인트들을 사용하세요:"
-        echo "- Kafka: $KAFKA_EXTERNAL_IP:9092"
+        echo "- Kafka: $KAFKA_EXTERNAL_IP:9093"
         echo "- AI Model Service: $AI_EXTERNAL_IP:8001"

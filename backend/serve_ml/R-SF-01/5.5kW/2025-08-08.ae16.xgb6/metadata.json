@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-SF-01",
+  "power": "5.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 1.3983460664749146,
+    "vibration": 15.630331993103027
+  },
+  "files_sha256": {
+    "metadata.json": "31a97b67ff405472e21d7f6c0fd8268e26f1c25492ad35c8e5e46409836eb581",
+    "ae_vibration.pt": "42492ab68b00f482d475d3ae597152bc43390e687b7568ab2415183f4817cd7c",
+    "ae_current.pt": "91c1c1fe21e471b414ef302fb93456463b5b7cf5f426093e6e1c66aa2691c69d",
+    "standard_scaler_vibration.joblib": "5e2e39c06322261e05c935d638b3bc0c35617190c301bb3672b10d030e8f4693",
+    "xgb.json": "38d76f4e567daf5100f800841a97a31e5cf411353fa07f5d2ce8aeb28135b910",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "b907c0dbc319d7c2263610e50dd50bb7996e4fd6bc2d6b9d172a8b8d752d16c4"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.998468606431853,
+    "f1_macro": 0.8329496034791506,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6666666666666666,
+        "support": 2.0
+      },
+      "misalign": {
+        "precision": 0.9984662576687117,
+        "recall": 1.0,
+        "f1-score": 0.9992325402916347,
+        "support": 651.0
+      },
+      "accuracy": 0.998468606431853,
+      "macro avg": {
+        "precision": 0.9992331288343559,
+        "recall": 0.75,
+        "f1-score": 0.8329496034791506,
+        "support": 653.0
+      },
+      "weighted avg": {
+        "precision": 0.9984709551949943,
+        "recall": 0.998468606431853,
+        "f1-score": 0.9982139618119259,
+        "support": 653.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        1,
+        1
+      ],
+      [
+        0,
+        651
+      ]
+    ]
+  }
+}

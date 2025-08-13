@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-PAHU-03S",
+  "power": "30kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 15.307138442993164,
+    "vibration": 47.05342102050781
+  },
+  "files_sha256": {
+    "metadata.json": "32b0aec03a1499c5742940f798e659827e7a8a3c32f47d8f7c5a29985e0d1412",
+    "ae_vibration.pt": "470119ee0c77601a3fd30c5e5e4f6e04ce44c4196bf0df6318a3a49a267f3f9c",
+    "ae_current.pt": "4da3a91afc307894e7cd7bf7628386d3e56ab2f80cd2a5eee825d8a2f24a5138",
+    "standard_scaler_vibration.joblib": "fb67c9a7b385f66b686399b1e95c43302447d4f2a8bfe1bb73a0d6d14169b2f4",
+    "xgb.json": "d1ca37293222ac8a9ade69c95e8fbb6f531760bf4c53938c91088f7da0933154",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "9e80c597e267c506deaebc8a947918fa64503a9f721184b3e448bb462275e5dd"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.9684418145956607,
+    "f1_macro": 0.9644970414201184,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9526627218934911,
+        "recall": 0.9526627218934911,
+        "f1-score": 0.9526627218934911,
+        "support": 169.0
+      },
+      "misalign": {
+        "precision": 0.9763313609467456,
+        "recall": 0.9763313609467456,
+        "f1-score": 0.9763313609467456,
+        "support": 338.0
+      },
+      "accuracy": 0.9684418145956607,
+      "macro avg": {
+        "precision": 0.9644970414201184,
+        "recall": 0.9644970414201184,
+        "f1-score": 0.9644970414201184,
+        "support": 507.0
+      },
+      "weighted avg": {
+        "precision": 0.9684418145956607,
+        "recall": 0.9684418145956607,
+        "f1-score": 0.9684418145956607,
+        "support": 507.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        161,
+        8
+      ],
+      [
+        8,
+        330
+      ]
+    ]
+  }
+}

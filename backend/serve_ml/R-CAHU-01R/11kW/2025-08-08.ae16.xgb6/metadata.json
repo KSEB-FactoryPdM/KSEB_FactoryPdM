@@ -1,0 +1,71 @@
+{
+  "equipment_id": "R-CAHU-01R",
+  "power": "11kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "belt_loose"
+  ],
+  "th_ae": {
+    "current": 28.021732330322266,
+    "vibration": 4.614411354064941
+  },
+  "files_sha256": {
+    "metadata.json": "5f7af98243b71e3fc90817ae3aa99ff451991398399d8300a2395857a0efe9b9",
+    "ae_vibration.pt": "e52b3122c7db1c18c5376de7753dffe6eafb32ed0a8b88f707c8cc81b55b8d9c",
+    "ae_current.pt": "057c83291f72a3951fc672990d5f8957a807f10027d255cb2490d5a125d4ffef",
+    "standard_scaler_vibration.joblib": "b4fff1b30f8943fa375a18fdf79d7508a1819c92d6579307439a86492761c018",
+    "xgb.json": "159614ba3675fa1fd22842178ad2e420a9234dd03f426c7802a43d80708c69c5",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "60cf2f5f542113d3708b1e80cfb1c597945f8f6e426ab6767b14e92e75145e5e"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "belt_loose"
+  },
+  "metrics": {
+    "accuracy": 0.9174757281553398,
+    "f1_macro": 0.9150226881172503,
+    "classification_report": {
+      "normal": {
+        "precision": 0.8953488372093024,
+        "recall": 0.9058823529411765,
+        "f1-score": 0.9005847953216374,
+        "support": 85.0
+      },
+      "belt_loose": {
+        "precision": 0.9333333333333333,
+        "recall": 0.9256198347107438,
+        "f1-score": 0.9294605809128631,
+        "support": 121.0
+      },
+      "accuracy": 0.9174757281553398,
+      "macro avg": {
+        "precision": 0.9143410852713179,
+        "recall": 0.9157510938259601,
+        "f1-score": 0.9150226881172503,
+        "support": 206.0
+      },
+      "weighted avg": {
+        "precision": 0.9176601189132235,
+        "recall": 0.9174757281553398,
+        "f1-score": 0.917545815013571,
+        "support": 206.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        77,
+        8
+      ],
+      [
+        9,
+        112
+      ]
+    ]
+  }
+}
