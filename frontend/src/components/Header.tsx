@@ -60,10 +60,20 @@ export default function Header() {
   useEffect(() => {
     async function fetchUnread() {
       try {
+        let count = 0;
+        // 우선 API 시도
         const res = await fetch('/api/alerts?status=new');
-        if (!res.ok) return;
-        const data = await res.json();
-        const count = Array.isArray(data) ? data.length : data?.count ?? 0;
+        if (res.ok) {
+          const data = await res.json();
+          count = Array.isArray(data) ? data.length : data?.count ?? 0;
+        } else {
+          // 실패 시 public의 mock 데이터 폴백
+          const mock = await fetch('/mock-alerts.json');
+          if (mock.ok) {
+            const arr = await mock.json();
+            count = Array.isArray(arr) ? arr.filter((a: any) => a?.status === 'new').length : 0;
+          }
+        }
         setUnread(count);
       } catch (err) {
         console.error('Failed to fetch unread alerts', err);
@@ -100,7 +110,6 @@ export default function Header() {
     <header
       role="banner"
       className="
-        sticky top-0 z-40
         h-16 flex items-center
         px-4
         bg-white/90 backdrop-blur
@@ -211,6 +220,8 @@ export default function Header() {
         >
           <LanguageSwitcher />
         </div>
+
+        {/* Header에서 테마/대비/글꼴 크기 토글 제거 (Settings에서만 제공) */}
 
         {/* 알림 아이콘: 호버/포커스 피드백 + 뱃지 */}
         <button

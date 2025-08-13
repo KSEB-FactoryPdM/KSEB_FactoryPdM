@@ -98,5 +98,18 @@
       "acknowledged": "확인됨",
       "cleared": "해결됨"
     }
+  },
+  "monitoring": {
+    "title": "실시간 모니터링",
+    "subtitle": "장비 상태, 이상 징후, 센서 신호를 실시간으로 확인하세요.",
+    "connecting": "서버 연결 중…",
+    "error": "연결 오류(자동 재시도)",
+    "connected": "실시간 연결됨",
+    "resume": "재개",
+    "pause": "일시정지",
+    "exportCsv": "CSV 내보내기",
+    "resumeTitle": "실시간 갱신 재개",
+    "pauseTitle": "실시간 갱신 일시정지",
+    "exportTitle": "현재 범위 데이터 CSV 저장"
   }
 }

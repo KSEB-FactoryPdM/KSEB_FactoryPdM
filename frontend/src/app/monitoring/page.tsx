@@ -18,6 +18,7 @@ import {
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 
+
 type MyPoint = {
   time: number
   total: number
@@ -31,9 +32,9 @@ type MyPoint = {
   zone2: number
   zone3: number
   rul: number
-  size50: number
-  size90: number
-  size99: number
+  // Replace size-bucket signals with explicit sensors
+  current?: number
+  vibration?: number
 }
 type MyType = Array<MyPoint>
 
@@ -170,7 +171,7 @@ export default function MonitoringPage() {
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d'>('24h')
   const [power, setPower] = useState('')
   const [selectedEquipment, setSelectedEquipment] = useState('')
-  const [sensor, setSensor] = useState<keyof MyPoint>('size50')
+  const [sensor, setSensor] = useState<keyof MyPoint>('current')
 
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
@@ -204,8 +205,12 @@ export default function MonitoringPage() {
     downloadCSV(
       filteredData.map((d) => ({
         time: new Date(d.time * 1000).toISOString(),
-        total: d.total, A: d.A, AAAA: d.AAAA, PTR: d.PTR, SOA: d.SOA, SRV: d.SRV, TXT: d.TXT,
-        zone1: d.zone1, zone2: d.zone2, zone3: d.zone3, rul: d.rul, size50: d.size50, size90: d.size90, size99: d.size99,
+        total: d.total,
+        A: d.A, AAAA: d.AAAA, PTR: d.PTR, SOA: d.SOA, SRV: d.SRV, TXT: d.TXT,
+        zone1: d.zone1, zone2: d.zone2, zone3: d.zone3,
+        rul: d.rul,
+        current: d.current,
+        vibration: d.vibration,
       })),
       `monitoring_${timeRange}.csv`,
     )
@@ -345,7 +350,7 @@ export default function MonitoringPage() {
             onDeviceChange={(v: string) => setSelectedEquipment(v)}
           />
           <SensorFilter
-            options={['size50', 'size90', 'size99', 'rul', 'A', 'AAAA', 'PTR', 'SOA', 'SRV', 'TXT']}
+            options={['current', 'vibration']}
             value={sensor as string}
             onChange={(v) => setSensor(v as keyof MyPoint)}
           />
@@ -436,17 +441,16 @@ export default function MonitoringPage() {
             </ChartCard>
           )}
 
-          {(['size50', 'size90', 'size99'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
-            <ChartCard title="Sensor Data (size)">
+          {(hasField(filteredData, 'current') || hasField(filteredData, 'vibration')) && (
+            <ChartCard title="Sensor Data (Current & Vibration)">
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                   <YAxis tick={axisStyle} width={48} />
                   <Tooltip labelFormatter={tooltipLabel} />
                   <Legend />
-                  <Line type="monotone" dataKey="size50" stroke={colors.a} dot={false} />
-                  <Line type="monotone" dataKey="size90" stroke={colors.zone} dot={false} />
-                  <Line type="monotone" dataKey="size99" stroke={colors.accent} dot={false} />
+                  <Line type="monotone" dataKey="current" stroke={colors.a} dot={false} />
+                  <Line type="monotone" dataKey="vibration" stroke={colors.ptr} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </ChartCard>

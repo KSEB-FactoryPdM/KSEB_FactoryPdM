@@ -9,8 +9,7 @@ class ResizeObserver {
 }
 window.ResizeObserver = window.ResizeObserver || ResizeObserver
 
-window.ResizeObserver = window.ResizeObserver || ResizeObserver;
-
+// matchMedia Mock
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query) => ({
@@ -23,4 +22,4 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: () => {},
     dispatchEvent: () => false,
   }),
-});
+})

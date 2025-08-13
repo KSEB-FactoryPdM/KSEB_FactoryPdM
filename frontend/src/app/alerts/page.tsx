@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query'
 import AlertDetailsModal from '@/components/AlertDetailsModal'
 import { error } from '@/lib/logger'
 import { useTranslation } from 'react-i18next'
+import EmptyState from '@/components/EmptyState'
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState(alertList)
@@ -142,87 +143,87 @@ export default function AlertsPage() {
             </button>
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left">
-              <tr>
-                <th className="py-2">
-                  <input
-                    type="checkbox"
-                    checked={
-                      filteredAlerts.length > 0 &&
-                      filteredAlerts.every((a) => selectedIds.includes(a.id))
-                    }
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedIds(filteredAlerts.map((a) => a.id))
-                      } else {
-                        setSelectedIds([])
-                      }
-                    }}
-                  />
-                </th>
-                <th className="py-2">{t('alerts.headers.time')}</th>
-                <th className="py-2">{t('alerts.headers.kw')}</th>
-                <th className="py-2">{t('alerts.headers.device')}</th>
-                <th className="py-2">{t('alerts.headers.type')}</th>
-                <th className="py-2">{t('alerts.headers.severity')}</th>
-                <th className="py-2">{t('alerts.headers.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAlerts.map((a) => (
-                <tr key={a.id} className="border-t">
-                  <td className="py-2">
+        {filteredAlerts.length === 0 ? (
+          <EmptyState
+            title={t('alerts.noAlerts')}
+            description={t('filters.equipment') + ' / ' + t('alerts.filters.severity')}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left">
+                <tr>
+                  <th className="py-2">
                     <input
                       type="checkbox"
-                      checked={selectedIds.includes(a.id)}
+                      checked={
+                        filteredAlerts.length > 0 &&
+                        filteredAlerts.every((a) => selectedIds.includes(a.id))
+                      }
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedIds((prev) => [...prev, a.id])
+                          setSelectedIds(filteredAlerts.map((a) => a.id))
                         } else {
-                          setSelectedIds((prev) => prev.filter((id) => id !== a.id))
+                          setSelectedIds([])
                         }
                       }}
                     />
-                  </td>
-                  <td className="py-2">{a.time}</td>
-                  <td className="py-2">{a.power}</td>
-                  <td className="py-2">{a.device}</td>
-                  <td className="py-2">{a.type}</td>
-                  <td className="py-2">{a.severity}</td>
-                  <td className="py-2 space-x-2">
-                    <button
-                      className="text-blue-600 underline"
-                      onClick={() => changeStatus(a.id, 'acknowledged')}
-                    >
-                      {t('alerts.buttons.acknowledge')}
-                    </button>
-                    <button
-                      className="text-red-600 underline"
-                      onClick={() => changeStatus(a.id, 'cleared')}
-                    >
-                      {t('alerts.buttons.clear')}
-                    </button>
-                    <button
-                      className="text-primary underline"
-                      onClick={() => setSelected(a)}
-                    >
-                      {t('alerts.buttons.details')}
-                    </button>
-                  </td>
+                  </th>
+                  <th className="py-2">{t('alerts.headers.time')}</th>
+                  <th className="py-2">{t('alerts.headers.kw')}</th>
+                  <th className="py-2">{t('alerts.headers.device')}</th>
+                  <th className="py-2">{t('alerts.headers.type')}</th>
+                  <th className="py-2">{t('alerts.headers.severity')}</th>
+                  <th className="py-2">{t('alerts.headers.actions')}</th>
                 </tr>
-              ))}
-              {filteredAlerts.length === 0 && (
-                <tr>
-                  <td className="py-2" colSpan={6}>
-                    {t('alerts.noAlerts')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredAlerts.map((a) => (
+                  <tr key={a.id} className="border-t">
+                    <td className="py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(a.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds((prev) => [...prev, a.id])
+                          } else {
+                            setSelectedIds((prev) => prev.filter((id) => id !== a.id))
+                          }
+                        }}
+                      />
+                    </td>
+                    <td className="py-2">{a.time}</td>
+                    <td className="py-2">{a.power}</td>
+                    <td className="py-2">{a.device}</td>
+                    <td className="py-2">{a.type}</td>
+                    <td className="py-2">{a.severity}</td>
+                    <td className="py-2 space-x-2">
+                      <button
+                        className="text-blue-600 underline"
+                        onClick={() => changeStatus(a.id, 'acknowledged')}
+                      >
+                        {t('alerts.buttons.acknowledge')}
+                      </button>
+                      <button
+                        className="text-red-600 underline"
+                        onClick={() => changeStatus(a.id, 'cleared')}
+                      >
+                        {t('alerts.buttons.clear')}
+                      </button>
+                      <button
+                        className="text-primary underline"
+                        onClick={() => setSelected(a)}
+                      >
+                        {t('alerts.buttons.details')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </ChartCard>
       {selected && (
         <AlertDetailsModal alert={selected} onClose={() => setSelected(null)} />
