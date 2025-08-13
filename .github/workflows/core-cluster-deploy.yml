@@ -132,32 +132,18 @@ jobs:
       run: |
         gcloud config set account ${{ fromJson(secrets.GCP_SA_KEY).client_email }}
 
-    - name: Create Core Cluster with autoscaling
+    - name: Create Core Cluster (Autopilot)
       run: |-
         # Core Cluster가 존재하는지 확인
         if ! gcloud container clusters describe "$GKE_CORE_CLUSTER" --region "$GKE_REGION" &> /dev/null; then
-          echo "Core Cluster가 존재하지 않습니다. 새로 생성합니다..."
-          
-          # Core Cluster 생성 (오토스케일러 활성화, 비용 절감 최적화)
-          gcloud container clusters create "$GKE_CORE_CLUSTER" \
+          echo "Core Cluster(Autopilot)가 존재하지 않습니다. 새로 생성합니다..."
+
+          # Core Cluster (Autopilot) 생성
+          gcloud container clusters create-auto "$GKE_CORE_CLUSTER" \
             --region="$GKE_REGION" \
-            --machine-type="e2-standard-4" \
-            --num-nodes=2 \
-            --min-nodes=1 \
-            --max-nodes=10 \
-            --enable-autoscaling \
-            --enable-autorepair \
-            --enable-autoupgrade \
-            --disk-size=50GB \
-            --disk-type=pd-standard \
-            --enable-network-policy \
-            --enable-ip-alias \
-            --enable-shielded-nodes \
-            --preemptible \
-            --labels=cluster-type=core,environment=production \
-            --addons=HorizontalPodAutoscaling,HttpLoadBalancing,NetworkPolicy
-          
-          echo "✅ Core Cluster 생성 완료"
+            --labels=cluster-type=core,environment=production
+
+          echo "✅ Core Cluster(Autopilot) 생성 완료"
         else
           echo "✅ Core Cluster가 이미 존재합니다."
         fi

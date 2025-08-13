@@ -51,7 +51,9 @@ class UnitySensorSimulator:
         # 이상치 주입 설정 (전역은 매우 낮게, 특정 장비는 높게)
         self.target_device_id = "L-DEF-01"
         self.global_anomaly_prob = 0.002  # 기타 장비 이상치 확률
-        self.target_anomaly_prob = 0.25   # 대상 장비(L-DEF-01) 이상치 확률
+        # 기본 전략: L-DEF-01은 자주 이상치, 나머지는 낮은 확률
+        self.target_anomaly_prob = 0.25
+        self.global_anomaly_prob = 0.002
         self.anomaly_amplify_min = 1.5
         self.anomaly_amplify_max = 2.0
 
@@ -143,7 +145,7 @@ class UnitySensorSimulator:
                         continue
                     bundle = serve_ml_registry.resolve_bundle(equipment_id, power, None)
 
-                    # feature_spec 키 전부를 채워 차원/순서 일치 보장
+                    # feature_spec 키 전부를 채워 차원/순서 일치 보장(원 설계 유지)
                     base_cur = sensor_data.get(f"unity/sensors/{equipment_id}/data", {})
                     base_vib = sensor_data.get(f"unity/sensors/{equipment_id}/vibration", {})
                     feature_payload: Dict[str, float] = {}

@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -156,6 +157,7 @@ class ServeMLBundle:
                         except Exception:
                             cfg = {}
 
+                        # 1) 메타데이터 우선
                         hidden = cfg.get("hidden", hidden_default)
                         if isinstance(hidden, str) and "," in hidden:
                             try:
@@ -168,11 +170,62 @@ class ServeMLBundle:
                             hidden = hidden_default
                         latent_dim = int(cfg.get("latent_dim", 16))
 
+                        # 2) state_dict로부터 아키텍처 자동 추론 (메타가 없거나 불일치 시)
+                        try:
+                            enc_weight_keys = []
+                            for k, v in state_dict.items():
+                                m = re.match(r"^(enc|encoder|enc_mlp)\.(\d+)\.weight$", k)
+                                if m:
+                                    try:
+                                        enc_weight_keys.append((int(m.group(2)), v))
+                                    except Exception:
+                                        continue
+                            if enc_weight_keys:
+                                enc_weight_keys.sort(key=lambda x: x[0])
+                                shapes = [w.shape for _, w in enc_weight_keys]
+                                # 첫 Linear: [h1, input_dim], 마지막 Linear: [latent_dim, hN]
+                                inferred_input = int(shapes[0][1]) if len(shapes[0]) == 2 else None
+                                inferred_hidden = [int(s[0]) for s in shapes[:-1] if len(s) == 2]
+                                inferred_latent = int(shapes[-1][0]) if len(shapes[-1]) == 2 else None
+                                # 입력 차원/latent가 유효하면 덮어쓰기
+                                if inferred_input and inferred_latent and inferred_hidden:
+                                    input_dim = inferred_input
+                                    hidden = inferred_hidden
+                                    latent_dim = inferred_latent
+                                    logger.info(
+                                        f"AE 아키텍처 자동 추론: input_dim={input_dim}, hidden={hidden}, latent={latent_dim}"
+                                    )
+                        except Exception as _e_arch:
+                            logger.debug(f"AE 아키텍처 자동 추론 건너뜀: {_e_arch}")
+
                         model = AE(input_dim=input_dim, hidden=hidden, latent_dim=latent_dim)
                         state_dict = obj
                         # DataParallel 저장 대비 'module.' 접두 제거
                         if any(k.startswith("module.") for k in state_dict.keys()):
                             state_dict = {k.replace("module.", "", 1): v for k, v in state_dict.items()}
+                        # 학습시 encoder/decoder 명명 → 런타임 enc/dec 명명 보정
+                        # 일반적으로 Sequential 기반이면 다음 매핑으로 충분
+                        #  - 'encoder.' → 'enc.'
+                        #  - 'decoder.' → 'dec.'
+                        #  - 과거 접두 'autoencoder.' 제거
+                        def _remap_key(n: str) -> str:
+                            n2 = n
+                            if n2.startswith("autoencoder."):
+                                n2 = n2.replace("autoencoder.", "", 1)
+                            if n2.startswith("encoder."):
+                                n2 = n2.replace("encoder.", "enc.", 1)
+                            if n2.startswith("decoder."):
+                                n2 = n2.replace("decoder.", "dec.", 1)
+                            # 일부 구현에서 enc_mlp/dec_mlp 사용
+                            if n2.startswith("enc_mlp."):
+                                n2 = n2.replace("enc_mlp.", "enc.", 1)
+                            if n2.startswith("dec_mlp."):
+                                n2 = n2.replace("dec_mlp.", "dec.", 1)
+                            return n2
+
+                        if any(k.startswith("encoder.") or k.startswith("decoder.") or k.startswith("autoencoder.") or k.startswith("enc_mlp.") or k.startswith("dec_mlp.") for k in state_dict.keys()):
+                            state_dict = { _remap_key(k): v for k, v in state_dict.items() }
+                            logger.info("AE state_dict 키 접두사 보정 적용(encoder/decoder → enc/dec)")
                         missing, unexpected = model.load_state_dict(state_dict, strict=False)
                         if missing:
                             logger.warning(f"AE state_dict 로드: 누락 파라미터 {len(missing)}개")
@@ -333,6 +386,71 @@ class ServeMLBundle:
         # 모달리티 스코어
         current_score: Optional[float] = None
         vibration_score: Optional[float] = None
+
+        # 0) 시뮬/단순 매핑 등으로 생성된 "퇴화(degenerate)" 특성 감지 시 AE를 건너뛰고 간단 규칙 기반으로 판정
+        #   - current 그룹에서 고유값 개수가 전체의 20% 미만 (예: cur_x_*가 전부 동일 x 값 등)
+        #   - vibration 그룹에서 고유값 개수가 전체의 20% 미만 (예: vib_*가 전부 동일 vibe 값 등)
+        try:
+            mapping = self.feature_spec.mapping or {}
+            order_keys = self._order_keys or list(used.keys())
+            cur_names = list(mapping.get("current", []) or [k for k in order_keys if isinstance(k, str) and k.startswith("cur_")])
+            vib_names = list(mapping.get("vibration", []) or [k for k in order_keys if isinstance(k, str) and k.startswith("vib_")])
+
+            def _unique_ratio(names: List[str]) -> float:
+                if not names:
+                    return 1.0
+                vals = [used.get(k) for k in names]
+                # 부동소수 근사치로 고유값 집합 계산
+                uniq = set()
+                for v in vals:
+                    try:
+                        vv = float(v)
+                    except Exception:
+                        vv = 0.0
+                    # 소수점 6자리 반올림으로 군집화
+                    uniq.add(round(vv, 6))
+                return float(len(uniq)) / float(len(vals)) if vals else 1.0
+
+            cur_unique_ratio = _unique_ratio(cur_names)
+            vib_unique_ratio = _unique_ratio(vib_names)
+            is_degenerate = (cur_unique_ratio < 0.2) and (vib_unique_ratio < 0.2)
+        except Exception:
+            is_degenerate = False
+
+        if is_degenerate:
+            # 임계값 준비
+            thresholds = self.metadata.thresholds or {}
+            th_v = float(thresholds.get("vibration") or thresholds.get("th_ae", {}).get("vibration") or 0.0)
+            th_c = float(thresholds.get("current") or thresholds.get("th_ae", {}).get("current") or 0.0)
+
+            vib_rms = float(features.get("vib_rms", features.get("vib_mean", 0.0)))
+            cur_rms_vals = [
+                float(features.get(k, 0.0)) for k in ("cur_x_rms", "cur_y_rms", "cur_z_rms")
+            ]
+            cur_rms = float(np.mean([v for v in cur_rms_vals if v != 0.0])) if (np is not None and any(cur_rms_vals)) else (sum(cur_rms_vals) / max(1, sum(1 for v in cur_rms_vals if v != 0.0)) if any(cur_rms_vals) else 0.0)
+
+            is_anom = (vib_rms > th_v) or (cur_rms > th_c)
+            confs: List[float] = []
+            if th_v > 0:
+                confs.append(min(1.0, vib_rms / th_v))
+            if th_c > 0:
+                confs.append(min(1.0, cur_rms / th_c))
+            confidence = float(np.mean(confs)) if (np is not None and confs) else (float(sum(confs) / len(confs)) if confs else 0.0)
+
+            results: Dict[str, Any] = {
+                "used_features": used,
+                "scores": {
+                    "current": cur_rms,
+                    "vibration": vib_rms,
+                    "xgb": None,
+                },
+                "thresholds": thresholds,
+                "modalities": self.metadata.modalities,
+                "case": self.metadata.case,
+                "is_anomaly": bool(is_anom),
+                "confidence": confidence,
+            }
+            return results
 
         if "current" in self.metadata.modalities:
             self._ensure_current_loaded()
