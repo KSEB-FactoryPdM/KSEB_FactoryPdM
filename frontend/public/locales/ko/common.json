@@ -99,6 +99,39 @@
       "cleared": "해결됨"
     }
   },
+  "anomalies": {
+    "title": "이상",
+    "sort": "정렬",
+    "allTypes": "모든 유형",
+    "allStatus": "모든 상태",
+    "loading": "불러오는 중...",
+    "noAnomalies": "이상 없음",
+    "tryFilters": "필터를 조정해 보세요",
+    "search": "이상 검색",
+    "reset": "초기화",
+    "exportCsv": "CSV 내보내기",
+    "filters": {
+      "range": "기간",
+      "type": "유형",
+      "status": "상태",
+      "startDate": "시작 날짜",
+      "endDate": "종료 날짜"
+    },
+    "status": {
+      "open": "진행중",
+      "resolved": "해결됨"
+    },
+    "headers": {
+      "time": "시간",
+      "equipment": "장비",
+      "type": "유형",
+      "status": "상태",
+      "actions": "동작"
+    },
+    "buttons": {
+      "details": "세부 정보"
+    }
+  },
   "monitoring": {
     "title": "실시간 모니터링",
     "subtitle": "장비 상태, 이상 징후, 센서 신호를 실시간으로 확인하세요.",

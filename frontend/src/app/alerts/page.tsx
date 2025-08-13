@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
 import ChartCard from '@/components/ChartCard'
 import { alertList, AlertItem } from '@/mockData'
-import { EquipmentFilter } from '@/components/filters'
+import { EquipmentFilter, DateRange, FilterToolbar } from '@/components/filters'
 import type { Machine } from '@/components/filters/EquipmentFilter'
 import { useQuery } from '@tanstack/react-query'
 import AlertDetailsModal from '@/components/AlertDetailsModal'
@@ -74,7 +74,7 @@ export default function AlertsPage() {
   return (
     <DashboardLayout>
       <ChartCard title={t('alerts.title')}>
-        <div className="flex flex-wrap gap-2 mb-2">
+        <FilterToolbar className="mb-2">
           <EquipmentFilter
             machines={machines ?? []}
             power={power}
@@ -95,19 +95,13 @@ export default function AlertsPage() {
               </option>
             ))}
           </select>
-          <input
-            type="date"
-            className="border rounded px-2 py-1"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            aria-label={t('alerts.filters.startDate')}
-          />
-          <input
-            type="date"
-            className="border rounded px-2 py-1"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            aria-label={t('alerts.filters.endDate')}
+          <DateRange
+            start={startDate}
+            end={endDate}
+            onStart={setStartDate}
+            onEnd={setEndDate}
+            startLabel={t('alerts.filters.startDate')}
+            endLabel={t('alerts.filters.endDate')}
           />
           <select
             className="border rounded px-2 py-1"
@@ -120,7 +114,7 @@ export default function AlertsPage() {
             <option value="acknowledged">{t('alerts.status.acknowledged')}</option>
             <option value="cleared">{t('alerts.status.cleared')}</option>
           </select>
-        </div>
+        </FilterToolbar>
         {selectedIds.length > 0 && (
           <div className="mb-2 space-x-2">
             <button

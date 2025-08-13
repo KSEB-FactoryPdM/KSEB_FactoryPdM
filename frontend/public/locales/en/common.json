@@ -99,6 +99,39 @@
       "cleared": "cleared"
     }
   },
+  "anomalies": {
+    "title": "Anomalies",
+    "sort": "Sort",
+    "allTypes": "All Types",
+    "allStatus": "All Status",
+    "loading": "Loading...",
+    "noAnomalies": "No anomalies",
+    "tryFilters": "Try adjusting filters",
+    "search": "Search anomalies",
+    "reset": "Reset",
+    "exportCsv": "Export CSV",
+    "filters": {
+      "range": "Range",
+      "type": "Type",
+      "status": "Status",
+      "startDate": "Start Date",
+      "endDate": "End Date"
+    },
+    "status": {
+      "open": "open",
+      "resolved": "resolved"
+    },
+    "headers": {
+      "time": "Time",
+      "equipment": "Equipment",
+      "type": "Type",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "buttons": {
+      "details": "Details"
+    }
+  },
   "monitoring": {
     "title": "Real-time Monitoring",
     "subtitle": "Check equipment status, anomalies, and sensor signals in real time.",
