@@ -494,8 +494,10 @@ export default function MonitoringPage() {
                       </ResponsiveContainer>
                     </div>
                   )}
+
                 </ChartCard>
               ))}
+
           </div>
         )}
 
