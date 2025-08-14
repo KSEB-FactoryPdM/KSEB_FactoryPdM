@@ -106,6 +106,28 @@ export default function SettingsPage() {
     setApiKey(key);
   };
 
+  const resetSettings = () => {
+    setName('');
+    setEmail('');
+    setPassword('');
+    setNotifications({ email: false, sms: false, push: false });
+    setFrequency('daily');
+    setTwoFactor(false);
+    setSessions(['Chrome on Windows']);
+    setLanguage('en');
+    setBeta(false);
+    const key = Math.random().toString(36).slice(2, 10);
+    setApiKey(key);
+    localStorage.removeItem('profile');
+    localStorage.removeItem('notifications');
+    localStorage.removeItem('notificationFrequency');
+    localStorage.removeItem('twoFactor');
+    localStorage.removeItem('sessions');
+    localStorage.removeItem('language');
+    localStorage.removeItem('beta');
+    localStorage.removeItem('apiKey');
+    setSaved(false);
+  };
   const logoutSession = (idx: number) => {
     setSessions(sessions.filter((_, i) => i !== idx));
   };
@@ -352,13 +374,22 @@ export default function SettingsPage() {
             </section>
           )}
 
-          <button
-            onClick={saveSettings}
-            className="px-4 py-2 bg-primary text-white rounded"
-            type="button"
-          >
-            {t('settings.save')}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={resetSettings}
+              className="px-4 py-2 border border-primary text-primary rounded"
+              type="button"
+            >
+              {t('settings.reset')}
+            </button>
+            <button
+              onClick={saveSettings}
+              className="px-4 py-2 bg-primary text-white rounded"
+              type="button"
+            >
+              {t('settings.save')}
+            </button>
+          </div>
         </div>
       </div>
     </DashboardLayout>
