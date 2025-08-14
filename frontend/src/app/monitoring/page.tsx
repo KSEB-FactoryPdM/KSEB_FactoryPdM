@@ -174,7 +174,7 @@ export default function MonitoringPage() {
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d'>('24h')
   const [power, setPower] = useState('')
   const [selectedEquipment, setSelectedEquipment] = useState('')
-  const [sensor, setSensor] = useState<keyof MyPoint>('current')
+  const [sensor, setSensor] = useState<'all' | keyof MyPoint>('all')
 
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
@@ -353,9 +353,13 @@ export default function MonitoringPage() {
             onDeviceChange={(v: string) => setSelectedEquipment(v)}
           />
           <SensorFilter
-            options={['current', 'vibration']}
-            value={sensor as string}
-            onChange={(v) => setSensor(v as keyof MyPoint)}
+            options={[
+              { value: 'all', label: t('filters.allSensors') },
+              { value: 'current', label: t('charts.current') },
+              { value: 'vibration', label: t('charts.vibration') },
+            ]}
+            value={sensor}
+            onChange={(v) => setSensor(v as 'all' | keyof MyPoint)}
           />
         </div>
 
@@ -375,7 +379,7 @@ export default function MonitoringPage() {
             </span>
           )}
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
-            {t('activeFilters.sensor')}: {sensor}
+            {t('activeFilters.sensor')}: {sensor === 'all' ? t('filters.allSensors') : t('charts.' + sensor)}
           </span>
         </div>
 
@@ -428,7 +432,6 @@ export default function MonitoringPage() {
               </ResponsiveContainer>
             </ChartCard>
           )}
-
           {(hasField(filteredData, 'current') || hasField(filteredData, 'vibration')) && (
             <ChartCard title={t('charts.sensorData')}>
               <ResponsiveContainer width="100%" height={240}>
@@ -444,7 +447,7 @@ export default function MonitoringPage() {
             </ChartCard>
           )}
 
-          {hasField(filteredData, sensor) && (
+          {sensor !== 'all' && hasField(filteredData, sensor) && (
             <ChartCard title={t('charts.realTimeSelected')} danger={hasAnomaly}>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
@@ -464,40 +467,38 @@ export default function MonitoringPage() {
               .filter(
                 (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
               )
-              .map((m) => (
-                <ChartCard
-                  key={`${m.id}-${m.power}-${sensor}`}
-                  title={`${m.id} (${m.power}) - ${t('charts.' + sensor)}`}
-                >
-                  {!filteredData.length ? (
-                    <div className="h-[160px] flex items-center justify-center text-slate-500">
-                      {t('charts.noData')}
-                    </div>
-                  ) : (
-                    <div className="h-[160px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={filteredData}
-                          syncId="rt"
-                          margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
-                        >
-                          <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                          <YAxis tick={axisStyle} width={48} />
-                          <Tooltip labelFormatter={tooltipLabel} />
-                          <Line
-                            type="monotone"
-                            dataKey={sensor}
-                            stroke={sensor === 'current' ? colors.a : colors.ptr}
-                            dot={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                </ChartCard>
-              ))}
-
+              .flatMap((m) => {
+                const sensors = sensor === 'all' ? (['current', 'vibration'] as (keyof MyPoint)[]) : [sensor]
+                return sensors.map((s) => (
+                  <ChartCard key={`${m.id}-${m.power}-${s}`} title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}>
+                    {!filteredData.length ? (
+                      <div className="h-[160px] flex items-center justify-center text-slate-500">
+                        {t('charts.noData')}
+                      </div>
+                    ) : (
+                      <div className="h-[160px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={filteredData}
+                            syncId="rt"
+                            margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
+                          >
+                            <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                            <YAxis tick={axisStyle} width={48} />
+                            <Tooltip labelFormatter={tooltipLabel} />
+                            <Line
+                              type="monotone"
+                              dataKey={s as string}
+                              stroke={s === 'current' ? colors.a : colors.ptr}
+                              dot={false}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </ChartCard>
+                ))
+              })}
           </div>
         )}
 
@@ -512,6 +513,7 @@ export default function MonitoringPage() {
             {t('errorNotice')}
           </div>
         )}
+
       </div>
     </DashboardLayout>
   )

@@ -38,6 +38,7 @@
   "filters": {
     "allPower": "모든 kW",
     "allEquipment": "모든 장비",
+    "allSensors": "모든 센서",
     "power": "kW",
     "equipment": "장비"
   },
@@ -211,6 +212,9 @@
       "equipment": "장비",
       "power": "전력",
       "sensor": "센서"
+    },
+    "filters": {
+      "allSensors": "모든 센서"
     },
     "charts": {
       "anomalyTotal": "이상 발생 수(전체)",

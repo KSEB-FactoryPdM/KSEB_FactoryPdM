@@ -38,6 +38,7 @@
   "filters": {
     "allPower": "All kW",
     "allEquipment": "All Equipment",
+    "allSensors": "All Sensors",
     "power": "kW",
     "equipment": "Equipment"
   },
@@ -211,6 +212,9 @@
       "equipment": "Equipment",
       "power": "Power",
       "sensor": "Sensor"
+    },
+    "filters": {
+      "allSensors": "All Sensors"
     },
     "charts": {
       "anomalyTotal": "Anomaly Count (total)",
