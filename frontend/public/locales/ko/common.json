@@ -143,6 +143,38 @@
     "exportCsv": "CSV 내보내기",
     "resumeTitle": "실시간 갱신 재개",
     "pauseTitle": "실시간 갱신 일시정지",
-    "exportTitle": "현재 범위 데이터 CSV 저장"
+    "exportTitle": "현재 범위 데이터 CSV 저장",
+    "summary": {
+      "totalEquipment": "전체 장비",
+      "activeAlerts": "활성 알림",
+      "todaysPredicted": "오늘 예측값",
+      "latestRul": "최신 RUL",
+      "nextMaintenance": "다음 유지보수"
+    },
+    "recentEvents": "최근 이상 이벤트",
+    "noEvents": "최근 이벤트가 없습니다.",
+    "table": {
+      "time": "시간",
+      "device": "장비",
+      "sensor": "센서",
+      "severity": "심각도"
+    },
+    "activeFilters": {
+      "period": "기간",
+      "equipment": "장비",
+      "power": "전력",
+      "sensor": "센서"
+    },
+    "charts": {
+      "anomalyTotal": "이상 발생 수(전체)",
+      "anomalyByType": "이상 발생 수(유형별)",
+      "anomalyByZone": "이상 발생 수(영역별)",
+      "predictionRul": "예측(잔여 수명)",
+      "sensorData": "센서 데이터(전류·진동)",
+      "realTimeSelected": "실시간 신호(선택)",
+      "noData": "데이터 없음"
+    },
+    "connectingNotice": "서버에 연결 중입니다…",
+    "errorNotice": "연결 오류가 발생했습니다. 자동으로 재시도합니다."
   }
 }
