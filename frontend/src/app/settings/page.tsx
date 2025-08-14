@@ -8,8 +8,13 @@ import HighContrastToggle from '@/components/HighContrastToggle';
 import FontSizeSelector from '@/components/FontSizeSelector';
 import pkg from '../../../package.json';
 
-const sectionIds = ['profile', 'notifications', 'security', 'preferences', 'advanced', 'about'] as const;
-type Section = typeof sectionIds[number];
+type Section =
+  | 'profile'
+  | 'notifications'
+  | 'security'
+  | 'preferences'
+  | 'advanced'
+  | 'about';
 
 export default function SettingsPage() {
   const { t } = useTranslation('common');
@@ -135,20 +140,22 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <div className="md:flex gap-6">
-        <aside className="md:w-1/4 mb-4 md:mb-0">
+        <aside className="md:w-1/4 mb-4 md:mb-0 md:pr-4 md:border-r md:border-[#D1D1D1]">
           <input
             className="w-full p-2 mb-4 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
             placeholder={t('settings.search')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <ul className="space-y-1">
+          <ul className="divide-y divide-[#D1D1D1]">
             {sections.map((sec) => (
               <li key={sec.id}>
                 <button
                   onClick={() => setActive(sec.id as Section)}
-                  className={`w-full text-left p-2 rounded ${
-                    active === sec.id ? 'bg-primary text-white' : 'hover:bg-[#F7F7F7]'
+                  className={`w-full text-left p-2 ${
+                    active === sec.id
+                      ? 'bg-[#F7F7F7] text-primary font-semibold'
+                      : 'text-[#1C1C1E] hover:bg-[#F7F7F7]'
                   }`}
                 >
                   {sec.label}
@@ -161,8 +168,8 @@ export default function SettingsPage() {
           {saved && <p className="text-green-600">{t('settings.saved')}</p>}
 
           {active === 'profile' && (
-            <section className="space-y-4">
-              <div>
+            <section className="divide-y divide-[#D1D1D1]">
+              <div className="py-4 first:pt-0">
                 <label htmlFor="name" className="block text-sm text-[#6B6B6E]">
                   {t('settings.profile.name')}
                 </label>
@@ -174,7 +181,7 @@ export default function SettingsPage() {
                   className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
                 />
               </div>
-              <div>
+              <div className="py-4">
                 <label htmlFor="email" className="block text-sm text-[#6B6B6E]">
                   {t('settings.profile.email')}
                 </label>
@@ -187,7 +194,7 @@ export default function SettingsPage() {
                   className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
                 />
               </div>
-              <div>
+              <div className="py-4">
                 <label htmlFor="password" className="block text-sm text-[#6B6B6E]">
                   {t('settings.profile.password')}
                 </label>
@@ -200,7 +207,7 @@ export default function SettingsPage() {
                   className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
                 />
               </div>
-              <div>
+              <div className="py-4">
                 <span className="block text-sm text-[#6B6B6E]">
                   {t('settings.profile.sns')}
                 </span>
@@ -217,8 +224,8 @@ export default function SettingsPage() {
           )}
 
           {active === 'notifications' && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
+            <section className="divide-y divide-[#D1D1D1]">
+              <div className="flex items-center gap-2 py-4 first:pt-0">
                 <input
                   type="checkbox"
                   checked={notifications.email}
@@ -228,7 +235,7 @@ export default function SettingsPage() {
                 />
                 <span>{t('settings.notifications.email')}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 py-4">
                 <input
                   type="checkbox"
                   checked={notifications.sms}
@@ -238,7 +245,7 @@ export default function SettingsPage() {
                 />
                 <span>{t('settings.notifications.sms')}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 py-4">
                 <input
                   type="checkbox"
                   checked={notifications.push}
@@ -248,7 +255,7 @@ export default function SettingsPage() {
                 />
                 <span>{t('settings.notifications.push')}</span>
               </div>
-              <div>
+              <div className="py-4">
                 <label htmlFor="frequency" className="block text-sm text-[#6B6B6E]">
                   {t('settings.notifications.frequency')}
                 </label>
@@ -269,8 +276,8 @@ export default function SettingsPage() {
           )}
 
           {active === 'security' && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
+            <section className="divide-y divide-[#D1D1D1]">
+              <div className="flex items-center gap-2 py-4 first:pt-0">
                 <input
                   type="checkbox"
                   checked={twoFactor}
@@ -278,7 +285,7 @@ export default function SettingsPage() {
                 />
                 <span>{t('settings.security.twoFactor')}</span>
               </div>
-              <div>
+              <div className="py-4">
                 <p className="text-sm text-[#6B6B6E]">
                   {t('settings.security.sessions')}
                 </p>
@@ -299,7 +306,7 @@ export default function SettingsPage() {
                   ))}
                 </ul>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 py-4">
                 <button className="px-3 py-1 bg-primary text-white rounded">
                   {t('settings.security.download')}
                 </button>
@@ -311,13 +318,13 @@ export default function SettingsPage() {
           )}
 
           {active === 'preferences' && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
+            <section className="divide-y divide-[#D1D1D1]">
+              <div className="flex items-center gap-2 py-4 first:pt-0">
                 <ThemeToggle />
                 <HighContrastToggle />
                 <FontSizeSelector />
               </div>
-              <div>
+              <div className="py-4">
                 <label htmlFor="language" className="block text-sm text-[#6B6B6E]">
                   {t('settings.preferences.language')}
                 </label>
@@ -335,8 +342,8 @@ export default function SettingsPage() {
           )}
 
           {active === 'advanced' && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
+            <section className="divide-y divide-[#D1D1D1]">
+              <div className="flex items-center gap-2 py-4 first:pt-0">
                 <input
                   type="checkbox"
                   checked={beta}
@@ -344,7 +351,7 @@ export default function SettingsPage() {
                 />
                 <span>{t('settings.advanced.beta')}</span>
               </div>
-              <div>
+              <div className="py-4">
                 <label htmlFor="apiKey" className="block text-sm text-[#6B6B6E]">
                   {t('settings.advanced.apiKey')}
                 </label>
@@ -367,7 +374,7 @@ export default function SettingsPage() {
           )}
 
           {active === 'about' && (
-            <section className="space-y-4">
+            <section className="py-4 border-t border-b border-[#D1D1D1]">
               <p>
                 {t('settings.about.version')} {pkg.version}
               </p>
