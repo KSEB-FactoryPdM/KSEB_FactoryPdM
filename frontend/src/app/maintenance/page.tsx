@@ -205,6 +205,7 @@ export default function MaintenancePage() {
               </button>
               <button
                 className="rounded bg-gray-200 px-4 py-1 text-gray-800 hover:bg-gray-300 disabled:opacity-50"
+
                 onClick={handleSave}
                 disabled={!noteEquipment || !noteDesc}
               >
