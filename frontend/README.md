@@ -44,7 +44,6 @@ node scripts/mock-server.js
 /anomalies/test
 /equipment/test
 /maintenance/test
-/reports/test
 ```
 
 각 페이지는 `public/` 폴더의 JSON 파일을 불러와 기본 화면을 렌더링합니다.
@@ -107,7 +106,6 @@ factory-PdM/
 │   ├── mock-devices.json            # 장비 목록 예시
 │   ├── machines.json                # 설비 정보 예시
 │   ├── mock-maintenance.json        # 정비 이력 예시
-│   ├── mock-reports.json            # 보고서 데이터 예시
 │   ├── file.svg                     # 예제 아이콘
 │   ├── globe.svg                    # 언어 전환 아이콘
 │   ├── logo.svg                     # 프로젝트 로고
@@ -153,9 +151,6 @@ factory-PdM/
 │   │   │   └── test/page.tsx
 │   │   ├── not-found.tsx            # 404 처리
 │   │   ├── page.tsx                 # 루트 페이지
-│   │   ├── reports/                 # 리포트 화면
-│   │   │   ├── page.tsx
-│   │   │   └── test/page.tsx
 │   │   ├── settings/                # 사용자 설정
 │   │   │   └── page.tsx
 │   │   ├── test/                    # UI 미리보기 레이아웃
