@@ -380,22 +380,7 @@ export default function MonitoringPage() {
         </div>
 
         {/* 차트들 */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ChartCard title={t('charts.anomalyTotal')} danger={hasAnomaly}>
-            {!filteredData.length ? (
-              <div className="h-[240px] flex items-center justify-center text-slate-500">{t('charts.noData')}</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
-                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                  <YAxis tick={axisStyle} width={48} allowDecimals={false} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'total']} />
-                  <Line type="monotone" dataKey="total" stroke={hasAnomaly ? colors.danger : colors.accent} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
-
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {(['A', 'AAAA', 'PTR', 'SOA', 'SRV', 'TXT'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
             <ChartCard title={t('charts.anomalyByType')}>
               <ResponsiveContainer width="100%" height={240}>
@@ -474,59 +459,63 @@ export default function MonitoringPage() {
         </div>
 
         {machines && (
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {machines.map((m) => (
-              <ChartCard key={m.id} title={m.id}>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium">{t('charts.current')}</h4>
-                    {!filteredData.length ? (
-                      <div className="h-[160px] flex items-center justify-center text-slate-500">
-                        {t('charts.noData')}
-                      </div>
-                    ) : (
-                      <div className="h-[160px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={filteredData}
-                            syncId="rt"
-                            margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
-                          >
-                            <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                            <YAxis tick={axisStyle} width={48} />
-                            <Tooltip labelFormatter={tooltipLabel} />
-                            <Line type="monotone" dataKey="current" stroke={colors.a} dot={false} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium">{t('charts.vibration')}</h4>
-                    {!filteredData.length ? (
-                      <div className="h-[160px] flex items-center justify-center text-slate-500">
-                        {t('charts.noData')}
-                      </div>
-                    ) : (
-                      <div className="h-[160px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={filteredData}
-                            syncId="rt"
-                            margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
-                          >
-                            <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                            <YAxis tick={axisStyle} width={48} />
-                            <Tooltip labelFormatter={tooltipLabel} />
-                            <Line type="monotone" dataKey="vibration" stroke={colors.ptr} dot={false} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </ChartCard>
-            ))}
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {machines
+              .filter(
+                (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
+              )
+              .flatMap((m) => [
+                <ChartCard
+                  key={`${m.id}-${m.power}-current`}
+                  title={`${m.id} (${m.power}) - ${t('charts.current')}`}
+                >
+                  {!filteredData.length ? (
+                    <div className="h-[160px] flex items-center justify-center text-slate-500">
+                      {t('charts.noData')}
+                    </div>
+                  ) : (
+                    <div className="h-[160px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={filteredData}
+                          syncId="rt"
+                          margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
+                        >
+                          <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                          <YAxis tick={axisStyle} width={48} />
+                          <Tooltip labelFormatter={tooltipLabel} />
+                          <Line type="monotone" dataKey="current" stroke={colors.a} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </ChartCard>,
+                <ChartCard
+                  key={`${m.id}-${m.power}-vibration`}
+                  title={`${m.id} (${m.power}) - ${t('charts.vibration')}`}
+                >
+                  {!filteredData.length ? (
+                    <div className="h-[160px] flex items-center justify-center text-slate-500">
+                      {t('charts.noData')}
+                    </div>
+                  ) : (
+                    <div className="h-[160px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={filteredData}
+                          syncId="rt"
+                          margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
+                        >
+                          <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                          <YAxis tick={axisStyle} width={48} />
+                          <Tooltip labelFormatter={tooltipLabel} />
+                          <Line type="monotone" dataKey="vibration" stroke={colors.ptr} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </ChartCard>,
+              ])}
           </div>
         )}
 
