@@ -81,7 +81,7 @@ export default function MaintenancePage() {
         <ChartCard title="Maintenance Notes">
           <div className="mb-2 text-right">
             <button
-              className="px-3 py-1 rounded bg-primary text-white hover:bg-primary-hover"
+              className="px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
               onClick={() => setShowModal(true)}
             >
               Add Note
@@ -204,7 +204,8 @@ export default function MaintenancePage() {
                 Cancel
               </button>
               <button
-                className="rounded bg-primary px-4 py-1 text-white hover:bg-primary-hover disabled:opacity-50"
+                className="rounded bg-gray-200 px-4 py-1 text-gray-800 hover:bg-gray-300 disabled:opacity-50"
+
                 onClick={handleSave}
                 disabled={!noteEquipment || !noteDesc}
               >
