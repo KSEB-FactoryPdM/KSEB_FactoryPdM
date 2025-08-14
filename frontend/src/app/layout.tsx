@@ -32,25 +32,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-        <body
-          className={`${notoSans.variable} ${roboto.variable} antialiased`}
-        >
-          <a href="#main-content" className="skip-link">
-            Skip to content
-          </a>
-          <I18nProvider>
-            <LanguageListener />
-            <QueryProvider>
-              <div className="min-h-screen md:flex">
-                <div className="hidden md:block">
-                  <Sidebar />
-                </div>
-                <main id="main-content" className="flex-1 overflow-auto p-6">
-                  {children}
-                </main>
-              </div>
-            </QueryProvider>
-          </I18nProvider>
+      <body
+        className={`${notoSans.variable} ${roboto.variable} antialiased bg-gray-100`}
+      >
+        <I18nProvider>
+          <LanguageListener />
+          <QueryProvider>
+            <div className="flex h-screen">
+              <Sidebar />
+              <main className="flex-1 overflow-auto p-6">
+                {children}
+              </main>
+            </div>
+          </QueryProvider>
+        </I18nProvider>
       </body>
     </html>
   );

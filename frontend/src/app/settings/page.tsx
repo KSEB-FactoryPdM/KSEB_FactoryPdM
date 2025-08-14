@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DashboardLayout from '@/components/DashboardLayout';
+import ThemeToggle from '@/components/ThemeToggle';
 import HighContrastToggle from '@/components/HighContrastToggle';
 import FontSizeSelector from '@/components/FontSizeSelector';
 import pkg from '../../../package.json';
@@ -319,6 +320,7 @@ export default function SettingsPage() {
           {active === 'preferences' && (
             <section className="divide-y divide-[#D1D1D1]">
               <div className="flex items-center gap-2 py-4 first:pt-0">
+                <ThemeToggle />
                 <HighContrastToggle />
                 <FontSizeSelector />
               </div>

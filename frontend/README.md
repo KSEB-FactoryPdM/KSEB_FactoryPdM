@@ -170,6 +170,7 @@ factory-PdM/
 │   │   ├── QueryProvider.tsx        # React Query 설정
 │   │   ├── Sidebar.tsx              # 좌측 메뉴
 │   │   ├── SummaryCard.tsx          # 요약 정보 카드
+│   │   ├── ThemeToggle.tsx          # 다크모드 스위치
 │   │   ├── filters/                 # 필터 UI 모음
 │   │   │   ├── EquipmentFilter.tsx  # 장비 선택 필터
 │   │   │   ├── SensorFilter.tsx     # 센서 종류 필터
@@ -284,7 +285,7 @@ factory-PdM/
 - `QueryProvider`는 `@tanstack/react-query`의 `QueryClient`를 생성해 하위 컴포넌트에 전달합니다.
 - `I18nProvider`는 `src/i18n.ts` 설정을 기반으로 번역 리소스를 로딩합니다. 번역 파일은 `public/locales/*`에 위치합니다.
 - 각 페이지(`src/app/*/page.tsx`)는 `DashboardLayout`을 사용해 헤더와 사이드바를 포함한 공통 레이아웃을 적용합니다. `DashboardLayout` 내부에서 `Sidebar`와 `Header`가 함께 렌더링됩니다.
-- `Sidebar`와 `Header`는 `LanguageSwitcher`, `LogoutButton` 등 여러 UI 컴포넌트와 연결됩니다.
+- `Sidebar`와 `Header`는 `LanguageSwitcher`, `ThemeToggle`, `LogoutButton` 등 여러 UI 컴포넌트와 연결됩니다.
 - 페이지 진입 시 `useRequireRole` 훅을 호출하여 현재 사용자의 권한(`useAuthStore`에서 관리)이 적절한지 확인하고, 아니라면 `/monitoring`으로 리다이렉트합니다.
 - `useWebSocket` 훅은 `src/lib/logger.ts`의 로깅 함수를 활용하여 WebSocket 상태를 기록하며, 실시간 데이터 흐름을 `MonitoringPage`와 `DeviceDetailPage` 등에 제공합니다.
 - `fetchWithAuth` 함수는 `localStorage`에 저장된 JWT 토큰을 읽어 `Authorization` 헤더를 설정합니다. 이 함수는 `DeviceDetailPage`에서 임계치 변경 API(`/api/devices/[id]/threshold`) 호출에 사용됩니다.
