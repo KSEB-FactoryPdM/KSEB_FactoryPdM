@@ -4,15 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace: jest.fn() }),
 }))
-jest.mock('jspdf', () => {
-  return function MockJsPdf() {
-    return { text: jest.fn(), save: jest.fn() }
-  }
-})
 import AnomaliesPage from '@/app/anomalies/page'
 import EquipmentPage from '@/app/equipment/page'
 import MaintenancePage from '@/app/maintenance/page'
-import ReportsPage from '@/app/reports/page'
 import AlertsPage from '@/app/alerts/page'
 
 jest.mock('@/components/DashboardLayout', () => ({
@@ -38,29 +32,26 @@ describe('Static pages', () => {
     render(<AnomaliesPage />)
     expect(screen.getByText('High vibration detected')).toBeInTheDocument()
   })
+  const renderWithClient = (ui: ReactNode) => {
+    const queryClient = new QueryClient()
+    return render(
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+    )
+  }
 
-    const renderWithClient = (ui: ReactNode) => {
-      const queryClient = new QueryClient()
-      return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
-    }
-
-    it('renders equipment data', async () => {
-      renderWithClient(<EquipmentPage />)
-      await screen.findAllByText('L-CAHU-01R')
-    })
-
-    it('renders maintenance data', async () => {
-      renderWithClient(<MaintenancePage />)
-      await screen.findAllByText('L-CAHU-01R')
-    })
-
-    it('renders alerts data', async () => {
-      renderWithClient(<AlertsPage />)
-      await screen.findAllByText('L-CAHU-01R')
-    })
-
-  it('renders report chart', () => {
-    render(<ReportsPage />)
-    expect(screen.getByText('Summary Report')).toBeInTheDocument()
+  it('renders equipment data', async () => {
+    renderWithClient(<EquipmentPage />)
+    await screen.findAllByText('L-CAHU-01R')
   })
+
+  it('renders maintenance data', async () => {
+    renderWithClient(<MaintenancePage />)
+    await screen.findAllByText('L-CAHU-01R')
+  })
+
+  it('renders alerts data', async () => {
+    renderWithClient(<AlertsPage />)
+    await screen.findAllByText('L-CAHU-01R')
+  })
+ 
 })

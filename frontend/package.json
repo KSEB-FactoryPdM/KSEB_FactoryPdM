@@ -11,23 +11,21 @@
     "test": "jest"
   },
   "dependencies": {
+    "@fontsource/noto-sans-kr": "^5.0.7",
+    "@fontsource/roboto": "^5.0.17",
     "@heroicons/react": "^2.2.0",
     "@sentry/nextjs": "^9.34.0",
     "@tanstack/react-query": "^5.81.5",
     "framer-motion": "^12.23.0",
     "jsonwebtoken": "^9",
-    "jspdf": "^3.0.1",
     "next": "15.3.4",
     "next-i18next": "^15.4.2",
     "next-intl": "^4.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^3.0.2",
     "react-i18next": "^15.6.1",
-    "@fontsource/roboto": "^5.0.17",
-    "@fontsource/noto-sans-kr": "^5.0.7",
+    "recharts": "^3.0.2",
     "ws": "^8.17.0",
-    "xlsx": "^0.18.5",
     "zustand": "^5.0.6"
   },
   "devDependencies": {

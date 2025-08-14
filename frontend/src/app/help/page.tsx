@@ -11,10 +11,6 @@ const faqs = [
     answer: 'Go to Settings > Account and choose "Reset password".',
   },
   {
-    question: 'Where can I download reports?',
-    answer: 'Open the Reports page and use the Export button.',
-  },
-  {
     question: 'How do I contact support?',
     answer: 'Use the Email Support button or the Contact Form below.',
   },

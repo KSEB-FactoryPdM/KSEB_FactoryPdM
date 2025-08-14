@@ -14,7 +14,6 @@ import {
   ExclamationCircleIcon,
   CogIcon,
   ClipboardDocumentListIcon,
-  ChartBarIcon,
   ArrowLeftOnRectangleIcon,
   QuestionMarkCircleIcon,
   ExclamationTriangleIcon,
@@ -30,7 +29,6 @@ const navItems = [
   { href: '/alerts' as Route, label: 'nav.alerts', icon: ExclamationTriangleIcon },
   { href: '/maintenance' as Route, label: 'nav.maintenance', icon: CogIcon },
   { href: '/equipment' as Route, label: 'nav.equipment', icon: ClipboardDocumentListIcon },
-  { href: '/reports' as Route, label: 'nav.reports', icon: ChartBarIcon },
   { href: '/settings' as Route, label: 'nav.settings', icon: Cog8ToothIcon },
   { href: '/help' as Route, label: 'nav.help', icon: QuestionMarkCircleIcon },
 
