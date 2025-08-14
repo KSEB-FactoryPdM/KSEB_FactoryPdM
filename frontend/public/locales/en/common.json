@@ -181,8 +181,8 @@
     }
   },
   "monitoring": {
-    "title": "Real-time Monitoring",
-    "subtitle": "Check equipment status, anomalies, and sensor signals in real time.",
+    "title": "Live Equipment Dashboard",
+    "subtitle": "Visualize equipment health, anomalies, and sensor signals instantly.",
     "connecting": "Connecting to server…",
     "error": "Connection error (retrying)",
     "connected": "Live connection",
