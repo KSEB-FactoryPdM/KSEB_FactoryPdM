@@ -1,336 +1,367 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import DashboardLayout from '@/components/DashboardLayout'
-import ChartCard from '@/components/ChartCard'
-import ThemeToggle from '@/components/ThemeToggle'
-import HighContrastToggle from '@/components/HighContrastToggle'
-import FontSizeSelector from '@/components/FontSizeSelector'
-import pkg from '../../../package.json'
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import DashboardLayout from '@/components/DashboardLayout';
+import ThemeToggle from '@/components/ThemeToggle';
+import HighContrastToggle from '@/components/HighContrastToggle';
+import FontSizeSelector from '@/components/FontSizeSelector';
+import pkg from '../../../package.json';
+
+const sectionIds = ['profile', 'notifications', 'security', 'preferences', 'advanced', 'about'] as const;
+type Section = typeof sectionIds[number];
 
 export default function SettingsPage() {
-  const { t } = useTranslation('common')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [socketUrl, setSocketUrl] = useState('')
+  const { t } = useTranslation('common');
+  const sections = [
+    { id: 'profile', label: t('settings.sections.profile') },
+    { id: 'notifications', label: t('settings.sections.notifications') },
+    { id: 'security', label: t('settings.sections.security') },
+    { id: 'preferences', label: t('settings.sections.preferences') },
+    { id: 'advanced', label: t('settings.sections.advanced') },
+    { id: 'about', label: t('settings.sections.about') },
+  ];
+
+  const [active, setActive] = useState<Section>('profile');
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    if (search) {
+      const match = sections.find((s) =>
+        s.label.toLowerCase().includes(search.toLowerCase())
+      );
+      if (match) setActive(match.id as Section);
+    }
+  }, [search]);
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [notifications, setNotifications] = useState({
     email: false,
     sms: false,
     push: false,
-  })
-  const [language, setLanguage] = useState<'en' | 'ko'>('en')
-  const [users, setUsers] = useState<{ name: string; role: string }[]>([])
-  const [newUserName, setNewUserName] = useState('')
-  const [newUserRole, setNewUserRole] = useState('viewer')
-  const [modelVersion, setModelVersion] = useState('v1')
-  const [detectionThreshold, setDetectionThreshold] = useState(0.5)
-  const [plcEndpoint, setPlcEndpoint] = useState('')
-  const [mqttEndpoint, setMqttEndpoint] = useState('')
-  const [opcuaEndpoint, setOpcuaEndpoint] = useState('')
+  });
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [sessions, setSessions] = useState<string[]>([]);
+  const [language, setLanguage] = useState<'en' | 'ko'>('en');
+  const [beta, setBeta] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setSocketUrl(
-      localStorage.getItem('socketUrl') ||
-        process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
-        ''
-    )
-    const storedLang = localStorage.getItem('language') as 'en' | 'ko' | null
-    if (storedLang) {
-      setLanguage(storedLang)
-      if (typeof document !== 'undefined') {
-        document.documentElement.lang = storedLang
-      }
-    }
-
-    const storedUsers = localStorage.getItem('users')
-    if (storedUsers) {
+    const profile = localStorage.getItem('profile');
+    if (profile) {
       try {
-        setUsers(JSON.parse(storedUsers))
+        const p = JSON.parse(profile);
+        setName(p.name || '');
+        setEmail(p.email || '');
+        setPassword(p.password || '');
       } catch {}
     }
-    const mv = localStorage.getItem('modelVersion')
-    if (mv) setModelVersion(mv)
-    const dt = localStorage.getItem('detectionThreshold')
-    if (dt) setDetectionThreshold(parseFloat(dt))
-    setPlcEndpoint(localStorage.getItem('plcEndpoint') || '')
-    setMqttEndpoint(localStorage.getItem('mqttEndpoint') || '')
-    setOpcuaEndpoint(localStorage.getItem('opcuaEndpoint') || '')
-  }, [])
+    const notif = localStorage.getItem('notifications');
+    if (notif) {
+      try {
+        setNotifications(JSON.parse(notif));
+      } catch {}
+    }
+    const freq = localStorage.getItem('notificationFrequency');
+    if (freq === 'daily' || freq === 'weekly' || freq === 'monthly') {
+      setFrequency(freq);
+    }
+    const two = localStorage.getItem('twoFactor');
+    if (two) setTwoFactor(JSON.parse(two));
+    const sess = localStorage.getItem('sessions');
+    if (sess) {
+      try {
+        setSessions(JSON.parse(sess));
+      } catch {}
+    } else {
+      setSessions(['Chrome on Windows']);
+    }
+    const lang = localStorage.getItem('language') as 'en' | 'ko' | null;
+    if (lang) setLanguage(lang);
+    const betaStored = localStorage.getItem('beta');
+    if (betaStored) setBeta(JSON.parse(betaStored));
+    const storedKey = localStorage.getItem('apiKey');
+    if (storedKey) setApiKey(storedKey);
+    else setApiKey(Math.random().toString(36).slice(2, 10));
+  }, []);
 
   const saveSettings = () => {
-    localStorage.setItem('socketUrl', socketUrl)
-    localStorage.setItem('language', language)
-    localStorage.setItem('profile', JSON.stringify({ name, email }))
-    localStorage.setItem('notifications', JSON.stringify(notifications))
-    localStorage.setItem('users', JSON.stringify(users))
-    localStorage.setItem('modelVersion', modelVersion)
-    localStorage.setItem('detectionThreshold', detectionThreshold.toString())
-    localStorage.setItem('plcEndpoint', plcEndpoint)
-    localStorage.setItem('mqttEndpoint', mqttEndpoint)
-    localStorage.setItem('opcuaEndpoint', opcuaEndpoint)
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = language
-    }
-    alert('Settings saved')
-  }
+    localStorage.setItem('profile', JSON.stringify({ name, email, password }));
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+    localStorage.setItem('notificationFrequency', frequency);
+    localStorage.setItem('twoFactor', JSON.stringify(twoFactor));
+    localStorage.setItem('sessions', JSON.stringify(sessions));
+    localStorage.setItem('language', language);
+    localStorage.setItem('beta', JSON.stringify(beta));
+    localStorage.setItem('apiKey', apiKey);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const regenerateApiKey = () => {
+    const key = Math.random().toString(36).slice(2, 10);
+    setApiKey(key);
+  };
+
+  const logoutSession = (idx: number) => {
+    setSessions(sessions.filter((_, i) => i !== idx));
+  };
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
-        <ChartCard title="System Information">
-          <p className="text-sm">Version {pkg.version}</p>
-        </ChartCard>
-        <ChartCard title="User Profile">
-          <div className="space-y-2">
-            <div>
-              <label htmlFor="profile-name" className="block text-sm">
-                {t('settings.name')}
-              </label>
-              <input
-                id="profile-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t('settings.name')}
-                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-              />
-            </div>
-            <div>
-              <label htmlFor="profile-email" className="block text-sm">
-                {t('settings.email')}
-              </label>
-              <input
-                id="profile-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('settings.email')}
-                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-              />
-            </div>
-            <div>
-              <label htmlFor="profile-password" className="block text-sm">
-                {t('settings.password')}
-              </label>
-              <input
-                id="profile-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={t('settings.password')}
-                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-              />
-            </div>
-          </div>
-        </ChartCard>
-
-        <ChartCard title="User Management">
-          <div className="space-y-2">
-            {users.map((u, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <span className="flex-1 text-sm">{u.name} - {u.role}</span>
+      <div className="md:flex gap-6">
+        <aside className="md:w-1/4 mb-4 md:mb-0">
+          <input
+            className="w-full p-2 mb-4 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
+            placeholder={t('settings.search')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <ul className="space-y-1">
+            {sections.map((sec) => (
+              <li key={sec.id}>
                 <button
-                  type="button"
-                  className="text-red-600 text-xs"
-                  onClick={() => setUsers(users.filter((_, i) => i !== idx))}
+                  onClick={() => setActive(sec.id as Section)}
+                  className={`w-full text-left p-2 rounded ${
+                    active === sec.id ? 'bg-primary text-white' : 'hover:bg-[#F7F7F7]'
+                  }`}
                 >
-                  Remove
+                  {sec.label}
                 </button>
-              </div>
+              </li>
             ))}
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <label htmlFor="new-user-name" className="sr-only">
-                  {t('settings.name')}
+          </ul>
+        </aside>
+        <div className="flex-1 space-y-6">
+          {saved && <p className="text-green-600">{t('settings.saved')}</p>}
+
+          {active === 'profile' && (
+            <section className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm text-[#6B6B6E]">
+                  {t('settings.profile.name')}
                 </label>
                 <input
-                  id="new-user-name"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder={t('settings.name')}
-                  className="flex-1 bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={t('settings.profile.name')}
+                  className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
                 />
               </div>
               <div>
-                <label htmlFor="new-user-role" className="sr-only">
-                  {t('settings.role')}
+                <label htmlFor="email" className="block text-sm text-[#6B6B6E]">
+                  {t('settings.profile.email')}
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('settings.profile.email')}
+                  className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm text-[#6B6B6E]">
+                  {t('settings.profile.password')}
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={t('settings.profile.password')}
+                  className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
+                />
+              </div>
+              <div>
+                <span className="block text-sm text-[#6B6B6E]">
+                  {t('settings.profile.sns')}
+                </span>
+                <div className="flex gap-2 mt-1">
+                  <button className="px-3 py-1 bg-primary text-white rounded">
+                    {t('settings.profile.link')}
+                  </button>
+                  <button className="px-3 py-1 bg-primary text-white rounded">
+                    {t('settings.profile.unlink')}
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {active === 'notifications' && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={notifications.email}
+                  onChange={(e) =>
+                    setNotifications({ ...notifications, email: e.target.checked })
+                  }
+                />
+                <span>{t('settings.notifications.email')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={notifications.sms}
+                  onChange={(e) =>
+                    setNotifications({ ...notifications, sms: e.target.checked })
+                  }
+                />
+                <span>{t('settings.notifications.sms')}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={notifications.push}
+                  onChange={(e) =>
+                    setNotifications({ ...notifications, push: e.target.checked })
+                  }
+                />
+                <span>{t('settings.notifications.push')}</span>
+              </div>
+              <div>
+                <label htmlFor="frequency" className="block text-sm text-[#6B6B6E]">
+                  {t('settings.notifications.frequency')}
                 </label>
                 <select
-                  id="new-user-role"
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value)}
-                  className="bg-input-bg rounded-md p-2 text-sm text-black"
+                  id="frequency"
+                  value={frequency}
+                  onChange={(e) =>
+                    setFrequency(e.target.value as 'daily' | 'weekly' | 'monthly')
+                  }
+                  className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
                 >
-                  <option value="admin">{t('settings.roles.admin')}</option>
-                  <option value="operator">{t('settings.roles.operator')}</option>
-                  <option value="viewer">{t('settings.roles.viewer')}</option>
+                  <option value="daily">{t('settings.notifications.daily')}</option>
+                  <option value="weekly">{t('settings.notifications.weekly')}</option>
+                  <option value="monthly">{t('settings.notifications.monthly')}</option>
                 </select>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!newUserName.trim()) return
-                  setUsers([...users, { name: newUserName.trim(), role: newUserRole }])
-                  setNewUserName('')
-                  setNewUserRole('viewer')
-                }}
-                className="px-2 py-1 bg-primary text-white rounded"
-              >
-                Add
-              </button>
-            </div>
-          </div>
-        </ChartCard>
+            </section>
+          )}
 
-        <ChartCard title="Algorithm Configuration">
-          <div className="space-y-2">
-            <label htmlFor="model-version" className="block text-sm">
-              Model Version
-            </label>
-            <select
-              id="model-version"
-              value={modelVersion}
-              onChange={(e) => setModelVersion(e.target.value)}
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black"
-            >
-              <option value="v1">v1</option>
-              <option value="v2">v2</option>
-              <option value="v3">v3</option>
-            </select>
-            <label htmlFor="detection-threshold" className="block text-sm">
-              Detection Threshold
-            </label>
-            <input
-              id="detection-threshold"
-              type="number"
-              min="0"
-              max="1"
-              step="0.01"
-              value={detectionThreshold}
-              onChange={(e) => setDetectionThreshold(parseFloat(e.target.value))}
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black"
-            />
-          </div>
-        </ChartCard>
+          {active === 'security' && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={twoFactor}
+                  onChange={(e) => setTwoFactor(e.target.checked)}
+                />
+                <span>{t('settings.security.twoFactor')}</span>
+              </div>
+              <div>
+                <p className="text-sm text-[#6B6B6E]">
+                  {t('settings.security.sessions')}
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {sessions.map((s, i) => (
+                    <li
+                      key={s}
+                      className="flex justify-between items-center bg-[#F7F7F7] p-2 rounded"
+                    >
+                      <span>{s}</span>
+                      <button
+                        onClick={() => logoutSession(i)}
+                        className="text-sm text-primary"
+                      >
+                        {t('settings.security.logout')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 bg-primary text-white rounded">
+                  {t('settings.security.download')}
+                </button>
+                <button className="px-3 py-1 bg-primary text-white rounded">
+                  {t('settings.security.delete')}
+                </button>
+              </div>
+            </section>
+          )}
 
-        <ChartCard title="Communication Settings">
-          <div className="space-y-2">
-            <div>
-              <label htmlFor="plc-endpoint" className="block text-sm">
-                {t('settings.plcEndpoint')}
-              </label>
-              <input
-                id="plc-endpoint"
-                value={plcEndpoint}
-                onChange={(e) => setPlcEndpoint(e.target.value)}
-                placeholder={t('settings.plcEndpoint')}
-                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-              />
-            </div>
-            <div>
-              <label htmlFor="mqtt-endpoint" className="block text-sm">
-                {t('settings.mqttEndpoint')}
-              </label>
-              <input
-                id="mqtt-endpoint"
-                value={mqttEndpoint}
-                onChange={(e) => setMqttEndpoint(e.target.value)}
-                placeholder={t('settings.mqttEndpoint')}
-                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-              />
-            </div>
-            <div>
-              <label htmlFor="opcua-endpoint" className="block text-sm">
-                {t('settings.opcuaEndpoint')}
-              </label>
-              <input
-                id="opcua-endpoint"
-                value={opcuaEndpoint}
-                onChange={(e) => setOpcuaEndpoint(e.target.value)}
-                placeholder={t('settings.opcuaEndpoint')}
-                className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-              />
-            </div>
-          </div>
-        </ChartCard>
+          {active === 'preferences' && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <HighContrastToggle />
+                <FontSizeSelector />
+              </div>
+              <div>
+                <label htmlFor="language" className="block text-sm text-[#6B6B6E]">
+                  {t('settings.preferences.language')}
+                </label>
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as 'en' | 'ko')}
+                  className="w-full p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
+                >
+                  <option value="en">English</option>
+                  <option value="ko">한국어</option>
+                </select>
+              </div>
+            </section>
+          )}
 
-        <ChartCard title="Connection">
-          <div className="space-y-2">
-            <label htmlFor="socket-url" className="block text-sm">
-              NEXT_PUBLIC_WEBSOCKET_URL
-            </label>
-            <input
-              id="socket-url"
-              value={socketUrl}
-              onChange={(e) => setSocketUrl(e.target.value)}
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black placeholder:text-text-primary"
-            />
-          </div>
-        </ChartCard>
+          {active === 'advanced' && (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={beta}
+                  onChange={(e) => setBeta(e.target.checked)}
+                />
+                <span>{t('settings.advanced.beta')}</span>
+              </div>
+              <div>
+                <label htmlFor="apiKey" className="block text-sm text-[#6B6B6E]">
+                  {t('settings.advanced.apiKey')}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="apiKey"
+                    value={apiKey}
+                    readOnly
+                    className="flex-1 p-2 rounded border border-[#D1D1D1] bg-[#F7F7F7]"
+                  />
+                  <button
+                    onClick={regenerateApiKey}
+                    className="px-3 py-1 bg-primary text-white rounded"
+                  >
+                    {t('settings.advanced.regenerate')}
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
 
-        <ChartCard title="Notifications">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={notifications.email}
-                onChange={(e) =>
-                  setNotifications({ ...notifications, email: e.target.checked })
-                }
-              />
-              Email
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={notifications.sms}
-                onChange={(e) =>
-                  setNotifications({ ...notifications, sms: e.target.checked })
-                }
-              />
-              SMS
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={notifications.push}
-                onChange={(e) =>
-                  setNotifications({ ...notifications, push: e.target.checked })
-                }
-              />
-              Push
-            </label>
-          </div>
-        </ChartCard>
+          {active === 'about' && (
+            <section className="space-y-4">
+              <p>
+                {t('settings.about.version')} {pkg.version}
+              </p>
+            </section>
+          )}
 
-        <ChartCard title="Appearance & Language">
-          <div className="space-y-2 flex flex-col">
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <HighContrastToggle />
-              <FontSizeSelector />
-            </div>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as 'en' | 'ko')}
-              className="w-full bg-input-bg rounded-md p-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-accent"
-              aria-label="Language"
-            >
-              <option value="en">English</option>
-              <option value="ko">Korean</option>
-            </select>
-          </div>
-        </ChartCard>
-
-        <button
-          onClick={saveSettings}
-          className="px-4 py-2 bg-primary text-white rounded"
-          type="button"
-        >
-          Save Settings
-        </button>
+          <button
+            onClick={saveSettings}
+            className="px-4 py-2 bg-primary text-white rounded"
+            type="button"
+          >
+            {t('settings.save')}
+          </button>
+        </div>
       </div>
     </DashboardLayout>
-  )
+  );
 }
+

@@ -61,6 +61,53 @@
       "admin": "관리자",
       "operator": "운영자",
       "viewer": "뷰어"
+    },
+    "sections": {
+      "profile": "프로필/계정",
+      "notifications": "알림",
+      "security": "보안/프라이버시",
+      "preferences": "앱 환경",
+      "advanced": "고급",
+      "about": "버전 정보 & 도움말"
+    },
+    "search": "설정 검색",
+    "save": "저장",
+    "saved": "저장 완료",
+    "profile": {
+      "name": "이름",
+      "email": "이메일",
+      "password": "비밀번호",
+      "sns": "SNS 계정",
+      "link": "연결",
+      "unlink": "해제"
+    },
+    "notifications": {
+      "push": "푸시",
+      "email": "이메일",
+      "sms": "SMS",
+      "frequency": "알림 주기",
+      "daily": "일간",
+      "weekly": "주간",
+      "monthly": "월간"
+    },
+    "security": {
+      "twoFactor": "2단계 인증",
+      "sessions": "로그인한 기기",
+      "logout": "로그아웃",
+      "download": "데이터 다운로드",
+      "delete": "계정 삭제"
+    },
+    "preferences": {
+      "language": "언어",
+      "theme": "테마"
+    },
+    "advanced": {
+      "beta": "베타 기능 사용",
+      "apiKey": "API 키",
+      "regenerate": "재발급"
+    },
+    "about": {
+      "version": "버전"
     }
   },
   "errorBoundary": {
