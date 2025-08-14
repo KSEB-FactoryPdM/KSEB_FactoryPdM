@@ -122,7 +122,7 @@ export default function MaintenancePage() {
         <ChartCard title="Maintenance Notes">
           <div className="mb-2 text-right">
             <button
-              className="px-2 py-1 bg-primary text-white rounded"
+              className="px-2 py-1 bg-white border border-primary text-primary rounded"
               onClick={() => setShowModal(true)}
             >
               Add Note
@@ -202,7 +202,7 @@ export default function MaintenancePage() {
                 Cancel
               </button>
               <button
-                className="px-3 py-1 bg-primary text-white rounded"
+                className="px-3 py-1 bg-white border border-primary text-primary rounded disabled:opacity-50"
                 onClick={handleSave}
                 disabled={!noteEquipment || !noteDesc}
               >
