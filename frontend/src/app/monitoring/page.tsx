@@ -17,6 +17,7 @@ import {
 } from '@/lib/dynamicRecharts'
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
+import { useTranslation } from 'react-i18next'
 
 
 type MyPoint = {
@@ -128,6 +129,8 @@ function downloadCSV(rows: Record<string, any>[], filename = 'monitoring.csv') {
 export default function MonitoringPage() {
   useRequireRole(['Admin', 'Engineer', 'Viewer'])
 
+  const { t } = useTranslation('common', { keyPrefix: 'monitoring' })
+
   /** 가독성 보장 변수: 요약 카드 등에서 rgb(var(--color-text-primary))를 확실히 표시 */
   const pageVars: CSSProperties = {
     ['--color-text-primary' as any]: '15 23 42', // slate-900
@@ -238,8 +241,8 @@ export default function MonitoringPage() {
         {/* 헤더 + 제어 */}
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">실시간 모니터링</h1>
-            <p className="text-sm text-slate-600">장비 상태, 이상 징후, 센서 신호를 실시간으로 확인하세요.</p>
+            <h1 className="text-xl font-semibold text-slate-900">{t('title')}</h1>
+            <p className="text-sm text-slate-600">{t('subtitle')}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -253,7 +256,7 @@ export default function MonitoringPage() {
               }`}
               aria-live="polite"
             >
-              {isConnecting ? '서버 연결 중…' : isError ? '연결 오류(자동 재시도)' : '실시간 연결됨'}
+              {isConnecting ? t('connecting') : isError ? t('error') : t('connected')}
             </span>
 
             <button
@@ -261,9 +264,9 @@ export default function MonitoringPage() {
               onClick={() => setPaused((p) => !p)}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
               aria-pressed={paused}
-              title={paused ? '실시간 갱신 재개' : '실시간 갱신 일시정지'}
+              title={paused ? t('resumeTitle') : t('pauseTitle')}
             >
-              {paused ? '재개' : '일시정지'}
+              {paused ? t('resume') : t('pause')}
             </button>
 
             <button
@@ -271,27 +274,27 @@ export default function MonitoringPage() {
               onClick={onExportCSV}
               className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100"
               disabled={!filteredData.length}
-              title="현재 범위 데이터 CSV 저장"
+              title={t('exportTitle')}
             >
-              CSV 내보내기
+              {t('exportCsv')}
             </button>
           </div>
         </div>
 
         {/* 요약 카드: 강제 고대비 적용 */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 [&_*]:text-slate-900">
-          <SummaryCard label="Total Equipment" value={formatNum(equipmentCount, '0')} />
-          <SummaryCard label="Active Alerts" value={formatNum(activeAlerts, '0')} />
-          <SummaryCard label="Today's Predicted" value={formatNum(predictedToday, '0')} />
-          <SummaryCard label="Latest RUL" value={formatNum(latestRul, '0')} />
-          <SummaryCard label="Next Maintenance" value={upcomingMaintenance} />
+          <SummaryCard label={t('summary.totalEquipment')} value={formatNum(equipmentCount, '0')} />
+          <SummaryCard label={t('summary.activeAlerts')} value={formatNum(activeAlerts, '0')} />
+          <SummaryCard label={t('summary.todaysPredicted')} value={formatNum(predictedToday, '0')} />
+          <SummaryCard label={t('summary.latestRul')} value={formatNum(latestRul, '0')} />
+          <SummaryCard label={t('summary.nextMaintenance')} value={upcomingMaintenance} />
         </div>
 
         {/* 최근 이벤트: 내부 세로 스크롤/thead sticky 전부 제거 → 페이지 스크롤과 완전 동기화 */}
-        <ChartCard title="Recent Anomaly Events">
+        <ChartCard title={t('recentEvents')}>
           {!events?.length ? (
             <div className="h-[220px] flex items-center justify-center text-slate-500">
-              최근 이벤트가 없습니다.
+              {t('noEvents')}
             </div>
           ) : (
             <div className="overflow-x-auto rounded-md border border-slate-200">
@@ -305,10 +308,10 @@ export default function MonitoringPage() {
                 </colgroup>
                 <thead className="bg-slate-50 text-left text-slate-700">
                   <tr className="whitespace-nowrap">
-                    <th className="py-2 px-3 font-medium">Time</th>
-                    <th className="py-2 px-3 font-medium">Device</th>
-                    <th className="py-2 px-3 font-medium">Sensor</th>
-                    <th className="py-2 px-3 font-medium">Severity</th>
+                    <th className="py-2 px-3 font-medium">{t('table.time')}</th>
+                    <th className="py-2 px-3 font-medium">{t('table.device')}</th>
+                    <th className="py-2 px-3 font-medium">{t('table.sensor')}</th>
+                    <th className="py-2 px-3 font-medium">{t('table.severity')}</th>
                   </tr>
                 </thead>
                 <tbody className="text-slate-900">
@@ -359,28 +362,28 @@ export default function MonitoringPage() {
         {/* 활성 필터 배지 */}
         <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
-            기간: {timeRange}
+            {t('activeFilters.period')}: {timeRange}
           </span>
           {selectedEquipment && (
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
-              장비: {selectedEquipment}
+              {t('activeFilters.equipment')}: {selectedEquipment}
             </span>
           )}
           {power && (
             <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
-              전력: {power}
+              {t('activeFilters.power')}: {power}
             </span>
           )}
           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 ring-1 ring-slate-200">
-            센서: {sensor}
+            {t('activeFilters.sensor')}: {sensor}
           </span>
         </div>
 
         {/* 차트들 */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <ChartCard title="Anomaly Count (total)" danger={hasAnomaly}>
+          <ChartCard title={t('charts.anomalyTotal')} danger={hasAnomaly}>
             {!filteredData.length ? (
-              <div className="h-[240px] flex items-center justify-center text-slate-500">데이터 없음</div>
+              <div className="h-[240px] flex items-center justify-center text-slate-500">{t('charts.noData')}</div>
             ) : (
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
@@ -394,7 +397,7 @@ export default function MonitoringPage() {
           </ChartCard>
 
           {(['A', 'AAAA', 'PTR', 'SOA', 'SRV', 'TXT'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
-            <ChartCard title="Anomaly Count (by type)">
+            <ChartCard title={t('charts.anomalyByType')}>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
@@ -413,7 +416,7 @@ export default function MonitoringPage() {
           )}
 
           {(['zone1', 'zone2', 'zone3'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
-            <ChartCard title="Anomaly Count (by zone)">
+            <ChartCard title={t('charts.anomalyByZone')}>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
@@ -429,7 +432,7 @@ export default function MonitoringPage() {
           )}
 
           {hasField(filteredData, 'rul') && (
-            <ChartCard title="Prediction (Remaining Useful Life)">
+            <ChartCard title={t('charts.predictionRul')}>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
@@ -442,7 +445,7 @@ export default function MonitoringPage() {
           )}
 
           {(hasField(filteredData, 'current') || hasField(filteredData, 'vibration')) && (
-            <ChartCard title="Sensor Data (Current & Vibration)">
+            <ChartCard title={t('charts.sensorData')}>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
@@ -457,7 +460,7 @@ export default function MonitoringPage() {
           )}
 
           {hasField(filteredData, sensor) && (
-            <ChartCard title="Real-Time Signal (selected)" danger={hasAnomaly}>
+            <ChartCard title={t('charts.realTimeSelected')} danger={hasAnomaly}>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
                   <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
@@ -473,12 +476,12 @@ export default function MonitoringPage() {
         {/* 연결 상태 안내 */}
         {isConnecting && (
           <div className="mt-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800 ring-1 ring-blue-200">
-            서버에 연결 중입니다…
+            {t('connectingNotice')}
           </div>
         )}
         {isError && (
           <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200">
-            연결 오류가 발생했습니다. 자동으로 재시도합니다.
+            {t('errorNotice')}
           </div>
         )}
       </div>

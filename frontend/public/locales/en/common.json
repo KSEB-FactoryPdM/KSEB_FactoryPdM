@@ -143,6 +143,38 @@
     "exportCsv": "Export CSV",
     "resumeTitle": "Resume live updates",
     "pauseTitle": "Pause live updates",
-    "exportTitle": "Save current range as CSV"
+    "exportTitle": "Save current range as CSV",
+    "summary": {
+      "totalEquipment": "Total Equipment",
+      "activeAlerts": "Active Alerts",
+      "todaysPredicted": "Today's Predicted",
+      "latestRul": "Latest RUL",
+      "nextMaintenance": "Next Maintenance"
+    },
+    "recentEvents": "Recent Anomaly Events",
+    "noEvents": "No recent events.",
+    "table": {
+      "time": "Time",
+      "device": "Device",
+      "sensor": "Sensor",
+      "severity": "Severity"
+    },
+    "activeFilters": {
+      "period": "Range",
+      "equipment": "Equipment",
+      "power": "Power",
+      "sensor": "Sensor"
+    },
+    "charts": {
+      "anomalyTotal": "Anomaly Count (total)",
+      "anomalyByType": "Anomaly Count (by type)",
+      "anomalyByZone": "Anomaly Count (by zone)",
+      "predictionRul": "Prediction (Remaining Useful Life)",
+      "sensorData": "Sensor Data (Current & Vibration)",
+      "realTimeSelected": "Real-Time Signal (selected)",
+      "noData": "No data"
+    },
+    "connectingNotice": "Connecting to server…",
+    "errorNotice": "A connection error occurred. Retrying automatically."
   }
 }
