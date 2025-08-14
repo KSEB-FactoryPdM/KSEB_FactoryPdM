@@ -77,52 +77,11 @@ export default function MaintenancePage() {
 
   return (
     <DashboardLayout>
-      <ChartCard title="Maintenance">
-        <div className="mb-2">
-          <EquipmentFilter
-            machines={machines ?? []}
-            power={power}
-            device={device}
-            onPowerChange={setPower}
-            onDeviceChange={setDevice}
-          />
-        </div>
-        <table className="w-full text-sm">
-          <thead className="text-left">
-            <tr>
-              <th className="py-2">kW</th>
-              <th className="py-2">Equipment</th>
-              <th className="py-2">Abnormal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((m) => (
-              <tr key={m.id} className="border-t">
-                <td className="py-2">{m.power}</td>
-                <td className="py-2">{m.id}</td>
-                <td className="py-2">
-                  {m.abnormal.length > 0
-                    ? m.abnormal.map((s) => t(`status.${s}`)).join(', ')
-                    : '-'}
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td className="py-2" colSpan={3}>
-                  No data
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </ChartCard>
-
-      <div className="mt-4">
+      <div className="space-y-4">
         <ChartCard title="Maintenance Notes">
           <div className="mb-2 text-right">
             <button
-              className="px-2 py-1 bg-white border border-primary text-primary rounded"
+              className="px-3 py-1 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
               onClick={() => setShowModal(true)}
             >
               Add Note
@@ -156,53 +115,96 @@ export default function MaintenancePage() {
             </tbody>
           </table>
         </ChartCard>
+
+        <ChartCard title="Maintenance">
+          <div className="mb-2">
+            <EquipmentFilter
+              machines={machines ?? []}
+              power={power}
+              device={device}
+              onPowerChange={setPower}
+              onDeviceChange={setDevice}
+            />
+          </div>
+          <table className="w-full text-sm">
+            <thead className="text-left">
+              <tr>
+                <th className="py-2">kW</th>
+                <th className="py-2">Equipment</th>
+                <th className="py-2">Abnormal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((m) => (
+                <tr key={m.id} className="border-t">
+                  <td className="py-2">{m.power}</td>
+                  <td className="py-2">{m.id}</td>
+                  <td className="py-2">
+                    {m.abnormal.length > 0
+                      ? m.abnormal.map((s) => t(`status.${s}`)).join(', ')
+                      : '-'}
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td className="py-2" colSpan={3}>
+                    No data
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </ChartCard>
       </div>
 
       {showModal && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-white rounded-md p-4 w-80"
+            className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-heading mb-2">Add Maintenance Note</h3>
-            <select
-              className="border p-1 mb-2 w-full"
-              value={noteEquipment}
-              onChange={(e) => setNoteEquipment(e.target.value)}
-            >
-              <option value="">Select equipment</option>
-              {machines?.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.id}
-                </option>
-              ))}
-            </select>
-            <select
-              className="border p-1 mb-2 w-full"
-              value={noteStatus}
-              onChange={(e) => setNoteStatus(e.target.value)}
-            >
-              <option value="pending">Needs Fix</option>
-              <option value="resolved">Resolved</option>
-            </select>
-            <textarea
-              className="border p-1 mb-2 w-full"
-              rows={3}
-              value={noteDesc}
-              onChange={(e) => setNoteDesc(e.target.value)}
-            />
-            <div className="flex justify-end space-x-2">
+            <h3 className="mb-4 text-xl font-heading">Add Maintenance Note</h3>
+            <div className="space-y-3">
+              <select
+                className="w-full rounded border p-2"
+                value={noteEquipment}
+                onChange={(e) => setNoteEquipment(e.target.value)}
+              >
+                <option value="">Select equipment</option>
+                {machines?.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.id}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="w-full rounded border p-2"
+                value={noteStatus}
+                onChange={(e) => setNoteStatus(e.target.value)}
+              >
+                <option value="pending">Needs Fix</option>
+                <option value="resolved">Resolved</option>
+              </select>
+              <textarea
+                className="w-full rounded border p-2"
+                rows={3}
+                value={noteDesc}
+                onChange={(e) => setNoteDesc(e.target.value)}
+              />
+            </div>
+            <div className="mt-4 flex justify-end space-x-2">
               <button
-                className="px-3 py-1 border rounded"
+                className="rounded bg-gray-100 px-4 py-1 hover:bg-gray-200"
                 onClick={() => setShowModal(false)}
               >
                 Cancel
               </button>
               <button
-                className="px-3 py-1 bg-white border border-primary text-primary rounded disabled:opacity-50"
+                className="rounded bg-gray-200 px-4 py-1 text-gray-800 hover:bg-gray-300 disabled:opacity-50"
                 onClick={handleSave}
                 disabled={!noteEquipment || !noteDesc}
               >
