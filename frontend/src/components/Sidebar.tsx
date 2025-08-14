@@ -52,7 +52,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`flex flex-col ${collapsed ? 'w-20' : 'w-60'} bg-black text-white shadow-lg h-screen`}
+      className={`flex flex-col ${collapsed ? 'w-20' : 'w-60'} bg-black text-white shadow-lg h-full md:h-screen`}
       role="navigation"
       aria-label={t('nav.sidebarLabel')}
       tabIndex={0}
@@ -69,6 +69,7 @@ export default function Sidebar() {
         <button
           onClick={() => setCollapsed(!collapsed)}
           aria-label="Toggle sidebar"
+          aria-expanded={!collapsed}
           className="p-1 rounded hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-accent"
         >
           {collapsed ? (
@@ -80,29 +81,33 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Links */}
-      <nav className={`flex-1 overflow-y-auto ${collapsed ? 'px-1' : 'px-2'} py-4 space-y-1`}>
-        {navItems.map(({ href, label, icon: Icon }, index) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <MotionLink
-              key={href}
-              href={href}
-              ref={el => {
-                itemRefs.current[index] = el;
-              }}
-                className={`group flex items-center gap-3 h-12 px-3 rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-accent ${
-                active ? 'bg-gray-800 font-semibold' : 'hover:bg-gray-800'
-              }`}
-              aria-current={active ? 'page' : undefined}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-              <span className={`${collapsed ? 'hidden' : 'flex-1'}`}>{t(label)}</span>
-              {active && <span className="h-2 w-2 bg-accent rounded-full" />}
-            </MotionLink>
-          );
-        })}
+      <nav className={`flex-1 overflow-y-auto ${collapsed ? 'px-1' : 'px-2'} py-4`}>
+        <ul className="space-y-1">
+          {navItems.map(({ href, label, icon: Icon }, index) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`);
+            return (
+              <li key={href}>
+                <MotionLink
+                  href={href}
+                  ref={el => {
+                    itemRefs.current[index] = el;
+                  }}
+                  className={`group flex items-center gap-3 h-12 px-3 rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-accent border-l-4 ${
+                    active
+                      ? 'bg-gray-800 font-semibold border-accent'
+                      : 'border-transparent hover:bg-gray-800'
+                  }`}
+                  aria-current={active ? 'page' : undefined}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                  <span className={`${collapsed ? 'hidden' : 'flex-1'}`}>{t(label)}</span>
+                </MotionLink>
+              </li>
+            );
+          })}
+        </ul>
       </nav>
 
       {/* Logout Button */}
