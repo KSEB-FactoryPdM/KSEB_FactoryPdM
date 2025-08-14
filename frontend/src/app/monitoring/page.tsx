@@ -18,6 +18,7 @@ import {
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 import { useTranslation } from 'react-i18next'
+import { InformationCircleIcon } from '@heroicons/react/24/outline'
 
 
 type MyPoint = {
@@ -240,9 +241,9 @@ export default function MonitoringPage() {
       <div style={pageVars}>
         {/* 헤더 + 제어 */}
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-slate-900">{t('title')}</h1>
-            <p className="text-sm text-slate-600">{t('subtitle')}</p>
+            <InformationCircleIcon className="h-5 w-5 text-slate-400" title={t('subtitle')} />
           </div>
 
           <div className="flex items-center gap-2">
