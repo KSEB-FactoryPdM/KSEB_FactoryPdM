@@ -464,10 +464,10 @@ export default function MonitoringPage() {
               .filter(
                 (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
               )
-              .flatMap((m) => [
+              .map((m) => (
                 <ChartCard
-                  key={`${m.id}-${m.power}-current`}
-                  title={`${m.id} (${m.power}) - ${t('charts.current')}`}
+                  key={`${m.id}-${m.power}-${sensor}`}
+                  title={`${m.id} (${m.power}) - ${t('charts.' + sensor)}`}
                 >
                   {!filteredData.length ? (
                     <div className="h-[160px] flex items-center justify-center text-slate-500">
@@ -484,38 +484,20 @@ export default function MonitoringPage() {
                           <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
                           <YAxis tick={axisStyle} width={48} />
                           <Tooltip labelFormatter={tooltipLabel} />
-                          <Line type="monotone" dataKey="current" stroke={colors.a} dot={false} />
+                          <Line
+                            type="monotone"
+                            dataKey={sensor}
+                            stroke={sensor === 'current' ? colors.a : colors.ptr}
+                            dot={false}
+                          />
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
                   )}
-                </ChartCard>,
-                <ChartCard
-                  key={`${m.id}-${m.power}-vibration`}
-                  title={`${m.id} (${m.power}) - ${t('charts.vibration')}`}
-                >
-                  {!filteredData.length ? (
-                    <div className="h-[160px] flex items-center justify-center text-slate-500">
-                      {t('charts.noData')}
-                    </div>
-                  ) : (
-                    <div className="h-[160px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={filteredData}
-                          syncId="rt"
-                          margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
-                        >
-                          <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                          <YAxis tick={axisStyle} width={48} />
-                          <Tooltip labelFormatter={tooltipLabel} />
-                          <Line type="monotone" dataKey="vibration" stroke={colors.ptr} dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </ChartCard>,
-              ])}
+
+                </ChartCard>
+              ))}
+
           </div>
         )}
 
