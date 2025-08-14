@@ -2,13 +2,13 @@
 
 :root {
   --base-font-size: 16px;
-  --background: #ffffff;
-  --foreground: #171717;
-  --color-primary: 26 31 113;
-  --color-primary-hover: 0 95 115;
-  --color-accent: 242 201 76;
-  --color-input-bg: 245 245 220;
-  --color-text-primary: 55 65 81;
+  --background: #FFFFFF;
+  --foreground: #1C1C1E;
+  --color-primary: 58 110 165;
+  --color-primary-hover: 42 94 135;
+  --color-accent: 58 110 165;
+  --color-input-bg: 247 247 247;
+  --color-text-primary: 107 107 110;
   --chart-a: 167 107 95;
   --chart-ptr: 76 175 80;
   --chart-soa: 224 122 95;
@@ -49,9 +49,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
-    --color-primary: 26 31 113;
-    --color-primary-hover: 0 95 115;
-    --color-accent: 242 201 76;
+    --color-primary: 58 110 165;
+    --color-primary-hover: 42 94 135;
+    --color-accent: 58 110 165;
     --color-input-bg: 26 26 26;
     --color-text-primary: 229 231 235;
     --chart-a: 167 107 95;

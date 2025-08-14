@@ -61,6 +61,53 @@
       "admin": "Admin",
       "operator": "Operator",
       "viewer": "Viewer"
+    },
+    "sections": {
+      "profile": "Profile & Account",
+      "notifications": "Notifications",
+      "security": "Security & Privacy",
+      "preferences": "App Preferences",
+      "advanced": "Advanced",
+      "about": "About & Help"
+    },
+    "search": "Search settings",
+    "save": "Save Changes",
+    "saved": "Settings saved",
+    "profile": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "sns": "SNS Accounts",
+      "link": "Link",
+      "unlink": "Unlink"
+    },
+    "notifications": {
+      "push": "Push",
+      "email": "Email",
+      "sms": "SMS",
+      "frequency": "Frequency",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "security": {
+      "twoFactor": "Two-factor authentication",
+      "sessions": "Active sessions",
+      "logout": "Logout",
+      "download": "Download data",
+      "delete": "Delete account"
+    },
+    "preferences": {
+      "language": "Language",
+      "theme": "Theme"
+    },
+    "advanced": {
+      "beta": "Enable beta features",
+      "apiKey": "API Key",
+      "regenerate": "Regenerate"
+    },
+    "about": {
+      "version": "Version"
     }
   },
   "errorBoundary": {
