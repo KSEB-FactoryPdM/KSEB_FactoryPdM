@@ -44,30 +44,27 @@
   --chart-txt: var(--chart-txt);
   --chart-zone: var(--chart-zone);
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --color-primary: 58 110 165;
-    --color-primary-hover: 42 94 135;
-    --color-accent: 58 110 165;
-    --color-input-bg: 26 26 26;
-    --color-text-primary: 229 231 235;
-    --chart-a: 167 107 95;
-    --chart-ptr: 76 175 80;
-    --chart-soa: 224 122 95;
-    --chart-srv: 196 163 248;
-    --chart-txt: 214 143 218;
-    --chart-zone: 0 95 115;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
   font-size: var(--base-font-size);
+  line-height: 1.5;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--foreground);
+  color: var(--background);
+  padding: 8px;
+  z-index: 100;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 0;
 }
 
 h1,
@@ -89,4 +86,14 @@ h2 {
 
 h3 {
   font-size: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
