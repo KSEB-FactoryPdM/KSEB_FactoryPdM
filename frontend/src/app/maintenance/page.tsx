@@ -168,33 +168,39 @@ export default function MaintenancePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-4 text-xl font-heading">Add Maintenance Note</h3>
-            <div className="space-y-3">
-              <select
-                className="w-full rounded border p-2"
-                value={noteEquipment}
-                onChange={(e) => setNoteEquipment(e.target.value)}
-              >
-                <option value="">Select equipment</option>
-                {machines?.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.id}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="w-full rounded border p-2"
-                value={noteStatus}
-                onChange={(e) => setNoteStatus(e.target.value)}
-              >
-                <option value="pending">Needs Fix</option>
-                <option value="resolved">Resolved</option>
-              </select>
-              <textarea
-                className="w-full rounded border p-2"
-                rows={3}
-                value={noteDesc}
-                onChange={(e) => setNoteDesc(e.target.value)}
-              />
+            <div className="divide-y divide-gray-200">
+              <div className="pb-3">
+                <select
+                  className="w-full rounded border border-gray-300 p-2"
+                  value={noteEquipment}
+                  onChange={(e) => setNoteEquipment(e.target.value)}
+                >
+                  <option value="">Select equipment</option>
+                  {machines?.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="py-3">
+                <select
+                  className="w-full rounded border border-gray-300 p-2"
+                  value={noteStatus}
+                  onChange={(e) => setNoteStatus(e.target.value)}
+                >
+                  <option value="pending">Needs Fix</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </div>
+              <div className="pt-3">
+                <textarea
+                  className="w-full rounded border border-gray-300 p-2"
+                  rows={3}
+                  value={noteDesc}
+                  onChange={(e) => setNoteDesc(e.target.value)}
+                />
+              </div>
             </div>
             <div className="mt-4 flex justify-end space-x-2">
               <button
