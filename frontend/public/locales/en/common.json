@@ -219,6 +219,8 @@
       "predictionRul": "Prediction (Remaining Useful Life)",
       "sensorData": "Sensor Data (Current & Vibration)",
       "realTimeSelected": "Real-Time Signal (selected)",
+      "current": "Current",
+      "vibration": "Vibration",
       "noData": "No data"
     },
     "connectingNotice": "Connecting to server…",

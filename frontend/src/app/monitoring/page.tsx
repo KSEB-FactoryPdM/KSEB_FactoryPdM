@@ -473,6 +473,63 @@ export default function MonitoringPage() {
           )}
         </div>
 
+        {machines && (
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {machines.map((m) => (
+              <ChartCard key={m.id} title={m.id}>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium">{t('charts.current')}</h4>
+                    {!filteredData.length ? (
+                      <div className="h-[160px] flex items-center justify-center text-slate-500">
+                        {t('charts.noData')}
+                      </div>
+                    ) : (
+                      <div className="h-[160px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={filteredData}
+                            syncId="rt"
+                            margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
+                          >
+                            <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                            <YAxis tick={axisStyle} width={48} />
+                            <Tooltip labelFormatter={tooltipLabel} />
+                            <Line type="monotone" dataKey="current" stroke={colors.a} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium">{t('charts.vibration')}</h4>
+                    {!filteredData.length ? (
+                      <div className="h-[160px] flex items-center justify-center text-slate-500">
+                        {t('charts.noData')}
+                      </div>
+                    ) : (
+                      <div className="h-[160px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={filteredData}
+                            syncId="rt"
+                            margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
+                          >
+                            <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
+                            <YAxis tick={axisStyle} width={48} />
+                            <Tooltip labelFormatter={tooltipLabel} />
+                            <Line type="monotone" dataKey="vibration" stroke={colors.ptr} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </ChartCard>
+            ))}
+          </div>
+        )}
+
         {/* 연결 상태 안내 */}
         {isConnecting && (
           <div className="mt-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800 ring-1 ring-blue-200">

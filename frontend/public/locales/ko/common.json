@@ -219,6 +219,8 @@
       "predictionRul": "예측(잔여 수명)",
       "sensorData": "센서 데이터(전류·진동)",
       "realTimeSelected": "실시간 신호(선택)",
+      "current": "전류",
+      "vibration": "진동",
       "noData": "데이터 없음"
     },
     "connectingNotice": "서버에 연결 중입니다…",
