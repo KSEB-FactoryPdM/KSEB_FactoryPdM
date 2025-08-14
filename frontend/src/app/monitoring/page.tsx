@@ -432,7 +432,6 @@ export default function MonitoringPage() {
               </ResponsiveContainer>
             </ChartCard>
           )}
-
           {(hasField(filteredData, 'current') || hasField(filteredData, 'vibration')) && (
             <ChartCard title={t('charts.sensorData')}>
               <ResponsiveContainer width="100%" height={240}>
@@ -514,6 +513,7 @@ export default function MonitoringPage() {
             {t('errorNotice')}
           </div>
         )}
+
       </div>
     </DashboardLayout>
   )
