@@ -654,7 +654,17 @@ class ServeMLBundle:
 
 class ServeMLRegistry:
     def __init__(self, root_dir: Optional[str] = None):
-        root = root_dir or os.getenv("SERVE_ML_ROOT") or str(Path("backend/serve_ml").resolve())
+        # 우선순위: 명시 인자 > 환경변수 > 모듈 기준 상대 경로(backend/serve_ml)
+        if root_dir:
+            root = root_dir
+        else:
+            env_root = os.getenv("SERVE_ML_ROOT")
+            if env_root:
+                root = env_root
+            else:
+                # 이 파일(app/services/serve_ml_loader.py)에서 두 단계 상위가 backend 루트
+                backend_root = Path(__file__).resolve().parents[2]
+                root = str(backend_root / "serve_ml")
         self.root = Path(root)
 
     def list_equipment(self) -> List[str]:

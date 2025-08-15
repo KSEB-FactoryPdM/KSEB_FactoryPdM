@@ -352,16 +352,6 @@ class AnomalyDetectionModel:
                     'confidence': confidence_xgb
                 }
             
-            # Isolation Forest 모델 사용
-            if self.isolation_forest is not None:
-                is_anomaly_if, confidence_if = self.detect_anomaly_isolation_forest(data)
-                predictions.append(is_anomaly_if)
-                confidences.append(confidence_if)
-                results['isolation_forest'] = {
-                    'is_anomaly': is_anomaly_if,
-                    'confidence': confidence_if
-                }
-            
             # Autoencoder 모델 사용
             if self.autoencoder is not None:
                 is_anomaly_ae, confidence_ae = self.detect_anomaly_autoencoder(data)
