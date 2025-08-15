@@ -15,6 +15,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from '@/lib/dynamicRecharts'
+import GrafanaPanel from '@/components/GrafanaPanel'
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 import { useTranslation } from 'react-i18next'
@@ -468,37 +469,26 @@ export default function MonitoringPage() {
               .filter(
                 (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
               )
-              .flatMap((m) => {
-                const sensors = sensor === 'all' ? (['current', 'vibration'] as (keyof MyPoint)[]) : [sensor]
-                return sensors.map((s) => (
-                  <ChartCard key={`${m.id}-${m.power}-${s}`} title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}>
-                    {!filteredData.length ? (
-                      <div className="h-[160px] flex items-center justify-center text-slate-500">
-                        {t('charts.noData')}
-                      </div>
-                    ) : (
-                      <div className="h-[160px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={filteredData}
-                            syncId="rt"
-                            margin={{ left: 12, right: 12, top: 8, bottom: 8 }}
-                          >
-                            <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                            <YAxis tick={axisStyle} width={48} />
-                            <Tooltip labelFormatter={tooltipLabel} />
-                            <Line
-                              type="monotone"
-                              dataKey={s as string}
-                              stroke={s === 'current' ? colors.a : colors.ptr}
-                              dot={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
+              .map((m) => {
+                const grafanaVariant =
+                  (process.env.NEXT_PUBLIC_GRAFANA_EMBED_VARIANT as 'solo' | 'dashboard') || 'dashboard'
+                const panelMap: Record<string, number> = {
+                  current: Number(process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT || 1),
+                  vibration: Number(process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION || 2),
+                }
+                const chosenSensor = (sensor === 'all' ? 'current' : sensor) as 'current' | 'vibration' | 'all'
+                const panelId = panelMap[String(chosenSensor)]
+                return (
+                  <ChartCard key={`${m.id}-${m.power}`} title={`${m.id} (${m.power})`}>
+                    <GrafanaPanel
+                      deviceId={m.id}
+                      variant={grafanaVariant}
+                      panelId={panelId}
+                      refresh="5s"
+                      height={300}
+                    />
                   </ChartCard>
-                ))
+                )
               })}
           </div>
         )}
