@@ -1,5 +1,3 @@
-version: '3.8'
-
 # 개발 환경용 오버라이드 설정
 # docker-compose up 시 자동으로 적용됨
 
@@ -10,16 +8,8 @@ services:
       - LOG_LEVEL=DEBUG
     volumes:
       - .:/app  # 코드 변경사항 실시간 반영
-      - /models:/app/models
+      - ./models:/app/models:ro
     command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-  ai-model:
-    environment:
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
-    volumes:
-      - .:/app  # 코드 변경사항 실시간 반영
-      - /models:/app/models:ro
 
   data-collector:
     environment:
@@ -43,7 +33,7 @@ services:
       - "1025:1025"  # SMTP
       - "8025:8025"  # Web UI
     networks:
-      - core-network
+      - app-network
     profiles:
       - dev
 
@@ -56,6 +46,6 @@ services:
     depends_on:
       - redis
     networks:
-      - core-network
+      - app-network
     profiles:
       - dev
