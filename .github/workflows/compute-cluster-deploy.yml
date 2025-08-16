@@ -168,7 +168,8 @@ jobs:
 
         # Python 의존성 설치
         COPY requirements.txt .
-        RUN pip install --no-cache-dir -r requirements.txt
+        RUN pip install --no-cache-dir -r requirements.txt \
+            && pip install --no-cache-dir scikit-learn
 
         # 애플리케이션 코드 복사
         COPY . .
@@ -373,6 +374,10 @@ jobs:
                 ports:
                 - containerPort: 8001
                 env:
+                - name: DATABASE_URL
+                  value: "sqlite:////data/ai_service.db"
+                - name: MODEL_PATH
+                  value: "/models"
                 - name: KAFKA_BOOTSTRAP_SERVERS
                   valueFrom:
                     secretKeyRef:
@@ -393,10 +398,20 @@ jobs:
                   periodSeconds: 10
                 readinessProbe:
                   httpGet:
-                    path: /ready
+                    path: /health
                     port: 8001
                   initialDelaySeconds: 15
                   periodSeconds: 5
+                volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: models
+                  mountPath: /models
+              volumes:
+              - name: data
+                emptyDir: {}
+              - name: models
+                emptyDir: {}
         ---
         apiVersion: v1
         kind: Service
