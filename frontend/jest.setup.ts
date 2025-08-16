@@ -10,8 +10,7 @@ class ResizeObserverMock {
   unobserve() {}
   disconnect() {}
 }
-// @ts-expect-error jsdom window typing
-window.ResizeObserver = window.ResizeObserver || ResizeObserverMock
+;(window as any).ResizeObserver = (window as any).ResizeObserver || ResizeObserverMock
 
 // matchMedia mock
 Object.defineProperty(window, 'matchMedia', {
