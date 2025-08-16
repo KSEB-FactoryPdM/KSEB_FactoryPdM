@@ -23,7 +23,7 @@ function Section({ title, items }: { title: string; items: string[] }) {
 
 export default function SearchPage() {
   const params = useSearchParams();
-  const query = params.get('query')?.trim() ?? '';
+  const query = (params?.get('query') ?? '').trim();
 
   const suggestions = useMemo(() => {
     if (!query) return [];
