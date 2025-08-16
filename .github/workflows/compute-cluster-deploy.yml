@@ -530,8 +530,9 @@ jobs:
         AI_EXTERNAL_IP=$(kubectl get svc ai-model-service -n smart-factory-compute -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
         echo "AI 모델 서비스 외부 IP: $AI_EXTERNAL_IP"
         
-        # 클러스터 간 통신을 위한 네트워크 정책 생성
-        cat > k8s/cross-cluster-network-policy.yaml << 'EOF'
+        # 클러스터 간 통신을 위한 네트워크 정책 생성 (경로 보장)
+        mkdir -p backend/k8s
+        cat > backend/k8s/cross-cluster-network-policy.yaml << 'EOF'
         apiVersion: networking.k8s.io/v1
         kind: NetworkPolicy
         metadata:
@@ -548,7 +549,7 @@ jobs:
           - {} # 모든 아웃바운드 허용 (초기 설정)
         EOF
         
-        kubectl apply -f k8s/cross-cluster-network-policy.yaml
+        kubectl apply -f backend/k8s/cross-cluster-network-policy.yaml
         
         echo "✅ 클러스터 간 통신 설정 완료"
         echo "Core Cluster에서 다음 엔드포인트들을 사용하세요:"
