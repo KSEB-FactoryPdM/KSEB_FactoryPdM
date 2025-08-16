@@ -1,6 +1,7 @@
 // 클라이언트 전용 훅 선언
 'use client'
 import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { useEffect } from 'react'
 import { useAuthStore, UserRole } from '@/store/useAuthStore'
 
@@ -14,7 +15,7 @@ export function useRequireRole(roles: UserRole | UserRole[]) {
     // 허용된 역할 배열을 만든 후 권한이 없으면 리다이렉트
     const allowed = Array.isArray(roles) ? roles : [roles]
     if (!allowed.includes(role)) {
-      router.replace('/monitoring')
+      router.replace('/monitoring' as Route)
     }
   }, [roles, role, router])
 }
