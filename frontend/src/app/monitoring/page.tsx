@@ -113,53 +113,13 @@ const GrafanaPanel = ({
 
 // Note: GrafanaDashboard 컴포넌트는 현재 사용되지 않으므로 제거하여 린트 오류 방지
 
-/** CSS 변수 안전 폴백 */
-function useThemeColors() {
-  const [colors, setColors] = useState({
-    accent: '#3b82f6',
-    danger: '#dc2626',
-    text: '#334155',
-    a: '#16a34a',
-    zone: '#8b5cf6',
-    ptr: '#0ea5e9',
-    soa: '#f59e0b',
-    srv: '#10b981',
-    txt: '#ef4444',
-  })
-  useEffect(() => {
-    const root = document.documentElement
-    const read = (name: string, fallback: string) => {
-      const v = getComputedStyle(root).getPropertyValue(name).trim()
-      return v ? (v.includes(' ') ? `rgb(${v})` : v) : fallback
-    }
-    setColors({
-      accent: read('--color-accent', '#3b82f6'),
-      danger: read('--color-danger', '#dc2626'),
-      text: read('--color-text-primary', '#334155'),
-      a: read('--chart-a', '#16a34a'),
-      zone: read('--chart-zone', '#8b5cf6'),
-      ptr: read('--chart-ptr', '#0ea5e9'),
-      soa: read('--chart-soa', '#f59e0b'),
-      srv: read('--chart-srv', '#10b981'),
-      txt: read('--chart-txt', '#ef4444'),
-    })
-  }, [])
-  return colors
-}
+// useThemeColors 제거 (차트 제거로 미사용)
 
 const nf = new Intl.NumberFormat('ko-KR')
 const formatNum = (n: number | null | undefined, fallback = '-') =>
   typeof n === 'number' && isFinite(n) ? nf.format(n) : fallback
 
-const fmtTimeShort = (sec: number, rangeKey: '1h' | '24h' | '7d') => {
-  const d = new Date(sec * 1000)
-  if (rangeKey === '1h' || rangeKey === '24h') {
-    return new Intl.DateTimeFormat('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit' }).format(d)
-  }
-  return new Intl.DateTimeFormat('ko-KR', {
-    month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit',
-  }).format(d)
-}
+// fmtTimeShort 제거 (차트 제거로 미사용)
 
 const fmtDate = (iso: string | undefined) => {
   if (!iso) return '-'
