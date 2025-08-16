@@ -36,7 +36,7 @@ export default function SettingsPage() {
       );
       if (match) setActive(match.id as Section);
     }
-  }, [search]);
+  }, [search, sections]);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
