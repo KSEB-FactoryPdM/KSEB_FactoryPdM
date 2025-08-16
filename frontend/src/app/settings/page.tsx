@@ -18,14 +18,14 @@ type Section =
 
 export default function SettingsPage() {
   const { t } = useTranslation('common');
-  const sections = [
+  const sections = useMemo(() => ([
     { id: 'profile', label: t('settings.sections.profile') },
     { id: 'notifications', label: t('settings.sections.notifications') },
     { id: 'security', label: t('settings.sections.security') },
     { id: 'preferences', label: t('settings.sections.preferences') },
     { id: 'advanced', label: t('settings.sections.advanced') },
     { id: 'about', label: t('settings.sections.about') },
-  ];
+  ]), [t]);
 
   const [active, setActive] = useState<Section>('profile');
   const [search, setSearch] = useState('');

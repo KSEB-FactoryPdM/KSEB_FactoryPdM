@@ -6,15 +6,6 @@ import SummaryCard from '@/components/SummaryCard'
 import { TimeRangeSelector, EquipmentFilter, SensorFilter } from '@/components/filters'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState, CSSProperties } from 'react'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from '@/lib/dynamicRecharts'
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 import { useTranslation } from 'react-i18next'
@@ -177,8 +168,7 @@ const fmtDate = (iso: string | undefined) => {
   return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 }
 
-const hasField = (list: MyType | null | undefined, key: keyof MyPoint) =>
-  !!list?.length && typeof list[list.length - 1]?.[key] === 'number'
+// 차트 렌더를 제거하여 필드 존재 체크 유틸은 더 이상 사용하지 않음
 
 function downloadCSV(rows: Record<string, unknown>[], filename = 'monitoring.csv') {
   if (!rows.length) return
@@ -290,18 +280,8 @@ export default function MonitoringPage() {
     )
   }, [filteredData, timeRange])
 
-  const colors = useThemeColors()
-  const xTick = (v: number) => fmtTimeShort(v, timeRange)
-  const tooltipLabel = (v: unknown) => {
-    const sec = typeof v === 'number' ? v : Number(v)
-    if (!isFinite(sec)) return String(v)
-    const d = new Date(sec * 1000)
-    return new Intl.DateTimeFormat('ko-KR', {
-      hour12: false, year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    }).format(d)
-  }
-  const axisStyle = { fill: colors.text, fontSize: 12 }
+  // 차트 제거로 색상 팔레트는 더 이상 사용하지 않음
+  // 차트 유틸 제거 (xTick, tooltipLabel, axisStyle)
   const isConnecting = status === 'connecting'
   const isError = status === 'error'
 
