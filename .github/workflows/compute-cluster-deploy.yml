@@ -454,12 +454,15 @@ jobs:
         sed -i "s|gcr.io/PROJECT_ID/smart-factory-ai-model-service|gcr.io/$PROJECT_ID/$AI_MODEL_SERVICE_IMAGE|g" k8s/compute-ai-service.yaml
         sed -i "s|smart-factory-ai-model-service:latest|$AI_MODEL_SERVICE_IMAGE:$GITHUB_SHA|g" k8s/compute-ai-service.yaml
         
+        # 기존 StatefulSet 스펙 변경 대응: 불변 필드(volumeClaimTemplates 등) 수정 시 재생성 필요
+        kubectl delete statefulset zookeeper -n smart-factory-compute --ignore-not-found=true
         # 인프라 서비스 배포 (순서 중요: Zookeeper -> Kafka -> AI Service)
         kubectl apply -f k8s/compute-zookeeper.yaml
         
         # Zookeeper StatefulSet 롤아웃이 완료될 때까지 대기
         kubectl rollout status statefulset/zookeeper -n smart-factory-compute --timeout=300s
         
+        kubectl delete statefulset kafka -n smart-factory-compute --ignore-not-found=true
         kubectl apply -f k8s/compute-kafka.yaml
         
         # Kafka StatefulSet 롤아웃이 완료될 때까지 대기 (pod ready 기반 폴백 포함)
