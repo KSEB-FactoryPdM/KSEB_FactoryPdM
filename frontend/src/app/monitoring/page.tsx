@@ -20,7 +20,6 @@ import { useRequireRole } from '@/hooks/useRequireRole'
 import { useTranslation } from 'react-i18next'
 import { InformationCircleIcon } from '@heroicons/react/24/outline'
 
-
 type MyPoint = {
   time: number
   total: number
@@ -34,7 +33,6 @@ type MyPoint = {
   zone2: number
   zone3: number
   rul: number
-  // Replace size-bucket signals with explicit sensors
   current?: number
   vibration?: number
 }
@@ -55,6 +53,107 @@ interface MaintenanceItem {
   equipmentId: string
   scheduledDate: string
   status: string
+}
+
+// Grafana 설정 상수들
+const GRAFANA_CONFIG = {
+  baseUrl: process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001',
+  orgId: process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1',
+  dashboardId: process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_ID || '63548124-8a50-4d38-b594-b21591792224',
+  panelIds: {
+    current: process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || '1',
+    vibration: process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION_ID || '2'
+  }
+}
+
+// Grafana 컴포넌트들
+const GrafanaPanel = ({ 
+  sensor, 
+  deviceId, 
+  timeRange = '5m' 
+}: { 
+  sensor: 'current' | 'vibration'
+  deviceId: string
+  timeRange?: '1h' | '24h' | '7d' | '5m'
+}) => {
+  const { baseUrl, orgId, dashboardId, panelIds } = GRAFANA_CONFIG
+  const panelId = panelIds[sensor]
+  
+  const timeParams = {
+    '1h': { from: 'now-1h', to: 'now' },
+    '24h': { from: 'now-24h', to: 'now' },
+    '7d': { from: 'now-7d', to: 'now' },
+    '5m': { from: 'now-5m', to: 'now' }
+  }[timeRange] || { from: 'now-5m', to: 'now' }
+
+  // iframe URL 생성
+  const iframeUrl = `${baseUrl}/d-solo/${dashboardId}/b2ee4e4?` + 
+    new URLSearchParams({
+      orgId,
+      'var-device': deviceId,
+      panelId,
+      from: timeParams.from,
+      to: timeParams.to,
+      timezone: 'browser',
+      refresh: '5s',
+      '__feature.dashboardSceneSolo': 'true'
+ }).toString()
+
+  return (
+    <div className="h-[300px] w-full border rounded-lg overflow-hidden">
+      <iframe
+        src={iframeUrl}
+        width="100%"
+        height="100%"
+        frameBorder="0"
+        title={`${deviceId} - ${sensor}`}
+        style={{ border: 'none' }}
+      />
+    </div>
+  )
+}
+
+const GrafanaDashboard = ({ 
+  deviceId, 
+  timeRange = '24h' 
+}: { 
+  deviceId?: string
+  timeRange?: string
+}) => {
+  const { baseUrl, orgId, dashboardId } = GRAFANA_CONFIG
+  
+  const timeParams = {
+    '1h': { from: 'now-1h', to: 'now' },
+    '24h': { from: 'now-24h', to: 'now' },
+    '7d': { from: 'now-7d', to: 'now' }
+  }[timeRange] || { from: 'now-24h', to: 'now' }
+
+  const params = new URLSearchParams({
+    orgId,
+    from: timeParams.from,
+    to: timeParams.to,
+    kiosk: 'tv',
+    refresh: '5s'
+  })
+
+  if (deviceId) {
+    params.set('var-device', deviceId)
+  }
+
+  const dashboardUrl = `${baseUrl}/d/${dashboardId}/dashboard?${params.toString()}`
+
+  return (
+    <div className="h-[600px] w-full border rounded-lg overflow-hidden">
+      <iframe
+        src={dashboardUrl}
+        width="100%"
+        height="100%"
+        frameBorder="0"
+        title={deviceId ? `Dashboard - ${deviceId}` : 'Main Dashboard'}
+        style={{ border: 'none' }}
+      />
+    </div>
+  )
 }
 
 /** CSS 변수 안전 폴백 */
@@ -104,12 +203,14 @@ const fmtTimeShort = (sec: number, rangeKey: '1h' | '24h' | '7d') => {
     month: '2-digit', day: '2-digit', hour12: false, hour: '2-digit', minute: '2-digit',
   }).format(d)
 }
+
 const fmtDate = (iso: string | undefined) => {
   if (!iso) return '-'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
 }
+
 const hasField = (list: MyType | null | undefined, key: keyof MyPoint) =>
   !!list?.length && typeof list[list.length - 1]?.[key] === 'number'
 
@@ -132,7 +233,7 @@ export default function MonitoringPage() {
 
   const { t } = useTranslation('common', { keyPrefix: 'monitoring' })
 
-  /** 가독성 보장 변수: 요약 카드 등에서 rgb(var(--color-text-primary))를 확실히 표시 */
+  /** 가독성 보장 변수 */
   const pageVars: CSSProperties = {
     ['--color-text-primary' as any]: '15 23 42', // slate-900
   }
@@ -234,68 +335,9 @@ export default function MonitoringPage() {
   const axisStyle = { fill: colors.text, fontSize: 12 }
   const isConnecting = status === 'connecting'
   const isError = status === 'error'
-  // Grafana: 대시보드/패널 임베드 URL 빌더 (env로 구성)
-  const GRAFANA_BASE = process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001'
-  const GRAFANA_UID = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || ''
-  const GRAFANA_SLUG = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_SLUG || 'dashboard'
-  const GRAFANA_ORG = process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1'
-  const PANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || ''
-  const PANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION_ID || ''
-  const DEFAULT_DASHBOARD_URL_PREFIX =
-    process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ||
-    'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='
-  const VIEWPANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_CURRENT_ID || ''
-  const VIEWPANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_VIBRATION_ID || ''
-  const toFromParam = (k: '1h' | '24h' | '7d') => (k === '1h' ? 'now-1h' : k === '24h' ? 'now-24h' : 'now-7d')
-  const buildGrafanaPanelUrl = (sensor: 'current' | 'vibration', deviceId: string) => {
-    const from = toFromParam(timeRange)
-    const to = 'now'
-    // 0) Direct embed URL template override
-    const tmpl =
-      (sensor === 'current'
-        ? process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_CURRENT
-        : process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_VIBRATION) || ''
-    if (tmpl) {
-      if (tmpl.includes('{device}') || tmpl.includes('{from}') || tmpl.includes('{to}')) {
-        return tmpl
-          .replaceAll('{device}', encodeURIComponent(deviceId))
-          .replaceAll('{from}', encodeURIComponent(from))
-          .replaceAll('{to}', encodeURIComponent(to))
-      }
-      const sep = tmpl.includes('?') ? '&' : '?'
-      return `${tmpl}${sep}var-device=${encodeURIComponent(deviceId)}&from=${encodeURIComponent(from)}&to=${to}`
-    }
-
-    // 1) d-solo embed when UID/panel are provided
-    const panelId = sensor === 'current' ? PANEL_CURRENT : PANEL_VIBRATION
-    if (GRAFANA_UID && panelId) {
-      const params = new URLSearchParams({
-        orgId: GRAFANA_ORG,
-        'var-device': deviceId,
-        panelId: panelId,
-        refresh: '5s',
-        from,
-        to,
-        kiosk: 'tv',
-        timezone: 'browser',
-        '__feature.dashboardSceneSolo': 'true',
-      })
-      return `${GRAFANA_BASE}/d-solo/${GRAFANA_UID}/${GRAFANA_SLUG}?${params.toString()}`
-    }
-
-    // 2) Fallback: full dashboard + viewPanel
-    const prefix = DEFAULT_DASHBOARD_URL_PREFIX
-    const viewPanel = sensor === 'current' ? VIEWPANEL_CURRENT : VIEWPANEL_VIBRATION
-    const sep = prefix.includes('?') ? '&' : '?'
-    const base = `${prefix}${encodeURIComponent(deviceId)}`
-    const extra = `from=${encodeURIComponent(from)}&to=${to}`
-    const view = viewPanel ? `&viewPanel=${encodeURIComponent(viewPanel)}` : ''
-    return `${base}${sep}${extra}${view}`
-  }
 
   return (
     <DashboardLayout>
-      {/* 전역 텍스트 가시성 보장 */}
       <div style={pageVars}>
         {/* 헤더 + 제어 */}
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -340,7 +382,7 @@ export default function MonitoringPage() {
           </div>
         </div>
 
-        {/* 요약 카드: 강제 고대비 적용 */}
+        {/* 요약 카드 */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 [&_*]:text-slate-900">
           <SummaryCard label={t('summary.totalEquipment')} value={formatNum(equipmentCount, '0')} />
           <SummaryCard label={t('summary.activeAlerts')} value={formatNum(activeAlerts, '0')} />
@@ -349,10 +391,9 @@ export default function MonitoringPage() {
           <SummaryCard label={t('summary.nextMaintenance')} value={upcomingMaintenance} />
         </div>
 
-        {/* 기존 장치별 카드(current/vibration)에 Grafana 패널 임베드 */}
 
 
-        {/* 최근 이벤트: 내부 세로 스크롤/thead sticky 전부 제거 → 페이지 스크롤과 완전 동기화 */}
+        {/* 최근 이벤트 */}
         <ChartCard title={t('recentEvents')}>
           {!events?.length ? (
             <div className="h-[220px] flex items-center justify-center text-slate-500">
@@ -361,7 +402,6 @@ export default function MonitoringPage() {
           ) : (
             <div className="overflow-x-auto rounded-md border border-slate-200">
               <table className="w-full table-fixed text-sm">
-                {/* 👍 컬럼 고정폭으로 헤더/바디 완전 정렬 */}
                 <colgroup>
                   <col style={{ width: '28%' }} />
                   <col style={{ width: '24%' }} />
@@ -445,7 +485,7 @@ export default function MonitoringPage() {
           </span>
         </div>
 
-        {/* 차트들 */}
+        {/* 기존 차트들 */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {(['A', 'AAAA', 'PTR', 'SOA', 'SRV', 'TXT'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
             <ChartCard title={t('charts.anomalyByType')}>
@@ -494,6 +534,7 @@ export default function MonitoringPage() {
               </ResponsiveContainer>
             </ChartCard>
           )}
+
           {(hasField(filteredData, 'current') || hasField(filteredData, 'vibration')) && (
             <ChartCard title={t('charts.sensorData')}>
               <ResponsiveContainer width="100%" height={240}>
@@ -523,27 +564,21 @@ export default function MonitoringPage() {
           )}
         </div>
 
+        {/* 장비별 Grafana 패널들 */}
         {machines && (
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
             {[...machines]
               .sort((a, b) => (a.id === 'L-CAHU-01S' ? -1 : b.id === 'L-CAHU-01S' ? 1 : 0))
               .filter(
                 (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
               )
               .flatMap((m) => {
-                const sensors = sensor === 'all' ? (['current', 'vibration'] as (keyof MyPoint)[]) : [sensor]
-                return sensors.map((s) => (
-                  <ChartCard key={`${m.id}-${m.power}-${s}`} title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}>
-                    <div className="h-[200px]">
-                      <iframe
-                        src={buildGrafanaPanelUrl(s as 'current' | 'vibration', m.id)}
-                        style={{ width: '100%', height: '100%', border: 'none' }}
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  </ChartCard>
-                ))
+                const sensors = sensor === 'all' ? (['current', 'vibration'] as const) : [sensor as 'current' | 'vibration']
+                                 return sensors.map((s) => (
+                   <ChartCard key={`${m.id}-${m.power}-${s}`} title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}>
+                     <GrafanaPanel sensor={s} deviceId={m.id} timeRange="5m" />
+                   </ChartCard>
+                 ))
               })}
           </div>
         )}

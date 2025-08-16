@@ -126,42 +126,31 @@ export default function DeviceDetailPage() {
   const buildGrafanaPanelUrl = (sensor: 'current' | 'vibration', deviceId: string) => {
     const from = 'now-24h'
     const to = 'now'
-    const tmpl =
-      (sensor === 'current'
-        ? process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_CURRENT
-        : process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_VIBRATION) || ''
-    if (tmpl) {
-      if (tmpl.includes('{device}') || tmpl.includes('{from}') || tmpl.includes('{to}')) {
-        return tmpl
-          .replaceAll('{device}', encodeURIComponent(deviceId))
-          .replaceAll('{from}', encodeURIComponent(from))
-          .replaceAll('{to}', encodeURIComponent(to))
-      }
-      const sep = tmpl.includes('?') ? '&' : '?'
-      return `${tmpl}${sep}var-device=${encodeURIComponent(deviceId)}&from=${encodeURIComponent(from)}&to=${to}`
-    }
+    
+    // Grafana 이미지 렌더링 URL 생성 (iframe 대신 이미지로 표시)
     const panelId = sensor === 'current' ? PANEL_CURRENT : PANEL_VIBRATION
+    
     if (GRAFANA_UID && panelId) {
       const params = new URLSearchParams({
         orgId: GRAFANA_ORG,
         'var-device': deviceId,
         panelId: panelId,
-        refresh: '5s',
         from,
         to,
-        kiosk: 'tv',
-        timezone: 'browser',
+        width: '800',
+        height: '400',
+        tz: 'browser',
         '__feature.dashboardSceneSolo': 'true',
       })
-      return `${GRAFANA_BASE}/d-solo/${GRAFANA_UID}/${GRAFANA_SLUG}?${params.toString()}`
+      return `${GRAFANA_BASE}/render/d-solo/${GRAFANA_UID}/${GRAFANA_SLUG}?${params.toString()}`
     }
-    const prefix = DEFAULT_DASHBOARD_URL_PREFIX
-    const viewPanel = sensor === 'current' ? VIEWPANEL_CURRENT : VIEWPANEL_VIBRATION
+
+    // Fallback: 기본 대시보드 이미지 렌더링
+    const prefix = DEFAULT_DASHBOARD_URL_PREFIX.replace('/d/', '/render/d/')
     const sep = prefix.includes('?') ? '&' : '?'
     const base = `${prefix}${encodeURIComponent(deviceId)}`
-    const extra = `from=${encodeURIComponent(from)}&to=${to}`
-    const view = viewPanel ? `&viewPanel=${encodeURIComponent(viewPanel)}` : ''
-    return `${base}${sep}${extra}${view}`
+    const extra = `from=${encodeURIComponent(from)}&to=${to}&width=800&height=400&tz=browser`
+    return `${base}${sep}${extra}`
   }
 
   const filteredAnomalies = anomalies.filter(a => a.equipmentId === id)
@@ -235,13 +224,13 @@ export default function DeviceDetailPage() {
             </button>
           </div>
       </div>
-        {/* Grafana 임베드: 기존 장치 카드 내 */}
+        {/* Grafana 이미지 렌더링: 기존 장치 카드 내 */}
         {id && (
           <div className="mt-4">
-            <iframe
-              src={`${process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ?? 'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='}${encodeURIComponent(id)}`}
-              style={{ width: '100%', height: 480, border: 'none' }}
-              loading="lazy"
+            <img
+              src={`${(process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ?? 'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device=').replace('/d/', '/render/d/')}${encodeURIComponent(id)}&width=1200&height=480&tz=browser`}
+              alt={`Device ${id} Dashboard`}
+              style={{ width: '100%', height: 480, objectFit: 'contain' }}
             />
           </div>
         )}
@@ -249,22 +238,20 @@ export default function DeviceDetailPage() {
           <div>
             <h3 className="font-medium mb-1 text-sm">Current</h3>
             <div style={{ height: 200 }}>
-              <iframe
+              <img
                 src={buildGrafanaPanelUrl('current', id)}
-                style={{ width: '100%', height: '100%', border: 'none' }}
-                loading="lazy"
-                referrerPolicy="no-referrer"
+                alt={`${id} - Current`}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>
           </div>
           <div>
             <h3 className="font-medium mb-1 text-sm">Vibration</h3>
             <div style={{ height: 200 }}>
-              <iframe
+              <img
                 src={buildGrafanaPanelUrl('vibration', id)}
-                style={{ width: '100%', height: '100%', border: 'none' }}
-                loading="lazy"
-                referrerPolicy="no-referrer"
+                alt={`${id} - Vibration`}
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>
           </div>
