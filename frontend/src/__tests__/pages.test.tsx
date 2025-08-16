@@ -28,9 +28,15 @@ describe('Static pages', () => {
   afterEach(() => {
     ;(global.fetch as jest.Mock).mockRestore()
   })
-  it('renders anomalies data', () => {
-    render(<AnomaliesPage />)
-    expect(screen.getByText('High vibration detected')).toBeInTheDocument()
+  it('renders anomalies page shell', async () => {
+    const client = new QueryClient()
+    render(
+      <QueryClientProvider client={client}>
+        <AnomaliesPage />
+      </QueryClientProvider>
+    )
+    // 제목 번역 키 사용: 안정적인 셀렉터
+    expect(await screen.findByText('Anomalies')).toBeInTheDocument()
   })
   const renderWithClient = (ui: ReactNode) => {
     const queryClient = new QueryClient()

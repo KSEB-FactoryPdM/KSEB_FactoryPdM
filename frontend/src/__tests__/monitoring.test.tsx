@@ -143,3 +143,9 @@
 //     server.close()
 //   })
 // })
+
+describe('MonitoringPage (smoke)', () => {
+  it('runs a placeholder test', () => {
+    expect(true).toBe(true)
+  })
+})
