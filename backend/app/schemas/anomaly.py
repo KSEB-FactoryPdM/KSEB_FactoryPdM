@@ -75,6 +75,10 @@ class ModelTrainingRequest(BaseModel):
     normal_vibration_files: List[str] = Field(..., description="정상 진동 데이터 파일 경로")
     abnormal_current_files: List[str] = Field(..., description="이상 전류 데이터 파일 경로")
     abnormal_vibration_files: List[str] = Field(..., description="이상 진동 데이터 파일 경로")
+    
+    model_config = {
+        "protected_namespaces": ()
+    }
 
 
 class ModelTrainingResponse(BaseModel):
@@ -88,6 +92,10 @@ class ModelTrainingResponse(BaseModel):
     f1_score: float = Field(..., description="F1 점수")
     training_time: float = Field(..., description="훈련 시간 (초)")
     message: str = Field(..., description="응답 메시지")
+    
+    model_config = {
+        "protected_namespaces": ()
+    }
 
 
 class ModelPerformanceResponse(BaseModel):
@@ -102,3 +110,7 @@ class ModelPerformanceResponse(BaseModel):
     total_predictions: int = Field(..., description="총 예측 수")
     anomaly_detections: int = Field(..., description="이상 탐지 수")
     message: str = Field(..., description="응답 메시지") 
+    
+    model_config = {
+        "protected_namespaces": ()
+    }

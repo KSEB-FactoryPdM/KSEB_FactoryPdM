@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     # Slack 설정(선택)
     SLACK_BOT_TOKEN: Optional[str] = Field(default=None, env="SLACK_BOT_TOKEN")
     SLACK_ADMIN_USER_ID: Optional[str] = Field(default=None, env="SLACK_ADMIN_USER_ID")
+    SLACK_WEBHOOK_URL: Optional[str] = Field(default=None, env="SLACK_WEBHOOK_URL")
+    
+    # 관리자 이메일(선택)
+    ADMIN_EMAIL: Optional[str] = Field(default=None, env="ADMIN_EMAIL")
     
     
     # 모니터링 설정
