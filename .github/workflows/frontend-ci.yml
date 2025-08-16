@@ -26,7 +26,9 @@ jobs:
         with:
           node-version: '20'
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --ignore-scripts
+      - name: Ensure clean Next cache
+        run: rm -rf .next || true
       - name: Run lint
         run: npm run lint
       - name: Run unit tests

@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,7 +37,7 @@ export default function LoginPage() {
       if (res.ok) {
         const { token } = await res.json();
         localStorage.setItem('token', token);
-        router.push('/monitoring');
+        router.push('/monitoring' as Route);
       } else {
         const { error: msg } = await res.json();
         setError(msg ?? t('login.failed'));
