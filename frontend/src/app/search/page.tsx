@@ -40,7 +40,7 @@ export default function SearchPage() {
         <div className="flex items-baseline justify-between">
           <h2 className="text-xl font-semibold">Search</h2>
           {query && (
-            <span className="text-sm text-neutral-500">Query: "{query}"</span>
+            <span className="text-sm text-neutral-500">Query: &quot;{query}&quot;</span>
           )}
         </div>
         {!query ? (
