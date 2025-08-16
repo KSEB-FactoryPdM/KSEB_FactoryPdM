@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
 import ChartCard from '@/components/ChartCard'
 import { useRequireRole } from '@/hooks/useRequireRole'
@@ -58,10 +58,13 @@ export default function AnomaliesPage() {
     gcTime: 300000,
   })
 
-  const typeOptions = useMemo(() => Array.from(new Set((anomalies ?? []).map((a) => a.type))).sort(), [anomalies])
+  const typeOptions = useMemo(
+    () => Array.from(new Set((anomalies ?? []).map((a: Anomaly) => a.type))).sort(),
+    [anomalies],
+  )
 
   const filtered = useMemo(() => {
-    const items = (anomalies ?? []).filter((a) => {
+    const items = (anomalies ?? []).filter((a: Anomaly) => {
       if (equipment && a.equipmentId !== equipment) return false
       if (typeFilter && a.type !== typeFilter) return false
       if (statusFilter && a.status !== statusFilter) return false
@@ -84,7 +87,7 @@ export default function AnomaliesPage() {
       }
       return true
     })
-    const sorted = [...items].sort((a, b) => {
+    const sorted = [...items].sort((a: Anomaly, b: Anomaly) => {
       let va: string | number = ''
       let vb: string | number = ''
       if (sortBy === 'timestamp') {
@@ -105,7 +108,7 @@ export default function AnomaliesPage() {
       return 0
     })
     return sorted
-  }, [anomalies, equipment, typeFilter, statusFilter, startDate, endDate, search, sortBy, sortAsc])
+  }, [anomalies, equipment, typeFilter, statusFilter, startDate, endDate, search, range, sortBy, sortAsc])
 
   const toggleSort = (key: typeof sortBy) => {
     if (sortBy === key) {
@@ -171,7 +174,7 @@ export default function AnomaliesPage() {
           <select
             className="border rounded px-2 py-1"
             value={range}
-            onChange={(e) => setRange(e.target.value as typeof range)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setRange(e.target.value as typeof range)}
             aria-label={t('anomalies.filters.range')}
           >
             <option value="1h">1h</option>
@@ -189,7 +192,7 @@ export default function AnomaliesPage() {
           <select
             className="border rounded px-2 py-1"
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setTypeFilter(e.target.value)}
             aria-label={t('anomalies.filters.type')}
           >
             <option value="">{t('anomalies.allTypes')}</option>
@@ -202,7 +205,7 @@ export default function AnomaliesPage() {
           <select
             className="border rounded px-2 py-1"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
             aria-label={t('anomalies.filters.status')}
           >
             <option value="">{t('anomalies.allStatus')}</option>
@@ -224,7 +227,7 @@ export default function AnomaliesPage() {
             className="border rounded px-3 py-1 flex-1 min-w-[160px]"
             placeholder={t('anomalies.search')}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           />
           <button className="px-3 py-1 text-sm bg-neutral-100 rounded border" onClick={resetFilters}>
             {t('anomalies.reset')}
