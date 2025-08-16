@@ -55,6 +55,13 @@ interface MaintenanceItem {
   status: string
 }
 
+// 고정 범위(초)
+const RANGE_SECONDS: Readonly<Record<'1h' | '24h' | '7d', number>> = {
+  '1h': 3600,
+  '24h': 86400,
+  '7d': 604800,
+}
+
 // Grafana 설정 상수들
 const GRAFANA_CONFIG = {
   baseUrl: process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001',
@@ -113,48 +120,7 @@ const GrafanaPanel = ({
   )
 }
 
-const GrafanaDashboard = ({ 
-  deviceId, 
-  timeRange = '24h' 
-}: { 
-  deviceId?: string
-  timeRange?: string
-}) => {
-  const { baseUrl, orgId, dashboardId } = GRAFANA_CONFIG
-  
-  const timeParams = {
-    '1h': { from: 'now-1h', to: 'now' },
-    '24h': { from: 'now-24h', to: 'now' },
-    '7d': { from: 'now-7d', to: 'now' }
-  }[timeRange] || { from: 'now-24h', to: 'now' }
-
-  const params = new URLSearchParams({
-    orgId,
-    from: timeParams.from,
-    to: timeParams.to,
-    kiosk: 'tv',
-    refresh: '5s'
-  })
-
-  if (deviceId) {
-    params.set('var-device', deviceId)
-  }
-
-  const dashboardUrl = `${baseUrl}/d/${dashboardId}/dashboard?${params.toString()}`
-
-  return (
-    <div className="h-[600px] w-full border rounded-lg overflow-hidden">
-      <iframe
-        src={dashboardUrl}
-        width="100%"
-        height="100%"
-        frameBorder="0"
-        title={deviceId ? `Dashboard - ${deviceId}` : 'Main Dashboard'}
-        style={{ border: 'none' }}
-      />
-    </div>
-  )
-}
+// Note: GrafanaDashboard 컴포넌트는 현재 사용되지 않으므로 제거하여 린트 오류 방지
 
 /** CSS 변수 안전 폴백 */
 function useThemeColors() {
@@ -214,7 +180,7 @@ const fmtDate = (iso: string | undefined) => {
 const hasField = (list: MyType | null | undefined, key: keyof MyPoint) =>
   !!list?.length && typeof list[list.length - 1]?.[key] === 'number'
 
-function downloadCSV(rows: Record<string, any>[], filename = 'monitoring.csv') {
+function downloadCSV(rows: Record<string, unknown>[], filename = 'monitoring.csv') {
   if (!rows.length) return
   const headers = Object.keys(rows[0])
   const csv =
@@ -235,14 +201,18 @@ export default function MonitoringPage() {
 
   /** 가독성 보장 변수 */
   const pageVars: CSSProperties = {
-    ['--color-text-primary' as any]: '15 23 42', // slate-900
+    ['--color-text-primary' as string]: '15 23 42', // slate-900
   }
 
   // WebSocket
+  const envWs = process.env.NEXT_PUBLIC_WEBSOCKET_URL
+  const wsStream = envWs
+    ? (envWs.endsWith('/stream') ? envWs : `${envWs.replace(/\/$/, '')}/stream`)
+    : undefined
   const socketUrl =
     (typeof localStorage !== 'undefined' && localStorage.getItem('socketUrl')) ||
-    process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
-    'ws://localhost:8080'
+    wsStream ||
+    'ws://localhost:8000/api/v1/ws/stream'
   const { data, status } = useWebSocket<MyType>(socketUrl, { autoReconnect: true })
 
   // 실시간 일시정지 스냅샷
@@ -281,10 +251,9 @@ export default function MonitoringPage() {
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
   const hasAnomaly = !!(snap && snap.length && snap[snap.length - 1]?.total > 0)
-  const rangeSec: Record<'1h' | '24h' | '7d', number> = { '1h': 3600, '24h': 86400, '7d': 604800 }
   const filteredData = useMemo(() => {
     if (!snap || !snap.length) return []
-    const from = latestTs - rangeSec[timeRange]
+    const from = latestTs - RANGE_SECONDS[timeRange]
     return snap.filter((d) => d.time >= from)
   }, [snap, latestTs, timeRange])
 
@@ -294,21 +263,21 @@ export default function MonitoringPage() {
   const latestRul = snap?.[snap.length - 1]?.rul ?? 0
   const upcomingMaintenance = useMemo(() => {
     if (!maintenance?.length) return '-'
-    const pending = maintenance.filter((m) => m.status === 'pending')
+    const pending = maintenance.filter((m: MaintenanceItem) => m.status === 'pending')
     if (!pending.length) return '-'
-    pending.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
+    pending.sort((a: MaintenanceItem, b: MaintenanceItem) => a.scheduledDate.localeCompare(b.scheduledDate))
     return fmtDate(pending[0].scheduledDate)
   }, [maintenance])
 
   const filteredEvents = useMemo(() => {
     if (!events?.length) return []
-    return events.filter((e) => (selectedEquipment ? e.device === selectedEquipment : true))
+    return events.filter((e: EventItem) => (selectedEquipment ? e.device === selectedEquipment : true))
   }, [events, selectedEquipment])
 
   const onExportCSV = useCallback(() => {
     if (!filteredData.length) return
     downloadCSV(
-      filteredData.map((d) => ({
+      filteredData.map((d: MyPoint) => ({
         time: new Date(d.time * 1000).toISOString(),
         total: d.total,
         A: d.A, AAAA: d.AAAA, PTR: d.PTR, SOA: d.SOA, SRV: d.SRV, TXT: d.TXT,
@@ -323,7 +292,7 @@ export default function MonitoringPage() {
 
   const colors = useThemeColors()
   const xTick = (v: number) => fmtTimeShort(v, timeRange)
-  const tooltipLabel = (v: any) => {
+  const tooltipLabel = (v: unknown) => {
     const sec = typeof v === 'number' ? v : Number(v)
     if (!isFinite(sec)) return String(v)
     const d = new Date(sec * 1000)
@@ -485,84 +454,7 @@ export default function MonitoringPage() {
           </span>
         </div>
 
-        {/* 기존 차트들 */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {(['A', 'AAAA', 'PTR', 'SOA', 'SRV', 'TXT'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
-            <ChartCard title={t('charts.anomalyByType')}>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
-                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                  <YAxis tick={axisStyle} width={48} allowDecimals={false} />
-                  <Tooltip labelFormatter={tooltipLabel} />
-                  <Legend />
-                  <Line type="monotone" dataKey="A" stroke={colors.a} dot={false} />
-                  <Line type="monotone" dataKey="AAAA" stroke={colors.accent} dot={false} />
-                  <Line type="monotone" dataKey="PTR" stroke={colors.ptr} dot={false} />
-                  <Line type="monotone" dataKey="SOA" stroke={colors.soa} dot={false} />
-                  <Line type="monotone" dataKey="SRV" stroke={colors.srv} dot={false} />
-                  <Line type="monotone" dataKey="TXT" stroke={colors.txt} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          )}
 
-          {(['zone1', 'zone2', 'zone3'] as (keyof MyPoint)[]).some((k) => hasField(filteredData, k)) && (
-            <ChartCard title={t('charts.anomalyByZone')}>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
-                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                  <YAxis tick={axisStyle} width={48} allowDecimals={false} />
-                  <Tooltip labelFormatter={tooltipLabel} />
-                  <Legend />
-                  <Line type="monotone" dataKey="zone1" stroke={colors.zone} dot={false} />
-                  <Line type="monotone" dataKey="zone2" stroke={colors.ptr} dot={false} />
-                  <Line type="monotone" dataKey="zone3" stroke={colors.a} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          )}
-
-          {hasField(filteredData, 'rul') && (
-            <ChartCard title={t('charts.predictionRul')}>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
-                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                  <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), 'RUL']} />
-                  <Line type="monotone" dataKey="rul" stroke={colors.ptr} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          )}
-
-          {(hasField(filteredData, 'current') || hasField(filteredData, 'vibration')) && (
-            <ChartCard title={t('charts.sensorData')}>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
-                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                  <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} />
-                  <Legend />
-                  <Line type="monotone" dataKey="current" stroke={colors.a} dot={false} />
-                  <Line type="monotone" dataKey="vibration" stroke={colors.ptr} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          )}
-
-          {sensor !== 'all' && hasField(filteredData, sensor) && (
-            <ChartCard title={t('charts.realTimeSelected')} danger={hasAnomaly}>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={filteredData} syncId="rt" margin={{ left: 12, right: 12, top: 8, bottom: 8 }}>
-                  <XAxis dataKey="time" tick={axisStyle} tickFormatter={xTick} />
-                  <YAxis tick={axisStyle} width={48} />
-                  <Tooltip labelFormatter={tooltipLabel} formatter={(v: any) => [formatNum(Number(v)), String(sensor)]} />
-                  <Line type="monotone" dataKey={sensor as string} stroke={hasAnomaly ? colors.danger : colors.a} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          )}
-        </div>
 
         {/* 장비별 Grafana 패널들 */}
         {machines && (
@@ -572,7 +464,7 @@ export default function MonitoringPage() {
               .filter(
                 (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
               )
-              .flatMap((m) => {
+              .flatMap((m: Machine) => {
                 const sensors = sensor === 'all' ? (['current', 'vibration'] as const) : [sensor as 'current' | 'vibration']
                                  return sensors.map((s) => (
                    <ChartCard key={`${m.id}-${m.power}-${s}`} title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}>
