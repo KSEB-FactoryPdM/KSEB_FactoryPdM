@@ -5,15 +5,7 @@ import ChartCard from '@/components/ChartCard'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchWithAuth } from '@/lib/api'
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from '@/lib/dynamicRecharts'
+import { ResponsiveContainer } from '@/lib/dynamicRecharts'
 
 import useWebSocket from '@/hooks/useWebSocket'
 import { useState } from 'react'
@@ -119,17 +111,58 @@ export default function DeviceDetailPage() {
     { autoReconnect: true }
   )
 
-  const history = data?.history.map(h => ({
-    time: h.time,
-    vibration: h.value,
-    temperature: h.value + 5,
-  })) ?? []
-
-  const realtimeData = (realtime ?? []).map(d => ({
-    time: d.time,
-    vibration: d.value,
-    temperature: d.value + 5,
-  }))
+  // Grafana embed URL builder (same logic as monitoring)
+  const GRAFANA_BASE = process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001'
+  const GRAFANA_UID = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || ''
+  const GRAFANA_SLUG = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_SLUG || 'dashboard'
+  const GRAFANA_ORG = process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1'
+  const PANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || ''
+  const PANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION_ID || ''
+  const DEFAULT_DASHBOARD_URL_PREFIX =
+    process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ||
+    'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='
+  const VIEWPANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_CURRENT_ID || ''
+  const VIEWPANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_VIBRATION_ID || ''
+  const buildGrafanaPanelUrl = (sensor: 'current' | 'vibration', deviceId: string) => {
+    const from = 'now-24h'
+    const to = 'now'
+    const tmpl =
+      (sensor === 'current'
+        ? process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_CURRENT
+        : process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_VIBRATION) || ''
+    if (tmpl) {
+      if (tmpl.includes('{device}') || tmpl.includes('{from}') || tmpl.includes('{to}')) {
+        return tmpl
+          .replaceAll('{device}', encodeURIComponent(deviceId))
+          .replaceAll('{from}', encodeURIComponent(from))
+          .replaceAll('{to}', encodeURIComponent(to))
+      }
+      const sep = tmpl.includes('?') ? '&' : '?'
+      return `${tmpl}${sep}var-device=${encodeURIComponent(deviceId)}&from=${encodeURIComponent(from)}&to=${to}`
+    }
+    const panelId = sensor === 'current' ? PANEL_CURRENT : PANEL_VIBRATION
+    if (GRAFANA_UID && panelId) {
+      const params = new URLSearchParams({
+        orgId: GRAFANA_ORG,
+        'var-device': deviceId,
+        panelId: panelId,
+        refresh: '5s',
+        from,
+        to,
+        kiosk: 'tv',
+        timezone: 'browser',
+        '__feature.dashboardSceneSolo': 'true',
+      })
+      return `${GRAFANA_BASE}/d-solo/${GRAFANA_UID}/${GRAFANA_SLUG}?${params.toString()}`
+    }
+    const prefix = DEFAULT_DASHBOARD_URL_PREFIX
+    const viewPanel = sensor === 'current' ? VIEWPANEL_CURRENT : VIEWPANEL_VIBRATION
+    const sep = prefix.includes('?') ? '&' : '?'
+    const base = `${prefix}${encodeURIComponent(deviceId)}`
+    const extra = `from=${encodeURIComponent(from)}&to=${to}`
+    const view = viewPanel ? `&viewPanel=${encodeURIComponent(viewPanel)}` : ''
+    return `${base}${sep}${extra}${view}`
+  }
 
   const filteredAnomalies = anomalies.filter(a => a.equipmentId === id)
   const filteredMaintenance = maintenance.filter(m => m.equipmentId === id)
@@ -171,6 +204,8 @@ export default function DeviceDetailPage() {
           </tbody>
         </table>
       </ChartCard>
+
+      
       <ChartCard title={`Device ${id}`}>
         <div className="mb-4 space-y-2">
           <div>
@@ -199,59 +234,39 @@ export default function DeviceDetailPage() {
               Request Maintenance
             </button>
           </div>
-        </div>
+      </div>
+        {/* Grafana 임베드: 기존 장치 카드 내 */}
+        {id && (
+          <div className="mt-4">
+            <iframe
+              src={`${process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ?? 'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='}${encodeURIComponent(id)}`}
+              style={{ width: '100%', height: 480, border: 'none' }}
+              loading="lazy"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h3 className="font-medium mb-1 text-sm">History</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={history} syncId="sensorSync">
-                <XAxis dataKey="time" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="vibration"
-                  stroke="var(--color-accent)"
-                  dot={false}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="temperature"
-                  stroke="#f97316"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <h3 className="font-medium mb-1 text-sm">Current</h3>
+            <div style={{ height: 200 }}>
+              <iframe
+                src={buildGrafanaPanelUrl('current', id)}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            </div>
           </div>
           <div>
-            <h3 className="font-medium mb-1 text-sm">Real-Time</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={realtimeData} syncId="sensorSync">
-                <XAxis dataKey="time" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="vibration"
-                  stroke="var(--color-accent)"
-                  dot={false}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="temperature"
-                  stroke="#f97316"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <h3 className="font-medium mb-1 text-sm">Vibration</h3>
+            <div style={{ height: 200 }}>
+              <iframe
+                src={buildGrafanaPanelUrl('vibration', id)}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+            </div>
           </div>
         </div>
       </ChartCard>

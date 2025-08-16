@@ -7,8 +7,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-
-const MotionLink = motion(Link);
 import {
   HomeIcon,
   ExclamationCircleIcon,
@@ -84,23 +82,21 @@ export default function Sidebar() {
         {navItems.map(({ href, label, icon: Icon }, index) => {
           const active = pathname === href || pathname.startsWith(`${href}/`);
           return (
-            <MotionLink
+            <Link
               key={href}
               href={href}
               ref={el => {
                 itemRefs.current[index] = el;
               }}
-                className={`group flex items-center gap-3 h-12 px-3 rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-accent ${
+              className={`group flex items-center gap-3 h-12 px-3 rounded-lg text-sm transition focus:outline-none focus:ring-2 focus:ring-accent ${
                 active ? 'bg-gray-800 font-semibold' : 'hover:bg-gray-800'
               }`}
               aria-current={active ? 'page' : undefined}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
             >
               <Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
               <span className={`${collapsed ? 'hidden' : 'flex-1'}`}>{t(label)}</span>
               {active && <span className="h-2 w-2 bg-accent rounded-full" />}
-            </MotionLink>
+            </Link>
           );
         })}
       </nav>

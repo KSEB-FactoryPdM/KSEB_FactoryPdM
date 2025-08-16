@@ -15,7 +15,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from '@/lib/dynamicRecharts'
-import GrafanaPanel from '@/components/GrafanaPanel'
 import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 import { useTranslation } from 'react-i18next'
@@ -235,6 +234,64 @@ export default function MonitoringPage() {
   const axisStyle = { fill: colors.text, fontSize: 12 }
   const isConnecting = status === 'connecting'
   const isError = status === 'error'
+  // Grafana: 대시보드/패널 임베드 URL 빌더 (env로 구성)
+  const GRAFANA_BASE = process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001'
+  const GRAFANA_UID = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || ''
+  const GRAFANA_SLUG = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_SLUG || 'dashboard'
+  const GRAFANA_ORG = process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1'
+  const PANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || ''
+  const PANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION_ID || ''
+  const DEFAULT_DASHBOARD_URL_PREFIX =
+    process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ||
+    'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='
+  const VIEWPANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_CURRENT_ID || ''
+  const VIEWPANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_VIBRATION_ID || ''
+  const toFromParam = (k: '1h' | '24h' | '7d') => (k === '1h' ? 'now-1h' : k === '24h' ? 'now-24h' : 'now-7d')
+  const buildGrafanaPanelUrl = (sensor: 'current' | 'vibration', deviceId: string) => {
+    const from = toFromParam(timeRange)
+    const to = 'now'
+    // 0) Direct embed URL template override
+    const tmpl =
+      (sensor === 'current'
+        ? process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_CURRENT
+        : process.env.NEXT_PUBLIC_GRAFANA_EMBED_URL_VIBRATION) || ''
+    if (tmpl) {
+      if (tmpl.includes('{device}') || tmpl.includes('{from}') || tmpl.includes('{to}')) {
+        return tmpl
+          .replaceAll('{device}', encodeURIComponent(deviceId))
+          .replaceAll('{from}', encodeURIComponent(from))
+          .replaceAll('{to}', encodeURIComponent(to))
+      }
+      const sep = tmpl.includes('?') ? '&' : '?'
+      return `${tmpl}${sep}var-device=${encodeURIComponent(deviceId)}&from=${encodeURIComponent(from)}&to=${to}`
+    }
+
+    // 1) d-solo embed when UID/panel are provided
+    const panelId = sensor === 'current' ? PANEL_CURRENT : PANEL_VIBRATION
+    if (GRAFANA_UID && panelId) {
+      const params = new URLSearchParams({
+        orgId: GRAFANA_ORG,
+        'var-device': deviceId,
+        panelId: panelId,
+        refresh: '5s',
+        from,
+        to,
+        kiosk: 'tv',
+        timezone: 'browser',
+        '__feature.dashboardSceneSolo': 'true',
+      })
+      return `${GRAFANA_BASE}/d-solo/${GRAFANA_UID}/${GRAFANA_SLUG}?${params.toString()}`
+    }
+
+    // 2) Fallback: full dashboard + viewPanel
+    const prefix = DEFAULT_DASHBOARD_URL_PREFIX
+    const viewPanel = sensor === 'current' ? VIEWPANEL_CURRENT : VIEWPANEL_VIBRATION
+    const sep = prefix.includes('?') ? '&' : '?'
+    const base = `${prefix}${encodeURIComponent(deviceId)}`
+    const extra = `from=${encodeURIComponent(from)}&to=${to}`
+    const view = viewPanel ? `&viewPanel=${encodeURIComponent(viewPanel)}` : ''
+    return `${base}${sep}${extra}${view}`
+  }
 
   return (
     <DashboardLayout>
@@ -291,6 +348,9 @@ export default function MonitoringPage() {
           <SummaryCard label={t('summary.latestRul')} value={formatNum(latestRul, '0')} />
           <SummaryCard label={t('summary.nextMaintenance')} value={upcomingMaintenance} />
         </div>
+
+        {/* 기존 장치별 카드(current/vibration)에 Grafana 패널 임베드 */}
+
 
         {/* 최근 이벤트: 내부 세로 스크롤/thead sticky 전부 제거 → 페이지 스크롤과 완전 동기화 */}
         <ChartCard title={t('recentEvents')}>
@@ -465,30 +525,25 @@ export default function MonitoringPage() {
 
         {machines && (
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {machines
+            {[...machines]
+              .sort((a, b) => (a.id === 'L-CAHU-01S' ? -1 : b.id === 'L-CAHU-01S' ? 1 : 0))
               .filter(
                 (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
               )
-              .map((m) => {
-                const grafanaVariant =
-                  (process.env.NEXT_PUBLIC_GRAFANA_EMBED_VARIANT as 'solo' | 'dashboard') || 'dashboard'
-                const panelMap: Record<string, number> = {
-                  current: Number(process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT || 1),
-                  vibration: Number(process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION || 2),
-                }
-                const chosenSensor = (sensor === 'all' ? 'current' : sensor) as 'current' | 'vibration' | 'all'
-                const panelId = panelMap[String(chosenSensor)]
-                return (
-                  <ChartCard key={`${m.id}-${m.power}`} title={`${m.id} (${m.power})`}>
-                    <GrafanaPanel
-                      deviceId={m.id}
-                      variant={grafanaVariant}
-                      panelId={panelId}
-                      refresh="5s"
-                      height={300}
-                    />
+              .flatMap((m) => {
+                const sensors = sensor === 'all' ? (['current', 'vibration'] as (keyof MyPoint)[]) : [sensor]
+                return sensors.map((s) => (
+                  <ChartCard key={`${m.id}-${m.power}-${s}`} title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}>
+                    <div className="h-[200px]">
+                      <iframe
+                        src={buildGrafanaPanelUrl(s as 'current' | 'vibration', m.id)}
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
                   </ChartCard>
-                )
+                ))
               })}
           </div>
         )}
