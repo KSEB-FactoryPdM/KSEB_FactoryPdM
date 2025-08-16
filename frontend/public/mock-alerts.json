@@ -1,5 +1,5 @@
 [
-  {"id":1,"time":"2024-05-05 14:20","device":"L-CAHU-01R","type":"Vibration","severity":"High"},
-  {"id":2,"time":"2024-05-06 09:10","device":"L-SF-01","type":"Temperature","severity":"Medium"},
-  {"id":3,"time":"2024-05-07 16:45","device":"R-EF-05","type":"Pressure","severity":"Low"}
+  {"id":1,"time":"2024-08-05 14:20","device":"L-CAHU-01S","type":"Vibration","severity":"High"},
+  {"id":2,"time":"2024-08-06 09:10","device":"L-SF-02","type":"Current","severity":"Medium"},
+  {"id":3,"time":"2024-08-07 16:45","device":"R-EF-01","type":"Vibration","severity":"Low"}
 ]

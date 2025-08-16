@@ -240,7 +240,7 @@ export default function MonitoringPage() {
 
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
-  const hasAnomaly = !!(snap && snap.length && snap[snap.length - 1]?.total > 0)
+  // 차트 제거로 hasAnomaly 미사용
   const filteredData = useMemo(() => {
     if (!snap || !snap.length) return []
     const from = latestTs - RANGE_SECONDS[timeRange]
