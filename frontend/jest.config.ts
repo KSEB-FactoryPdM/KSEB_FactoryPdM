@@ -8,6 +8,7 @@ const customJestConfig = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',            // "@/..." 별칭을 src/로 매핑
   },
+  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
 }
 
 export default createJestConfig(customJestConfig)
