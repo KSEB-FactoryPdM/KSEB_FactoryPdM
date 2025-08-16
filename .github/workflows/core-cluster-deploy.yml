@@ -287,6 +287,31 @@ jobs:
         echo "=== 데이터 수집기 로그 ==="
         kubectl logs -l app=data-collector -n smart-factory-core --tail=10
 
+    - name: Patch Frontend env with external endpoints
+      run: |-
+        # 외부 IP 조회
+        BACKEND_IP=$(kubectl get svc smart-factory-backend -n smart-factory-core -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        GRAFANA_IP=$(kubectl get svc grafana -n smart-factory-core -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "Backend LB IP: ${BACKEND_IP}"
+        echo "Grafana LB IP: ${GRAFANA_IP}"
+
+        # 환경변수 패치 (없으면 추가)
+        if [ -n "$BACKEND_IP" ]; then
+          kubectl set env deployment/smart-factory-frontend \
+            -n smart-factory-core \
+            NEXT_PUBLIC_API_URL="http://${BACKEND_IP}:8000" \
+            NEXT_PUBLIC_WEBSOCKET_URL="ws://${BACKEND_IP}:8000/api/v1/ws" || true
+        fi
+
+        if [ -n "$GRAFANA_IP" ]; then
+          kubectl set env deployment/smart-factory-frontend \
+            -n smart-factory-core \
+            NEXT_PUBLIC_GRAFANA_BASE_URL="http://${GRAFANA_IP}:3000" || true
+        fi
+
+        # 롤아웃 재시작으로 환경변수 반영
+        kubectl rollout restart deployment/smart-factory-frontend -n smart-factory-core
+
     - name: Health Check
       run: |-
         # Core Cluster 서비스들의 헬스 체크
