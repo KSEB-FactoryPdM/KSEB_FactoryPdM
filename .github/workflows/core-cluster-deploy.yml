@@ -87,7 +87,13 @@ jobs:
     - name: Install frontend dependencies
       run: |
         cd frontend
-        npm install --legacy-peer-deps
+        npm ci --ignore-scripts
+        npm i -D ts-node @testing-library/dom --ignore-scripts
+
+    - name: Ensure clean Next cache
+      run: |
+        cd frontend
+        rm -rf .next || true
 
     - name: Run frontend lint
       run: |
