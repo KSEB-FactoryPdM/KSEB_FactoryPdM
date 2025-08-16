@@ -5,9 +5,9 @@ import ChartCard from '@/components/ChartCard'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { fetchWithAuth } from '@/lib/api'
 
-import { ResponsiveContainer } from '@/lib/dynamicRecharts'
 
 import useWebSocket from '@/hooks/useWebSocket'
+import Image from 'next/image'
 import { useState } from 'react'
 
 interface AnomalyRow {
@@ -88,8 +88,8 @@ export default function DeviceDetailPage() {
       })
       return value
     },
-    onSuccess: val => {
-      queryClient.setQueryData<DeviceDetail>(['device', id], old =>
+    onSuccess: (val: number) => {
+      queryClient.setQueryData<DeviceDetail>(['device', id], (old: DeviceDetail | undefined) =>
         old ? { ...old, threshold: val } : old
       )
     }
@@ -104,7 +104,7 @@ export default function DeviceDetailPage() {
   const handleRequestMaintenance = () =>
     fetchWithAuth(`/api/devices/${id}/maintenance-request`, { method: 'POST' })
 
-  const { data: realtime } = useWebSocket<{ time: number; value: number }[]>(
+  useWebSocket<{ time: number; value: number }[]>(
     process.env.NEXT_PUBLIC_WEBSOCKET_URL
       ? `${process.env.NEXT_PUBLIC_WEBSOCKET_URL}/devices/${id}`
       : undefined,
@@ -121,8 +121,6 @@ export default function DeviceDetailPage() {
   const DEFAULT_DASHBOARD_URL_PREFIX =
     process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ||
     'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='
-  const VIEWPANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_CURRENT_ID || ''
-  const VIEWPANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_VIEWPANEL_VIBRATION_ID || ''
   const buildGrafanaPanelUrl = (sensor: 'current' | 'vibration', deviceId: string) => {
     const from = 'now-24h'
     const to = 'now'
@@ -169,6 +167,8 @@ export default function DeviceDetailPage() {
     URL.revokeObjectURL(url)
   }
 
+  const passthroughLoader = ({ src }: { src: string }) => src
+
   return (
     <DashboardLayout>
       <ChartCard title="Equipment Info">
@@ -203,7 +203,7 @@ export default function DeviceDetailPage() {
               type="number"
               className="border px-2 py-1 rounded text-sm"
               value={threshold ?? data?.threshold ?? 0}
-              onChange={e => setThreshold(Number(e.target.value))}
+              onChange={(e) => setThreshold(Number(e.target.value))}
             />
             <button
               className="ml-2 px-2 py-1 border rounded text-sm"
@@ -227,9 +227,13 @@ export default function DeviceDetailPage() {
         {/* Grafana 이미지 렌더링: 기존 장치 카드 내 */}
         {id && (
           <div className="mt-4">
-            <img
+            <Image
+              loader={passthroughLoader}
+              unoptimized
               src={`${(process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ?? 'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device=').replace('/d/', '/render/d/')}${encodeURIComponent(id)}&width=1200&height=480&tz=browser`}
               alt={`Device ${id} Dashboard`}
+              width={1200}
+              height={480}
               style={{ width: '100%', height: 480, objectFit: 'contain' }}
             />
           </div>
@@ -238,9 +242,13 @@ export default function DeviceDetailPage() {
           <div>
             <h3 className="font-medium mb-1 text-sm">Current</h3>
             <div style={{ height: 200 }}>
-              <img
+              <Image
+                loader={passthroughLoader}
+                unoptimized
                 src={buildGrafanaPanelUrl('current', id)}
                 alt={`${id} - Current`}
+                width={800}
+                height={200}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>
@@ -248,9 +256,13 @@ export default function DeviceDetailPage() {
           <div>
             <h3 className="font-medium mb-1 text-sm">Vibration</h3>
             <div style={{ height: 200 }}>
-              <img
+              <Image
+                loader={passthroughLoader}
+                unoptimized
                 src={buildGrafanaPanelUrl('vibration', id)}
                 alt={`${id} - Vibration`}
+                width={800}
+                height={200}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
             </div>
