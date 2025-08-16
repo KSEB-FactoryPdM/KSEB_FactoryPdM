@@ -445,13 +445,13 @@ jobs:
         # 인프라 서비스 배포 (순서 중요: Zookeeper -> Kafka -> AI Service)
         kubectl apply -f k8s/compute-zookeeper.yaml
         
-        # Zookeeper가 준비될 때까지 대기
-        kubectl wait --for=condition=ready pod -l app=zookeeper -n smart-factory-compute --timeout=300s
+        # Zookeeper StatefulSet 롤아웃이 완료될 때까지 대기
+        kubectl rollout status statefulset/zookeeper -n smart-factory-compute --timeout=300s
         
         kubectl apply -f k8s/compute-kafka.yaml
         
-        # Kafka가 준비될 때까지 대기
-        kubectl wait --for=condition=ready pod -l app=kafka -n smart-factory-compute --timeout=300s
+        # Kafka StatefulSet 롤아웃이 완료될 때까지 대기
+        kubectl rollout status statefulset/kafka -n smart-factory-compute --timeout=600s
         
         # AI 모델 서비스 배포
         kubectl apply -f k8s/compute-ai-service.yaml
