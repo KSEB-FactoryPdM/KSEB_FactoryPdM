@@ -6,7 +6,7 @@ const customJestConfig = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',            // "@/..." 별칭 매핑
+    '^@/(.*)$': '<rootDir>/src/$1',            // "@/..." 별칭을 src/로 매핑
   },
 }
 
