@@ -69,6 +69,12 @@ spec:
               name: smart-factory-secrets
               key: AI_MODEL_SERVICE_ENDPOINT
               optional: true
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SECRET_KEY
+              optional: false
         envFrom:
         - configMapRef:
             name: smart-factory-config

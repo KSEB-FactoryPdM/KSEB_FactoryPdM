@@ -221,6 +221,7 @@ jobs:
           --from-literal=POSTGRES_DB=predictive_maintenance \
           --from-literal=KAFKA_BOOTSTRAP_SERVERS=${{ secrets.COMPUTE_CLUSTER_KAFKA_ENDPOINT }} \
           --from-literal=AI_MODEL_SERVICE_ENDPOINT=${{ secrets.COMPUTE_CLUSTER_AI_ENDPOINT }} \
+          --from-literal=SECRET_KEY=${{ secrets.BACKEND_SECRET_KEY }} \
           --namespace=smart-factory-core \
           --dry-run=client -o yaml | kubectl apply -f -
         
