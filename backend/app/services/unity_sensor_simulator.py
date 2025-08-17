@@ -43,6 +43,12 @@ class UnitySensorSimulator:
         self.amplitude = float(os.getenv("SIM_AMPLITUDE", "10"))
         self.noise = float(os.getenv("SIM_NOISE", "0.5"))
 
+        # serve_ml 피처 퍼블리시 설정
+        self.publish_serve_ml = os.getenv("SERVE_ML_PUBLISH", "true").lower() in ("1", "true", "yes")
+        self.serve_ml_topic_base = os.getenv("SERVE_ML_FEATURE_TOPIC_BASE", "serve-ml")
+        self.sim_power = os.getenv("SIM_POWER", "11kW")
+        self.sim_model_version = os.getenv("SIM_MODEL_VERSION", "demo.v1")
+
         # MQTT 클라이언트
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
@@ -87,6 +93,38 @@ class UnitySensorSimulator:
         vibe = abs(self.amplitude * math.sin(t)) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
         return max(0.0, vibe)
 
+    @staticmethod
+    def _feat(val: float) -> float:
+        # 간단한 피처 값 정규화/라운딩
+        return round(float(val), 6)
+
+    def build_features(self, x: float, y: float, z: float, vibe: float) -> dict:
+        # 최소 피처 집합 (실제 번들 요구사항에 맞춰 확장 가능)
+        # 값은 순간값 기반 간단 산출
+        import statistics as stats
+        seq = [x, y, z]
+        mean = self._feat(stats.mean(seq))
+        std = self._feat(stats.pstdev(seq))
+        p2p = self._feat(max(seq) - min(seq))
+        rms = self._feat(math.sqrt(sum(v*v for v in seq) / len(seq)))
+        skew = self._feat(0.0)
+        kurt = self._feat(0.0)
+
+        return {
+            # current 축 기반 간단 피처
+            "cur_x_mean": self._feat(x),
+            "cur_y_mean": self._feat(y),
+            "cur_z_mean": self._feat(z),
+            "cur_mag_mean": mean,
+            "cur_mag_std": std,
+            "cur_mag_p2p": p2p,
+            "cur_mag_rms": rms,
+            "cur_mag_skew": skew,
+            "cur_mag_kurt": kurt,
+            # vibration 요약
+            "vibe_mean": self._feat(vibe),
+        }
+
     def publish(self):
         self.client.loop_start()
         logger.info(
@@ -120,6 +158,21 @@ class UnitySensorSimulator:
                         }
                         topic = f"unity/sensors/{device}/vibration"
                         self.client.publish(topic, json.dumps(payload), qos=1)
+
+                    # serve_ml 피처 퍼블리시 (선택)
+                    if self.publish_serve_ml:
+                        # 현재 시점 값으로 간단 피처 구성
+                        # 데이터 모드가 아닐 때도 최소 값 생성
+                        x2, y2, z2 = self.gen_current(t)
+                        vibe2 = self.gen_vibration(t)
+                        feats = self.build_features(x2, y2, z2, vibe2)
+                        feature_payload = {
+                            "power": self.sim_power,
+                            "model_version": self.sim_model_version,
+                            "features": feats,
+                        }
+                        feature_topic = f"{self.serve_ml_topic_base}/{device}/features"
+                        self.client.publish(feature_topic, json.dumps(feature_payload), qos=1)
 
                 time.sleep(max(0.05, self.interval_ms / 1000.0))
         except KeyboardInterrupt:
