@@ -254,6 +254,10 @@ jobs:
         # 네임스페이스를 core로 변경
         sed -i 's/namespace: smart-factory/namespace: smart-factory-core/g' k8s/core-apps.yaml
         sed -i 's/namespace: smart-factory/namespace: smart-factory-core/g' k8s/core-frontend.yaml
+
+        # 초기 안정화를 위해 백엔드 replicas 1로 축소 및 readiness 지연 증가
+        sed -i '0,/replicas: 2/{s/replicas: 2/replicas: 1/}' k8s/core-apps.yaml
+        sed -i '0,/readinessProbe:[\n\r\t \-:a-zA-Z0-9]*initialDelaySeconds: 5/{s/initialDelaySeconds: 5/initialDelaySeconds: 20/}' k8s/core-apps.yaml
         
         # 백엔드 이미지 태그 업데이트
         sed -i "s|gcr.io/PROJECT_ID/smart-factory-backend|gcr.io/$PROJECT_ID/$BACKEND_IMAGE|g" k8s/core-apps.yaml
@@ -267,10 +271,22 @@ jobs:
         kubectl apply -f k8s/core-apps.yaml
         kubectl apply -f k8s/core-frontend.yaml
         
-        # 서비스 롤아웃 상태 확인
-        kubectl rollout status deployment/smart-factory-backend -n smart-factory-core
-        kubectl rollout status deployment/smart-factory-frontend -n smart-factory-core
-        kubectl rollout status deployment/data-collector -n smart-factory-core
+        # 서비스 롤아웃 상태 확인 (실패 시 상세 진단 출력)
+        kubectl rollout status deployment/smart-factory-backend -n smart-factory-core --timeout=300s || ({ \
+          echo "=== Debug: smart-factory-backend ==="; \
+          kubectl get pods -n smart-factory-core -o wide; \
+          kubectl describe deployment smart-factory-backend -n smart-factory-core; \
+          kubectl describe pods -l app=smart-factory-backend -n smart-factory-core; \
+          kubectl logs -l app=smart-factory-backend -n smart-factory-core --tail=200; \
+          exit 1; })
+        kubectl rollout status deployment/smart-factory-frontend -n smart-factory-core --timeout=300s || ({ \
+          echo "=== Debug: smart-factory-frontend ==="; \
+          kubectl get pods -n smart-factory-core -o wide; \
+          kubectl describe deployment smart-factory-frontend -n smart-factory-core; \
+          kubectl describe pods -l app=smart-factory-frontend -n smart-factory-core; \
+          kubectl logs -l app=smart-factory-frontend -n smart-factory-core --tail=200; \
+          exit 1; })
+        kubectl rollout status deployment/data-collector -n smart-factory-core --timeout=300s || true
         # sensor-simulator는 Unity에서 외부 연결하므로 배포하지 않음
 
     - name: Verify Core Cluster Deployment

@@ -23,7 +23,7 @@ metadata:
   labels:
     app: smart-factory-frontend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: smart-factory-frontend
