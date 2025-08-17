@@ -164,6 +164,23 @@ spec:
         image: gcr.io/PROJECT_ID/smart-factory-backend:latest
         command: ["python", "-m", "app.services.kafka_timescale_sink"]
         env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_DB
+        - name: TIMESCALE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
         - name: KAFKA_BOOTSTRAP_SERVERS
           valueFrom:
             secretKeyRef:
