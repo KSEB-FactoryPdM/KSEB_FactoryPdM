@@ -77,6 +77,8 @@ jobs:
         MQTT_BROKER_HOST: localhost
         MQTT_BROKER_PORT: 1883
         REDIS_URL: redis://localhost:6379
+        APP_PROMETHEUS_PORT: 9090
+        APP_GRAFANA_PORT: 3000
 
     # Frontend 테스트
     - name: Set up Node.js

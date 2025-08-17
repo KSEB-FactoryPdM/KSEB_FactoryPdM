@@ -89,9 +89,9 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: Optional[str] = Field(default=None, env="ADMIN_EMAIL")
     
     
-    # 모니터링 설정
-    PROMETHEUS_PORT: int = Field(default=9090, env="PROMETHEUS_PORT")
-    GRAFANA_PORT: int = Field(default=3000, env="GRAFANA_PORT")
+    # 모니터링 설정 (K8s 서비스 env 충돌 방지를 위해 APP_ 접두 사용)
+    PROMETHEUS_PORT: int = Field(default=9090, env="APP_PROMETHEUS_PORT")
+    GRAFANA_PORT: int = Field(default=3000, env="APP_GRAFANA_PORT")
     
     
     # 성능 목표 설정

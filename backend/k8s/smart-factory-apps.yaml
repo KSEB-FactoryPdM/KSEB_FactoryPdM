@@ -72,6 +72,8 @@ spec:
         envFrom:
         - configMapRef:
             name: smart-factory-config
+        - configMapRef:
+            name: app-config
         resources:
           requests:
             memory: "512Mi"
