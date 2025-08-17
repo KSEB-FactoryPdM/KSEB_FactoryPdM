@@ -1,4 +1,145 @@
 """
+Unity 센서 시뮬레이터 (MQTT 퍼블리셔)
+
+MQTT 브로커로 주기적으로 센서 데이터를 퍼블리시합니다.
+DataCollector가 구독하는 토픽/페이로드 형식을 그대로 따릅니다.
+
+토픽:
+  - unity/sensors/<device>/data       # 전류(x,y,z)
+  - unity/sensors/<device>/vibration  # 진동(vibe)
+
+페이로드 예시(JSON):
+  {"device":"L-CAHU-01R","timestamp":"2024-01-01T00:00:00Z","x":1.2,"y":-0.5,"z":0.8}
+  {"device":"L-CAHU-01R","timestamp":"2024-01-01T00:00:00Z","vibe":0.12}
+"""
+
+import os
+import time
+import math
+import json
+from datetime import datetime, timezone
+from typing import List
+
+import paho.mqtt.client as mqtt
+from loguru import logger
+
+
+def parse_devices(env_value: str) -> List[str]:
+    devices = [d.strip() for d in (env_value or "").split(",") if d.strip()]
+    return devices or ["L-CAHU-01R"]
+
+
+class UnitySensorSimulator:
+    def __init__(self):
+        # MQTT 브로커 설정 (ConfigMap: smart-factory-config 에서 공급)
+        self.mqtt_host = os.getenv("MQTT_BROKER_HOST", "localhost")
+        self.mqtt_port = int(os.getenv("MQTT_BROKER_PORT", "1883"))
+
+        # 시뮬레이터 설정
+        self.devices = parse_devices(os.getenv("SIM_DEVICES", "L-CAHU-01R"))
+        self.interval_ms = int(os.getenv("SIM_INTERVAL_MS", "1000"))
+        self.mode = os.getenv("SIM_MODE", "both").lower()  # both|data|vibration
+        self.base = float(os.getenv("SIM_BASE", "50"))
+        self.amplitude = float(os.getenv("SIM_AMPLITUDE", "10"))
+        self.noise = float(os.getenv("SIM_NOISE", "0.5"))
+
+        # MQTT 클라이언트
+        self.client = mqtt.Client()
+        self.client.on_connect = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
+
+    def on_connect(self, client, userdata, flags, rc):
+        if rc == 0:
+            logger.info(f"MQTT 연결 성공: {self.mqtt_host}:{self.mqtt_port}")
+        else:
+            logger.error(f"MQTT 연결 실패 rc={rc}")
+
+    def on_disconnect(self, client, userdata, rc):
+        logger.warning(f"MQTT 연결 종료 rc={rc}")
+
+    def connect(self):
+        attempts = 0
+        last_err = None
+        while attempts < 30:
+            try:
+                self.client.connect(self.mqtt_host, self.mqtt_port, 60)
+                return
+            except Exception as e:
+                last_err = e
+                attempts += 1
+                logger.warning(f"MQTT 연결 재시도 {attempts}/30: {e}")
+                time.sleep(2)
+        logger.error(f"MQTT 연결 실패: {last_err}")
+        raise last_err
+
+    @staticmethod
+    def now_iso() -> str:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def gen_current(self, t: float):
+        # 간단한 사인파 + 노이즈
+        x = self.base + self.amplitude * math.sin(t) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
+        y = self.base + self.amplitude * math.sin(t + 2.09) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
+        z = self.base + self.amplitude * math.sin(t + 4.18) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
+        return x, y, z
+
+    def gen_vibration(self, t: float):
+        vibe = abs(self.amplitude * math.sin(t)) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
+        return max(0.0, vibe)
+
+    def publish(self):
+        self.client.loop_start()
+        logger.info(
+            f"Unity 센서 시뮬레이터 시작 devices={self.devices}, interval_ms={self.interval_ms}, mode={self.mode}"
+        )
+
+        start = time.time()
+        try:
+            while True:
+                t = time.time() - start
+                ts = self.now_iso()
+                for device in self.devices:
+                    if self.mode in ("both", "data"):
+                        x, y, z = self.gen_current(t)
+                        payload = {
+                            "device": device,
+                            "timestamp": ts,
+                            "x": round(x, 3),
+                            "y": round(y, 3),
+                            "z": round(z, 3),
+                        }
+                        topic = f"unity/sensors/{device}/data"
+                        self.client.publish(topic, json.dumps(payload), qos=1)
+
+                    if self.mode in ("both", "vibration"):
+                        vibe = self.gen_vibration(t)
+                        payload = {
+                            "device": device,
+                            "timestamp": ts,
+                            "vibe": round(vibe, 3),
+                        }
+                        topic = f"unity/sensors/{device}/vibration"
+                        self.client.publish(topic, json.dumps(payload), qos=1)
+
+                time.sleep(max(0.05, self.interval_ms / 1000.0))
+        except KeyboardInterrupt:
+            logger.info("시뮬레이터 종료 요청")
+        finally:
+            self.client.loop_stop()
+            self.client.disconnect()
+            logger.info("MQTT 연결 해제")
+
+
+def main():
+    sim = UnitySensorSimulator()
+    sim.connect()
+    sim.publish()
+
+
+if __name__ == "__main__":
+    main()
+
+"""
 Unity 센서 시뮬레이터 (프로젝트 포맷 전용)
 - Current: unity/sensors/{equipment_id}/data -> {device, timestamp, x, y, z}
 - Vibration: unity/sensors/{equipment_id}/vibration -> {device, timestamp, vibe}

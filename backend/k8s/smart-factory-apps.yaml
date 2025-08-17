@@ -219,7 +219,7 @@ spec:
       containers:
       - name: sensor-simulator
         image: gcr.io/PROJECT_ID/smart-factory-backend:latest
-        command: ["python", "-m", "app.services.sensor_simulator"]
+        command: ["python", "-m", "app.services.unity_sensor_simulator"]
         env:
         - name: KAFKA_BOOTSTRAP_SERVERS
           valueFrom:
@@ -227,6 +227,22 @@ spec:
               name: smart-factory-secrets
               key: KAFKA_BOOTSTRAP_SERVERS
               optional: true
+        - name: MQTT_BROKER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: smart-factory-config
+              key: MQTT_BROKER_HOST
+        - name: MQTT_BROKER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: smart-factory-config
+              key: MQTT_BROKER_PORT
+        - name: SIM_DEVICES
+          value: "L-CAHU-01R,L-SF-01"
+        - name: SIM_INTERVAL_MS
+          value: "1000"
+        - name: SIM_MODE
+          value: "both"
         envFrom:
         - configMapRef:
             name: smart-factory-config
