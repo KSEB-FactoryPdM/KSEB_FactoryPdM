@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     ENABLE_MODEL_TRAINING: bool = Field(default=False, env="ENABLE_MODEL_TRAINING")
     
     # 알림 설정
+    ENABLE_NOTIFICATIONS: bool = Field(default=False, env="ENABLE_NOTIFICATIONS")
     EMAIL_SMTP_SERVER: str = Field(
         default="smtp.gmail.com",
         env="EMAIL_SMTP_SERVER"
@@ -84,6 +85,7 @@ class Settings(BaseSettings):
     SLACK_BOT_TOKEN: Optional[str] = Field(default=None, env="SLACK_BOT_TOKEN")
     SLACK_ADMIN_USER_ID: Optional[str] = Field(default=None, env="SLACK_ADMIN_USER_ID")
     SLACK_WEBHOOK_URL: Optional[str] = Field(default=None, env="SLACK_WEBHOOK_URL")
+    SLACK_ALERT_CHANNEL_ID: Optional[str] = Field(default=None, env="SLACK_ALERT_CHANNEL_ID")
     
     # 관리자 이메일(선택)
     ADMIN_EMAIL: Optional[str] = Field(default=None, env="ADMIN_EMAIL")

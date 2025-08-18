@@ -3,13 +3,15 @@ serve_ml 기반 추론/상태 API
 """
 
 from typing import Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 from datetime import datetime
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.services.serve_ml_loader import serve_ml_registry
-from app.core.database import get_timescale_engine
+from app.core.database import get_timescale_engine, get_db
+from app.services.notification_service import notification_service
 
 
 router = APIRouter()
@@ -23,7 +25,7 @@ class ServeMLPredictRequest(BaseModel):
 
 
 @router.post("/predict")
-async def serve_ml_predict(req: ServeMLPredictRequest):
+async def serve_ml_predict(req: ServeMLPredictRequest, db: Session = Depends(get_db)):
     try:
         # power 자동 선택 레이어 (요청에 power 생략 시)
         selected_power = req.power
@@ -68,6 +70,52 @@ async def serve_ml_predict(req: ServeMLPredictRequest):
             }
             conn.execute(query, payload)
             conn.commit()
+
+        # 이상 발생 시 알림 전송 (Slack/Email)
+        try:
+            if bool(result.get("is_anomaly")):
+                confidence = float(result.get("confidence", 0.0))
+                # 심각도 매핑 (confidence 기반 간단 매핑)
+                if confidence > 0.8:
+                    severity = "critical"
+                elif confidence > 0.6:
+                    severity = "high"
+                elif confidence > 0.4:
+                    severity = "medium"
+                else:
+                    severity = "low"
+
+                # 이상 유형 추정 (scores 중 최대값 키 또는 일반)
+                anomaly_type = "general_anomaly"
+                sensor_value = None
+                try:
+                    scores = result.get("scores") or {}
+                    if isinstance(scores, dict) and scores:
+                        top_key = max(scores.keys(), key=lambda k: scores[k] if scores[k] is not None else float('-inf'))
+                        anomaly_type = str(top_key)
+                        sensor_value = float(scores.get(top_key)) if scores.get(top_key) is not None else None
+                except Exception:
+                    pass
+
+                message = (
+                    f"장비 {req.equipment_id} 이상 탐지. 모델={req.model_version or bundle.bundle_dir.name}, "
+                    f"신뢰도={confidence:.2f}, 유형={anomaly_type}"
+                )
+
+                notification_service.create_notification(
+                    db=db,
+                    device_id=req.equipment_id,
+                    sensor_id=anomaly_type,
+                    alert_type="anomaly",
+                    anomaly_type=anomaly_type,
+                    severity=severity,
+                    message=message,
+                    sensor_value=sensor_value,
+                    threshold_value=None,
+                )
+        except Exception:
+            # 알림 실패는 API 실패로 간주하지 않음
+            pass
 
         return {
             "equipment_id": req.equipment_id,
