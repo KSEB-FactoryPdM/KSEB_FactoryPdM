@@ -35,13 +35,19 @@ class SlackBotService:
                 "Authorization": f"Bearer {self.bot_token}",
                 "Content-Type": "application/json"
             }
-            
+
+            # 단순: 설정된 admin_user_id를 채널로 직접 사용 (D/C/G ID 권장)
+            channel_id = self.admin_user_id
+            if not channel_id:
+                logger.error("슬랙 관리자 채널/사용자 ID가 설정되지 않았습니다")
+                return False
+
             payload = {
-                "channel": self.admin_user_id,
+                "channel": channel_id,
                 "text": message_text,
                 "blocks": self._create_message_blocks(notification)
             }
-            
+
             response = requests.post(
                 f"{self.base_url}/chat.postMessage",
                 headers=headers,
@@ -70,6 +76,8 @@ class SlackBotService:
         except Exception as e:
             logger.error(f"슬랙 다이렉트 메시지 전송 중 오류: {e}")
             return False
+
+    # 간단 버전: 채널 해석/오픈 로직 제거
     
     def _format_message_text(self, notification: Notification) -> str:
         """메시지 텍스트 포맷팅"""
@@ -228,9 +236,14 @@ class SlackBotService:
                 "Authorization": f"Bearer {self.bot_token}",
                 "Content-Type": "application/json"
             }
-            
+
+            channel_id = self.admin_user_id
+            if not channel_id:
+                logger.error("테스트용 슬랙 채널/사용자 ID가 설정되지 않았습니다")
+                return False
+
             payload = {
-                "channel": self.admin_user_id,
+                "channel": channel_id,
                 "text": "🧪 KSEB Factory 슬랙 봇 테스트 메시지입니다.",
                 "blocks": [
                     {
