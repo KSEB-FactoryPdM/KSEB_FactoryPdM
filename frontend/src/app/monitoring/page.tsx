@@ -31,7 +31,7 @@ type MyType = Array<MyPoint>
 
 import type { Machine } from '@/components/filters/EquipmentFilter'
 
-interface Anomaly { id: number; status: string }
+interface Anomaly { id: number; equipmentId: string; type: string; status: string }
 interface EventItem {
   id: number
   time: string
@@ -200,12 +200,24 @@ export default function MonitoringPage() {
 
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
-  // 차트 제거로 hasAnomaly 미사용
   const filteredData = useMemo(() => {
     if (!snap || !snap.length) return []
     const from = latestTs - RANGE_SECONDS[timeRange]
     return snap.filter((d) => d.time >= from)
   }, [snap, latestTs, timeRange])
+
+  // 장비별/센서별 오픈 이상 매핑
+  const openAnomalyMap = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const a of anomalies ?? []) {
+      if (a.status !== 'open') continue
+      const key = a.equipmentId
+      const t = (a.type || '').toLowerCase()
+      if (!map.has(key)) map.set(key, new Set())
+      map.get(key)!.add(t)
+    }
+    return map
+  }, [anomalies])
 
   const equipmentCount = machines?.length ?? 0
   const activeAlerts = anomalies?.filter((a) => a.status === 'open').length ?? 0
@@ -406,11 +418,15 @@ export default function MonitoringPage() {
               )
               .flatMap((m: Machine) => {
                 const sensors = sensor === 'all' ? (['current', 'vibration'] as const) : [sensor as 'current' | 'vibration']
-                                 return sensors.map((s) => (
-                   <ChartCard key={`${m.id}-${m.power}-${s}`} title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}>
-                     <GrafanaPanel sensor={s} deviceId={m.id} timeRange="5m" />
-                   </ChartCard>
-                 ))
+                return sensors.map((s) => (
+                  <ChartCard
+                    key={`${m.id}-${m.power}-${s}`}
+                    title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}
+                    danger={Boolean(openAnomalyMap.get(m.id)?.has(s))}
+                  >
+                    <GrafanaPanel sensor={s} deviceId={m.id} timeRange="5m" />
+                  </ChartCard>
+                ))
               })}
           </div>
         )}
