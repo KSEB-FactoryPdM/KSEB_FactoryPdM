@@ -300,14 +300,21 @@ class NotificationService:
                 "tts_message": self.generate_tts_message(notification)
             }
             
-            # WebSocket 매니저를 통해 전송
+            # WebSocket 매니저를 통해 전송 (어떤 컨텍스트에서도 보장)
             import asyncio
             try:
-                loop = asyncio.get_event_loop()
+                # 실행 중인 이벤트 루프가 있으면 태스크로 스케줄
+                loop = asyncio.get_running_loop()
                 loop.create_task(websocket_manager.send_notification(event_data))
             except RuntimeError:
-                # 이벤트 루프가 없는 경우 (백그라운드에서 실행)
-                logger.info(f"웹 알림 이벤트 생성: {notification.device_id}")
+                # 실행 중인 루프가 없으면 별도 스레드에서 전송
+                import threading
+                def _runner():
+                    try:
+                        asyncio.run(websocket_manager.send_notification(event_data))
+                    except Exception as e:
+                        logger.error(f"웹 알림 이벤트 전송 실패(백그라운드): {e}")
+                threading.Thread(target=_runner, daemon=True).start()
             
         except Exception as e:
             logger.error(f"웹 알림 이벤트 생성 중 오류: {e}")

@@ -26,14 +26,15 @@ from typing import Dict, Optional
 
 
 DEFAULTS: Dict[str, object] = dict(
-    margin=0.02,
-    on_k=3,
-    off_k=2,
-    decay_gain=2.0,
-    recovery_wait=30,
-    recovery_gain=0.2,
+    margin=0.005,
+    on_k=2,
+    off_k=3,
+    decay_gain=1.0,
+    recovery_wait=60,
+    recovery_gain=0.1,
     recovery_cap="last_alarm",  # "100" | "last_alarm"
     max_rul_units=20000.0,
+    severity_divisor=0.20,  # (ratio-1.0)/divisor → 1.0에서 0~1로 정규화 (완만한 감소)
 )
 
 
@@ -78,7 +79,8 @@ class RULState:
         decay = 0.0
         rec = 0.0
         if alarm:
-            sev = max(0.0, min(1.0, (ratio - 1.0) / 0.20))
+            div = float(self.cfg.get("severity_divisor", 0.20)) or 0.20
+            sev = max(0.0, min(1.0, (ratio - 1.0) / div))
             decay = float(self.cfg["decay_gain"]) * sev
             self.rul_units = max(0.0, self.rul_units - decay)
             if self.cfg.get("recovery_cap") == "last_alarm":
@@ -156,7 +158,36 @@ def get_engine() -> RULLiteEngine:
     if _ENGINE is None:
         calib_path = os.getenv("RUL_CALIB_PATH", "configs/rul_calib.json")
         calib = _safe_load_json(calib_path)
-        _ENGINE = RULLiteEngine(calib)
+        # 환경변수 기반 튜닝 값 적용
+        cfg_env: Dict[str, object] = {}
+        def _maybe_set_float(k: str, env: str):
+            v = os.getenv(env)
+            if v is not None:
+                try:
+                    cfg_env[k] = float(v)
+                except Exception:
+                    pass
+        def _maybe_set_int(k: str, env: str):
+            v = os.getenv(env)
+            if v is not None:
+                try:
+                    cfg_env[k] = int(v)
+                except Exception:
+                    pass
+        # 개별 매핑
+        _maybe_set_float("margin", "RUL_MARGIN")
+        _maybe_set_int("on_k", "RUL_ON_K")
+        _maybe_set_int("off_k", "RUL_OFF_K")
+        _maybe_set_float("decay_gain", "RUL_DECAY_GAIN")
+        _maybe_set_int("recovery_wait", "RUL_RECOVERY_WAIT")
+        _maybe_set_float("recovery_gain", "RUL_RECOVERY_GAIN")
+        cap = os.getenv("RUL_RECOVERY_CAP")
+        if cap is not None:
+            cfg_env["recovery_cap"] = cap
+        _maybe_set_float("max_rul_units", "RUL_MAX_UNITS")
+        _maybe_set_float("severity_divisor", "RUL_SEVERITY_DIVISOR")
+
+        _ENGINE = RULLiteEngine(calib, cfg_env)
     return _ENGINE
 
 

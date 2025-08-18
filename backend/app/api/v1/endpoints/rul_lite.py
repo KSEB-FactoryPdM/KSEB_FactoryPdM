@@ -48,3 +48,25 @@ async def get_status(
         raise HTTPException(status_code=500, detail=f"RUL-lite status 실패: {e}")
 
 
+@router.get("/debug", response_model=Dict)
+async def debug_state(
+    equipment_id: str = Query(..., description="설비 ID"),
+    power: str = Query(..., description="전원/상태 키 (예: ON/OFF)"),
+):
+    """내부 상태 디버그: 히스테리시스 카운터/상태, calm, rul_units, cfg 반환"""
+    try:
+        eng = get_engine()
+        key = f"{equipment_id}::{power}"
+        st = eng._state(key)  # 내부 상태 조회
+        return {
+            "key": key,
+            "hys_c": st.hys.c,
+            "hys_state": int(st.hys.state),
+            "calm": st.calm,
+            "rul_units": st.rul_units,
+            "max_units": st.max_units,
+            "cfg": eng.cfg,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RUL-lite debug 실패: {e}")
+

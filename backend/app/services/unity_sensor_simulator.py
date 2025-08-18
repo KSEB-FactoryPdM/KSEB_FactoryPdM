@@ -39,6 +39,7 @@ class UnitySensorSimulator:
         self.devices = parse_devices(os.getenv("SIM_DEVICES", "L-CAHU-01R"))
         self.interval_ms = int(os.getenv("SIM_INTERVAL_MS", "1000"))
         self.mode = os.getenv("SIM_MODE", "both").lower()  # both|data|vibration
+        # 시뮬레이터 파라미터(전역)
         self.base = float(os.getenv("SIM_BASE", "50"))
         self.amplitude = float(os.getenv("SIM_AMPLITUDE", "10"))
         self.noise = float(os.getenv("SIM_NOISE", "0.5"))
@@ -83,7 +84,7 @@ class UnitySensorSimulator:
         return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def gen_current(self, t: float):
-        # 간단한 사인파 + 노이즈
+        # 간단한 사인파 + 노이즈(전역 파라미터 기반)
         x = self.base + self.amplitude * math.sin(t) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
         y = self.base + self.amplitude * math.sin(t + 2.09) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
         z = self.base + self.amplitude * math.sin(t + 4.18) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
@@ -93,41 +94,7 @@ class UnitySensorSimulator:
         vibe = abs(self.amplitude * math.sin(t)) + (self.noise * (2 * (os.urandom(1)[0] / 255.0) - 1))
         return max(0.0, vibe)
 
-    @staticmethod
-    def _feat(val: float) -> float:
-        # 간단한 피처 값 정규화/라운딩
-        return round(float(val), 6)
-
-    def build_features(self, x: float, y: float, z: float, vibe: float) -> dict:
-        # 최소 피처 집합 (실제 번들 요구사항에 맞춰 확장 가능)
-        # 값은 순간값 기반 간단 산출
-        import statistics as stats
-        seq = [x, y, z]
-        mean = self._feat(stats.mean(seq))
-        std = self._feat(stats.pstdev(seq))
-        p2p = self._feat(max(seq) - min(seq))
-        rms = self._feat(math.sqrt(sum(v*v for v in seq) / len(seq)))
-        skew = self._feat(0.0)
-        kurt = self._feat(0.0)
-
-        return {
-            # current 축 기반 간단 피처
-            "cur_x_mean": self._feat(x),
-            "cur_y_mean": self._feat(y),
-            "cur_z_mean": self._feat(z),
-            "cur_x_rms": self._feat(abs(x)),
-            "cur_y_rms": self._feat(abs(y)),
-            "cur_z_rms": self._feat(abs(z)),
-            "cur_mag_mean": mean,
-            "cur_mag_std": std,
-            "cur_mag_p2p": p2p,
-            "cur_mag_rms": rms,
-            "cur_mag_skew": skew,
-            "cur_mag_kurt": kurt,
-            # vibration 요약
-            "vibe_mean": self._feat(vibe),
-            "vib_rms": self._feat(abs(vibe)),
-        }
+    
 
     def publish(self):
         self.client.loop_start()
@@ -187,14 +154,14 @@ class UnitySensorSimulator:
             logger.info("MQTT 연결 해제")
 
 
-def main():
+def main_env():
     sim = UnitySensorSimulator()
     sim.connect()
     sim.publish()
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__" and os.getenv("RUN_ENV_SIM") == "1":
+    main_env()
 
 """
 Unity 센서 시뮬레이터 (프로젝트 포맷 전용)
@@ -236,6 +203,12 @@ class UnitySensorSimulator:
         self.publish_serve_ml_features = True
         self.is_running = False
 
+        # RUL 캘리브레이션 스케일과 정합되도록 진동 기본 스케일(소수점 수천분대)로 설정
+        # 필요 시 환경변수로 조정
+        import os as _os
+        self.vibe_mean = float(_os.getenv("SIM_VIBE_MEAN", "0.008"))
+        self.vibe_std = float(_os.getenv("SIM_VIBE_STD", "0.002"))
+
         # serve_ml에서만 장비 로드
         try:
             self.equipment_ids: List[str] = serve_ml_registry.list_equipment() or []
@@ -246,14 +219,13 @@ class UnitySensorSimulator:
         if not self.equipment_ids:
             logger.warning("serve_ml 디렉토리에 장비가 없습니다. 시뮬레이터는 데이터를 발행하지 않습니다.")
 
-        # 이상치 주입 설정 (전역은 매우 낮게, 특정 장비는 높게)
+        # 이상치 주입 설정 (테스트용: 극단적 이상치)
         self.target_device_id = "L-DEF-01"
-        self.global_anomaly_prob = 0.002  # 기타 장비 이상치 확률
-        # 기본 전략: L-DEF-01은 자주 이상치, 나머지는 낮은 확률
-        self.target_anomaly_prob = 0.25
-        self.global_anomaly_prob = 0.002
-        self.anomaly_amplify_min = 1.5
-        self.anomaly_amplify_max = 2.0
+        self.global_anomaly_prob = 0  # 모든 장비 0% 이상치
+        # 기본 전략: 모든 장비에서 항상 이상치 발생
+        self.target_anomaly_prob = 1.0
+        self.anomaly_amplify_min = 3.0  # 테스트용: 극단적으로 괴랄한 이상치
+        self.anomaly_amplify_max = 10.0  # 테스트용: 극단적으로 괴랄한 이상치
 
     # MQTT 콜백
     def on_connect(self, client, userdata, flags, rc):
@@ -289,8 +261,8 @@ class UnitySensorSimulator:
                 "z": round(z_val, 3),
             }
 
-            # Vibration (vibe): 양수 분포
-            vibe_val = abs(random.gauss(2.0, 0.3))
+            # Vibration (vibe): 캘리브레이션 스케일(수천분대)로 생성
+            vibe_val = abs(random.gauss(self.vibe_mean, self.vibe_std))
             sensor_data[f"unity/sensors/{equipment_id}/vibration"] = {
                 "device": equipment_id,
                 "timestamp": timestamp,
@@ -419,10 +391,10 @@ def main():
     parser.add_argument("--interval", type=float, default=1.0, help="발행 간격(초)")
     parser.add_argument("--target-device", default="L-DEF-01", help="자주 이상치 발생 장비 ID")
     parser.add_argument(
-        "--target-anomaly-prob", type=float, default=0.25, help="대상 장비 이상치 확률 (0~1)"
+        "--target-anomaly-prob", type=float, default=1.0, help="대상 장비 이상치 확률 (0~1)"
     )
     parser.add_argument(
-        "--global-anomaly-prob", type=float, default=0.002, help="그 외 장비 이상치 확률 (0~1)"
+        "--global-anomaly-prob", type=float, default=0.0, help="그 외 장비 이상치 확률 (0~1)"
     )
 
     args = parser.parse_args()

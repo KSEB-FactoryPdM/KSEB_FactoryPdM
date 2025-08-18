@@ -18,6 +18,8 @@ from app.services.serve_ml_loader import serve_ml_registry
 from app.core.database import get_timescale_engine
 from app.core.database import SessionLocal
 from app.services.notification_service import notification_service
+from app.services.rul_lite import get_engine
+from app.core.websocket_manager import websocket_manager
 
 
 class ServeMLMqttInfer:
@@ -100,7 +102,56 @@ class ServeMLMqttInfer:
 
             logger.info(f"serve_ml 추론 완료: {equipment_id}, anomaly={result['is_anomaly']}, conf={result.get('confidence', 0.0):.3f}")
 
-            # 이상 발생 시 알림 전송 (Slack/Email)
+            # RUL-lite 상태 갱신 (캘리브레이션 부재 시에도 anomaly/confidence 기반으로 보수적 감소)
+            try:
+                eng = get_engine()
+                # 가능한 경우 실제 피처로 계산
+                def _to_float(v, default=0.0):
+                    try:
+                        return float(v)
+                    except Exception:
+                        return default
+                # 다양한 키에 대응하여 전류/진동 값을 견고하게 추출
+                def _first_feature(keys):
+                    for k in keys:
+                        if k in features and features.get(k) is not None:
+                            try:
+                                return float(features.get(k))
+                            except Exception:
+                                continue
+                    return 0.0
+
+                cur_x = _first_feature(['cur_x_rms', 'cur_x_mean', 'cur_x', 'x'])
+                cur_y = _first_feature(['cur_y_rms', 'cur_y_mean', 'cur_y', 'y'])
+                cur_z = _first_feature(['cur_z_rms', 'cur_z_mean', 'cur_z', 'z'])
+                # 단일 전류 값만 있는 경우 x에 대입
+                if not any([cur_x, cur_y, cur_z]):
+                    cur_x = _to_float(features.get('current'))
+                vibe = _first_feature(['vib_rms', 'vibration_rms', 'vib_mean', 'vibe', 'vibration'])
+
+                updated = False
+                try:
+                    eng.step(equipment_id, selected_power or "auto", cur_x, cur_y, cur_z, vibe)
+                    updated = True
+                except Exception:
+                    updated = False
+
+                # 피처 기반 업데이트가 어려운 경우, anomaly/confidence로 비율 추정하여 갱신
+                if not updated:
+                    st = eng._state(f"{equipment_id}::{selected_power or 'auto'}")
+                    conf = float(result.get('confidence', 0.0))
+                    if bool(result.get('is_anomaly')):
+                        # 완만한 감소: 1.0~1.05 범위로 축소
+                        ratio = 1.0 + max(0.0, min(1.0, conf)) * 0.05
+                    else:
+                        # 비이상 시 거의 1.0에 가깝게 유지하여 급격한 변화 방지
+                        ratio = 0.995
+                    st.update_by_ratio(ratio)
+            except Exception:
+                # RUL-lite 갱신 실패는 서비스 중단 사유가 아님
+                logger.exception("RUL-lite 갱신 실패")
+
+            # 이상 발생 시 알림 전송 (Slack/Email) 및 실시간 WS 알림(프론트 깜빡임 트리거)
             try:
                 if bool(result.get("is_anomaly")):
                     confidence = float(result.get("confidence", 0.0))
@@ -129,7 +180,32 @@ class ServeMLMqttInfer:
                         f"신뢰도={confidence:.2f}, 유형={anomaly_type}"
                     )
 
-                    # 세션 생성/종료 보장
+                    # 0) 웹소켓 실시간 알림 전송 (ENABLE_NOTIFICATIONS=false여도 프론트 표시 보장)
+                    try:
+                        event_data = {
+                            "id": 0,
+                            "device_id": equipment_id,
+                            "sensor_id": anomaly_type,
+                            "alert_type": "anomaly",
+                            "anomaly_type": anomaly_type,
+                            "severity": severity,
+                            "message": message,
+                            "sensor_value": sensor_value,
+                            "threshold_value": None,
+                            "created_at": datetime.utcnow().isoformat(),
+                        }
+                        # 비동기 전송 (스레드에서 실행)
+                        import asyncio, threading
+                        def _runner():
+                            try:
+                                asyncio.run(websocket_manager.send_notification(event_data))
+                            except Exception:
+                                logger.exception("웹소켓 알림 전송 실패")
+                        threading.Thread(target=_runner, daemon=True).start()
+                    except Exception:
+                        logger.exception("웹소켓 알림 준비 실패")
+
+                    # 1) 세션 생성/종료 보장 (DB/외부 채널 알림)
                     db = SessionLocal()
                     try:
                         notification_service.create_notification(
