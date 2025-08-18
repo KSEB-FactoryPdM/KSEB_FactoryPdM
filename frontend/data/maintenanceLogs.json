@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id": 1755538994720,
+    "equipmentId": "L-CAHU-01R",
+    "status": "resolved",
+    "description": "해결완료!",
+    "timestamp": "2025-08-18T17:43:14.720Z"
+  },
+  {
+    "id": 1755540072656,
+    "equipmentId": "L-DEF-01",
+    "status": "pending",
+    "description": "원인 파악중",
+    "timestamp": "2025-08-18T18:01:12.656Z"
+  }
+]

@@ -1,4 +1,6 @@
 [
+  {"id": 1001, "equipmentId": "L-DEF-01", "type": "current", "timestamp": "2025-08-18T17:22:37Z", "status": "critical"},
+  {"id": 1002, "equipmentId": "L-DEF-01", "type": "vibration", "timestamp": "2025-08-18T17:21:08Z", "status": "critical"},
   {"id": 1, "equipmentId": "L-CAHU-01R", "type": "vibration", "timestamp": "2024-01-01T10:00:00Z", "status": "open"},
   {"id": 2, "equipmentId": "R-EF-05", "type": "current", "timestamp": "2024-01-02T11:00:00Z", "status": "resolved"}
 ]
