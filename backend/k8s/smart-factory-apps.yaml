@@ -75,6 +75,54 @@ spec:
               name: smart-factory-secrets
               key: SECRET_KEY
               optional: false
+        - name: EMAIL_SMTP_SERVER
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_SMTP_SERVER
+              optional: true
+        - name: EMAIL_SMTP_PORT
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_SMTP_PORT
+              optional: true
+        - name: EMAIL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_USERNAME
+              optional: true
+        - name: EMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_PASSWORD
+              optional: true
+        - name: ADMIN_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: ADMIN_EMAIL
+              optional: true
+        - name: SLACK_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SLACK_BOT_TOKEN
+              optional: true
+        - name: SLACK_ADMIN_USER_ID
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SLACK_ADMIN_USER_ID
+              optional: true
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SLACK_WEBHOOK_URL
+              optional: true
         envFrom:
         - configMapRef:
             name: smart-factory-config
