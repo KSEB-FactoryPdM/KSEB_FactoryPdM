@@ -113,7 +113,7 @@ export default function DeviceDetailPage() {
 
   // Grafana embed URL builder (same logic as monitoring)
   const GRAFANA_BASE = process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001'
-  const GRAFANA_UID = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || ''
+  const GRAFANA_UID = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || 'smart-factory-main'
   const GRAFANA_SLUG = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_SLUG || 'dashboard'
   const GRAFANA_ORG = process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1'
   const PANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || ''
@@ -121,18 +121,17 @@ export default function DeviceDetailPage() {
   const DEFAULT_DASHBOARD_URL_PREFIX =
     process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ||
     'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='
+
+  // 이미지 렌더링 URL (이전 표현 방식 유지)
   const buildGrafanaPanelUrl = (sensor: 'current' | 'vibration', deviceId: string) => {
     const from = 'now-24h'
     const to = 'now'
-    
-    // Grafana 이미지 렌더링 URL 생성 (iframe 대신 이미지로 표시)
     const panelId = sensor === 'current' ? PANEL_CURRENT : PANEL_VIBRATION
-    
     if (GRAFANA_UID && panelId) {
       const params = new URLSearchParams({
         orgId: GRAFANA_ORG,
         'var-device': deviceId,
-        panelId: panelId,
+        panelId,
         from,
         to,
         width: '800',
@@ -142,14 +141,14 @@ export default function DeviceDetailPage() {
       })
       return `${GRAFANA_BASE}/render/d-solo/${GRAFANA_UID}/${GRAFANA_SLUG}?${params.toString()}`
     }
-
-    // Fallback: 기본 대시보드 이미지 렌더링
     const prefix = DEFAULT_DASHBOARD_URL_PREFIX.replace('/d/', '/render/d/')
     const sep = prefix.includes('?') ? '&' : '?'
     const base = `${prefix}${encodeURIComponent(deviceId)}`
     const extra = `from=${encodeURIComponent(from)}&to=${to}&width=800&height=400&tz=browser`
     return `${base}${sep}${extra}`
   }
+
+  const passthroughLoader = ({ src }: { src: string }) => src
 
   const filteredAnomalies = anomalies.filter(a => a.equipmentId === id)
   const filteredMaintenance = maintenance.filter(m => m.equipmentId === id)
@@ -167,7 +166,7 @@ export default function DeviceDetailPage() {
     URL.revokeObjectURL(url)
   }
 
-  const passthroughLoader = ({ src }: { src: string }) => src
+  
 
   return (
     <DashboardLayout>

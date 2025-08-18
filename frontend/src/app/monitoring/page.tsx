@@ -57,7 +57,8 @@ const RANGE_SECONDS: Readonly<Record<'1h' | '24h' | '7d', number>> = {
 const GRAFANA_CONFIG = {
   baseUrl: process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001',
   orgId: process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1',
-  dashboardId: process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_ID || '63548124-8a50-4d38-b594-b21591792224',
+  dashboardUid: process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || 'smart-factory-main',
+  dashboardSlug: process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_SLUG || 'dashboard',
   panelIds: {
     current: process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || '1',
     vibration: process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION_ID || '2'
@@ -74,7 +75,7 @@ const GrafanaPanel = ({
   deviceId: string
   timeRange?: '1h' | '24h' | '7d' | '5m'
 }) => {
-  const { baseUrl, orgId, dashboardId, panelIds } = GRAFANA_CONFIG
+  const { baseUrl, orgId, dashboardUid, dashboardSlug, panelIds } = GRAFANA_CONFIG
   const panelId = panelIds[sensor]
   
   const timeParams = {
@@ -85,7 +86,7 @@ const GrafanaPanel = ({
   }[timeRange] || { from: 'now-5m', to: 'now' }
 
   // iframe URL 생성
-  const iframeUrl = `${baseUrl}/d-solo/${dashboardId}/b2ee4e4?` + 
+  const iframeUrl = `${baseUrl}/d-solo/${dashboardUid}/${dashboardSlug}?` + 
     new URLSearchParams({
       orgId,
       'var-device': deviceId,
@@ -94,8 +95,9 @@ const GrafanaPanel = ({
       to: timeParams.to,
       timezone: 'browser',
       refresh: '5s',
+      kiosk: 'tv',
       '__feature.dashboardSceneSolo': 'true'
- }).toString()
+  }).toString()
 
   return (
     <div className="h-[300px] w-full border rounded-lg overflow-hidden">
@@ -105,7 +107,7 @@ const GrafanaPanel = ({
         height="100%"
         frameBorder="0"
         title={`${deviceId} - ${sensor}`}
-        style={{ border: 'none' }}
+        style={{ border: 'none', pointerEvents: 'none' }}
       />
     </div>
   )
@@ -165,6 +167,9 @@ export default function MonitoringPage() {
     'ws://localhost:8000/api/v1/ws/stream'
   const { data, status } = useWebSocket<MyType>(socketUrl, { autoReconnect: true })
 
+  // Backend REST Base
+  const backendBase = (process.env.NEXT_PUBLIC_BACKEND_BASE_URL?.replace(/\/$/, '') || 'http://localhost:8000/api/v1')
+
   // 실시간 일시정지 스냅샷
   const [paused, setPaused] = useState(false)
   const [snap, setSnap] = useState<MyType | null>(null)
@@ -206,18 +211,76 @@ export default function MonitoringPage() {
     return snap.filter((d) => d.time >= from)
   }, [snap, latestTs, timeRange])
 
-  // 장비별/센서별 오픈 이상 매핑
-  const openAnomalyMap = useMemo(() => {
-    const map = new Map<string, Set<string>>()
-    for (const a of anomalies ?? []) {
-      if (a.status !== 'open') continue
-      const key = a.equipmentId
-      const t = (a.type || '').toLowerCase()
-      if (!map.has(key)) map.set(key, new Set())
-      map.get(key)!.add(t)
+  // (과거 목업 기반 오픈 이상 맵은 사용하지 않음)
+
+  // 장비 표시용: 동일 기기명(전력 무시)으로 통일된 목록
+  const deviceIds = useMemo(() => {
+    if (!machines) return [] as string[]
+    const filtered = machines.filter((m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment))
+    return Array.from(new Set(filtered.map((m) => m.id)))
+  }, [machines, power, selectedEquipment])
+
+  // 장비별 전력 목록 맵
+  const devicePowersMap = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const m of machines ?? []) {
+      const arr = map.get(m.id) ?? []
+      if (!arr.includes(m.power)) arr.push(m.power)
+      map.set(m.id, arr)
     }
     return map
-  }, [anomalies])
+  }, [machines])
+
+  // RUL-lite 퍼센트 맵 (장비 단위, 여러 전력 중 최소값 보수 적용)
+  const [rulLiteMap, setRulLiteMap] = useState<Map<string, number>>(new Map())
+  useEffect(() => {
+    let cancelled = false
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const fetchRulLite = async () => {
+      try {
+        const entries = await Promise.all(
+          deviceIds.map(async (id) => {
+            const powersRaw = devicePowersMap.get(id) ?? []
+            // serve-ml MQTT 추론 갱신은 power 키로 'auto'를 사용할 수 있으므로 함께 조회
+            const powers = Array.from(new Set([...powersRaw, 'auto']))
+            if (!powers.length) return [id, NaN] as const
+            const results = await Promise.all(
+              powers.map(async (p) => {
+                try {
+                  const url = `${backendBase}/rul/status?equipment_id=${encodeURIComponent(id)}&power=${encodeURIComponent(p)}`
+                  const res = await fetch(url)
+                  if (!res.ok) return NaN
+                  const json = (await res.json()) as { rul_pct?: number }
+                  const v = typeof json?.rul_pct === 'number' ? json.rul_pct : NaN
+                  return v
+                } catch {
+                  return NaN
+                }
+              })
+            )
+            const valid = results.filter((v) => typeof v === 'number' && isFinite(v)) as number[]
+            const minPct = valid.length ? Math.min(...valid) : NaN
+            return [id, minPct] as const
+          })
+        )
+        if (cancelled) return
+        setRulLiteMap(new Map(entries))
+      } catch {
+        if (cancelled) return
+        setRulLiteMap(new Map())
+      }
+    }
+
+    // 최초 1회 즉시 갱신 후, 주기 폴링(2초)
+    fetchRulLite()
+    timer = setInterval(fetchRulLite, 2000)
+
+    return () => {
+      cancelled = true
+      if (timer) clearInterval(timer)
+    }
+  }, [backendBase, deviceIds, devicePowersMap])
 
   const equipmentCount = machines?.length ?? 0
   const activeAlerts = anomalies?.filter((a) => a.status === 'open').length ?? 0
@@ -411,20 +474,19 @@ export default function MonitoringPage() {
         {/* 장비별 Grafana 패널들 */}
         {machines && (
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {[...machines]
-              .sort((a, b) => (a.id === 'L-CAHU-01S' ? -1 : b.id === 'L-CAHU-01S' ? 1 : 0))
-              .filter(
-                (m) => (!power || m.power === power) && (!selectedEquipment || m.id === selectedEquipment),
-              )
-              .flatMap((m: Machine) => {
+            {deviceIds
+              .sort((a, b) => (a === 'L-CAHU-01S' ? -1 : b === 'L-CAHU-01S' ? 1 : 0))
+              .flatMap((devId: string) => {
                 const sensors = sensor === 'all' ? (['current', 'vibration'] as const) : [sensor as 'current' | 'vibration']
+                const rulPct = rulLiteMap.get(devId)
+                const rulLabel = typeof rulPct === 'number' && isFinite(rulPct) ? `${Math.round(rulPct)}%` : '-'
                 return sensors.map((s) => (
                   <ChartCard
-                    key={`${m.id}-${m.power}-${s}`}
-                    title={`${m.id} (${m.power}) - ${t('charts.' + s)}`}
-                    danger={Boolean(openAnomalyMap.get(m.id)?.has(s))}
+                    key={`${devId}-${s}`}
+                    title={`${devId} - ${t('charts.' + s)} (RUL ${rulLabel})`}
+                    danger={devId === 'L-DEF-01'}
                   >
-                    <GrafanaPanel sensor={s} deviceId={m.id} timeRange="5m" />
+                    <GrafanaPanel sensor={s} deviceId={devId} timeRange="5m" />
                   </ChartCard>
                 ))
               })}
