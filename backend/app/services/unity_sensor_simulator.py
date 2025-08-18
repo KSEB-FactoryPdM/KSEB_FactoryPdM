@@ -115,6 +115,9 @@ class UnitySensorSimulator:
             "cur_x_mean": self._feat(x),
             "cur_y_mean": self._feat(y),
             "cur_z_mean": self._feat(z),
+            "cur_x_rms": self._feat(abs(x)),
+            "cur_y_rms": self._feat(abs(y)),
+            "cur_z_rms": self._feat(abs(z)),
             "cur_mag_mean": mean,
             "cur_mag_std": std,
             "cur_mag_p2p": p2p,
@@ -123,6 +126,7 @@ class UnitySensorSimulator:
             "cur_mag_kurt": kurt,
             # vibration 요약
             "vibe_mean": self._feat(vibe),
+            "vib_rms": self._feat(abs(vibe)),
         }
 
     def publish(self):
