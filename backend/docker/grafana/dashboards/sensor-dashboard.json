@@ -10,7 +10,7 @@
         "name": "device",
         "type": "query",
         "label": "Device",
-        "datasource": {"type": "grafana-postgresql-datasource", "uid": "timescaledb-uid"},
+        "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
         "query": "SELECT DISTINCT device FROM sensor_data ORDER BY device",
         "refresh": 2,
         "includeAll": false,
@@ -27,7 +27,7 @@
       "title": "전류 센서 (x, y, z) - ${device}",
       "type": "timeseries",
       "gridPos": {"h": 10, "w": 12, "x": 0, "y": 0},
-      "datasource": {"type": "grafana-postgresql-datasource", "uid": "timescaledb-uid"},
+      "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
       "targets": [
         {
           "refId": "A",
@@ -96,7 +96,7 @@
       "title": "진동 센서 - ${device}",
       "type": "timeseries",
       "gridPos": {"h": 10, "w": 12, "x": 12, "y": 0},
-      "datasource": {"type": "grafana-postgresql-datasource", "uid": "timescaledb-uid"},
+      "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
       "targets": [
         {
           "refId": "A",
@@ -158,7 +158,7 @@
       "title": "모든 디바이스 현재 상태",
       "type": "table",
       "gridPos": {"h": 8, "w": 24, "x": 0, "y": 10},
-      "datasource": {"type": "grafana-postgresql-datasource", "uid": "timescaledb-uid"},
+      "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
       "targets": [
         {
           "refId": "A",
@@ -265,3 +265,5 @@
   "schemaVersion": 30,
   "version": 0
 }
+
+
