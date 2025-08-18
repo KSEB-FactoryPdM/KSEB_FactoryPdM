@@ -87,7 +87,6 @@ graph TB
 - **PyTorch, scikit-learn, XGBoost**
 - **NumPy & Pandas**
   
-주: TSLearn은 사용하지 않습니다(코드/요구사항에 없음).
 
 #### 메시징 & 스트리밍
 - **Apache Kafka** - 대용량 실시간 데이터 스트리밍
@@ -275,7 +274,6 @@ gcloud container clusters create smart-factory-cluster \
 - `GET /api/v1/ws/stream`
 - `GET /api/v1/ws/devices/{device_id}`
 
-주: 기존 README의 `GET /metrics`, `PUT /alerts/{id}`, `GET /api/v1/predictions` 등은 구현되어 있지 않아 제거/수정했습니다.
 
 ## 🧠 AI 모델
 
@@ -436,44 +434,6 @@ locust -f tests/load_test.py --host http://localhost:8000
 - **로그 집계 및 분석**
 - **알림 시스템**
 
-## 🚨 트러블슈팅
-
-### 일반적인 문제
-
-#### Kafka 연결 문제
-```bash
-# Kafka 브로커 상태 확인
-kubectl logs -n smart-factory -l app=kafka
-
-# 토픽 확인
-kubectl exec -n smart-factory kafka-0 -- kafka-topics.sh --bootstrap-server localhost:9092 --list
-```
-
-#### TimescaleDB 연결 문제
-```bash
-# 데이터베이스 상태 확인
-kubectl logs -n smart-factory -l app=timescaledb
-
-# 연결 테스트
-kubectl exec -n smart-factory timescaledb-0 -- psql -U user -d predictive_maintenance -c "SELECT version();"
-```
-
-#### AI 모델 메모리 부족
-```bash
-# 리소스 사용량 확인
-kubectl top pods -n smart-factory
-
-# 메모리 제한 조정
-kubectl patch deployment ai-model-service -n smart-factory -p '{"spec":{"template":{"spec":{"containers":[{"name":"ai-model","resources":{"limits":{"memory":"4Gi"}}}]}}}}'
-```
-
-## 🤝 기여
-
-1. 이 저장소를 포크합니다
-2. 새 기능 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
-3. 변경사항을 커밋합니다 (`git commit -m 'Add some amazing feature'`)
-4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
-5. Pull Request를 생성합니다
 
 ## 📱 슬랙 봇 설정
 
