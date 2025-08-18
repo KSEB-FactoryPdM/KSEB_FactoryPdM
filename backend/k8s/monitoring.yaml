@@ -163,7 +163,13 @@ spec:
         - name: GF_SECURITY_ADMIN_PASSWORD
           value: "admin"
         - name: GF_INSTALL_PLUGINS
-          value: "grafana-worldmap-panel"
+          value: "grafana-worldmap-panel,grafana-image-renderer,grafana-postgresql-datasource"
+        - name: GF_SECURITY_ALLOW_EMBEDDING
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+          value: "Viewer"
         volumeMounts:
         - name: grafana-storage
           mountPath: /var/lib/grafana
@@ -238,6 +244,7 @@ data:
     {
       "dashboard": {
         "id": null,
+        "uid": "smart-factory-main",
         "title": "스마트팩토리 예지보전 대시보드",
         "tags": ["smart-factory", "predictive-maintenance"],
         "style": "dark",

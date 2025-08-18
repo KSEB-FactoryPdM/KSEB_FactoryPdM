@@ -43,7 +43,10 @@ spec:
         - name: NEXT_PUBLIC_WEBSOCKET_URL
           value: "ws://smart-factory-backend:8000/api/v1/ws"
         - name: NEXT_PUBLIC_GRAFANA_BASE_URL
-          value: "http://grafana:3000"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_GRAFANA_EXTERNAL_URL
         - name: NODE_ENV
           value: "production"
         resources:
