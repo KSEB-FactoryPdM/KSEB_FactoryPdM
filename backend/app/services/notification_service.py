@@ -42,6 +42,22 @@ class NotificationService:
                           threshold_value: Optional[float] = None) -> Notification:
         """통합 알림 생성 및 전송"""
         try:
+            # 배포에서 알림 비활성화 옵션
+            if not settings.ENABLE_NOTIFICATIONS:
+                logger.info("알림 비활성화(ENABLE_NOTIFICATIONS=false): 저장/전송 생략")
+                return Notification(
+                    id=0,
+                    device_id=device_id,
+                    sensor_id=sensor_id,
+                    alert_type=alert_type,
+                    anomaly_type=anomaly_type,
+                    severity=severity,
+                    message=message,
+                    sensor_value=str(sensor_value) if sensor_value is not None else None,
+                    threshold_value=str(threshold_value) if threshold_value is not None else None,
+                    detected_at=datetime.now()
+                )
+
             # 1. 데이터베이스에 알림 저장
             notification_data = NotificationCreate(
                 device_id=device_id,
@@ -50,9 +66,9 @@ class NotificationService:
                 anomaly_type=anomaly_type,
                 severity=severity,
                 message=message,
+                detected_at=datetime.now(),
                 sensor_value=sensor_value,
-                threshold_value=threshold_value,
-                created_at=datetime.now()
+                threshold_value=threshold_value
             )
             
             notification = Notification(**notification_data.dict())
@@ -95,6 +111,16 @@ class NotificationService:
                 logger.warning("슬랙 웹훅 URL이 설정되지 않았습니다")
                 return
             
+            # 안전한 숫자 포맷터
+            def _fmt_number(value):
+                if value is None:
+                    return "N/A"
+                try:
+                    num = float(value)
+                    return f"{num:.2f}"
+                except Exception:
+                    return str(value)
+
             # 슬랙 메시지 포맷팅
             color_map = {
                 "critical": "#ff0000",  # 빨간색
@@ -133,12 +159,12 @@ class NotificationService:
                             },
                             {
                                 "title": "센서 값",
-                                "value": f"{notification.sensor_value:.2f}" if notification.sensor_value else "N/A",
+                                "value": _fmt_number(notification.sensor_value),
                                 "short": True
                             },
                             {
                                 "title": "임계값",
-                                "value": f"{notification.threshold_value:.2f}" if notification.threshold_value else "N/A",
+                                "value": _fmt_number(notification.threshold_value),
                                 "short": True
                             },
                             {
@@ -157,7 +183,8 @@ class NotificationService:
             response = requests.post(
                 self.slack_webhook_url,
                 json=slack_message,
-                timeout=10
+                headers={"Content-Type": "application/json; charset=utf-8"},
+                timeout=10,
             )
             
             if response.status_code == 200:
@@ -229,7 +256,7 @@ class NotificationService:
                 </div>
                 
                 <p style="margin-top: 20px; color: #666; font-size: 12px;">
-                    발송 시간: {notification.created_at.strftime('%Y-%m-%d %H:%M:%S')}<br>
+                    감지 시간: {notification.detected_at.strftime('%Y-%m-%d %H:%M:%S')}<br>
                     KSEB Factory Predictive Maintenance System
                 </p>
             </body>

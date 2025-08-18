@@ -15,6 +15,8 @@ class NotificationBase(BaseModel):
     severity: str = Field(..., description="심각도 (low, medium, high, critical)")
     message: str = Field(..., description="알림 메시지")
     detected_at: datetime = Field(..., description="감지 시간")
+    sensor_value: Optional[float] = Field(None, description="감지 값")
+    threshold_value: Optional[float] = Field(None, description="임계값")
 
 
 class NotificationCreate(NotificationBase):
