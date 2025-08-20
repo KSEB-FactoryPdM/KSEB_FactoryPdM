@@ -156,20 +156,21 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: grafana/grafana:latest
+        image: grafana/grafana:10.4.7
         ports:
         - containerPort: 3000
         env:
         - name: GF_SECURITY_ADMIN_PASSWORD
           value: "admin"
-        - name: GF_INSTALL_PLUGINS
-          value: "grafana-worldmap-panel,grafana-image-renderer,grafana-postgresql-datasource"
         - name: GF_SECURITY_ALLOW_EMBEDDING
           value: "true"
         - name: GF_AUTH_ANONYMOUS_ENABLED
           value: "true"
         - name: GF_AUTH_ANONYMOUS_ORG_ROLE
           value: "Viewer"
+        envFrom:
+        - secretRef:
+            name: smart-factory-secrets
         volumeMounts:
         - name: grafana-storage
           mountPath: /var/lib/grafana
@@ -213,10 +214,10 @@ data:
       type: postgres
       access: proxy
       url: timescaledb:5432
-      database: predictive_maintenance
-      user: user
+      database: ${POSTGRES_DB}
+      user: ${POSTGRES_USER}
       secureJsonData:
-        password: password
+        password: ${POSTGRES_PASSWORD}
       jsonData:
         sslmode: disable
         postgresVersion: 1400
