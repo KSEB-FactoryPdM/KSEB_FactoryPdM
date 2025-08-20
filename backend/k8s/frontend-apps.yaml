@@ -12,7 +12,7 @@ spec:
     name: http
   selector:
     app: smart-factory-frontend
-  type: LoadBalancer
+  type: ClusterIP
 
 ---
 apiVersion: apps/v1
@@ -23,7 +23,7 @@ metadata:
   labels:
     app: smart-factory-frontend
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: smart-factory-frontend
@@ -38,10 +38,16 @@ spec:
         ports:
         - containerPort: 3000
         env:
-        - name: NEXT_PUBLIC_API_URL
-          value: "http://smart-factory-backend:8000"
+        - name: NEXT_PUBLIC_BACKEND_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_BACKEND_EXTERNAL_BASE_URL
         - name: NEXT_PUBLIC_WEBSOCKET_URL
-          value: "ws://smart-factory-backend:8000/api/v1/ws"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_BACKEND_WS_URL
         - name: NEXT_PUBLIC_GRAFANA_BASE_URL
           valueFrom:
             configMapKeyRef:
