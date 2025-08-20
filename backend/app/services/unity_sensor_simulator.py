@@ -224,8 +224,8 @@ class UnitySensorSimulator:
         self.global_anomaly_prob = 0  # 모든 장비 0% 이상치
         # 기본 전략: 모든 장비에서 항상 이상치 발생
         self.target_anomaly_prob = 1.0
-        self.anomaly_amplify_min = 3.0  # 테스트용: 극단적으로 괴랄한 이상치
-        self.anomaly_amplify_max = 10.0  # 테스트용: 극단적으로 괴랄한 이상치
+        self.anomaly_amplify_min = 2.0  # 테스트용: 극단적으로 괴랄한 이상치
+        self.anomaly_amplify_max = 4.0  # 테스트용: 극단적으로 괴랄한 이상치
 
     # MQTT 콜백
     def on_connect(self, client, userdata, flags, rc):
