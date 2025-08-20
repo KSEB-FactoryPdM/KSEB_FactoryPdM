@@ -38,10 +38,6 @@ spec:
         ports:
         - containerPort: 8000
         env:
-        - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
-        - name: TIMESCALE_URL
-          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
         - name: POSTGRES_USER
           valueFrom:
             secretKeyRef:
@@ -57,6 +53,10 @@ spec:
             secretKeyRef:
               name: smart-factory-secrets
               key: POSTGRES_DB
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
+        - name: TIMESCALE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
         - name: KAFKA_BOOTSTRAP_SERVERS
           valueFrom:
             secretKeyRef:
