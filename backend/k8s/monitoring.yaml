@@ -249,6 +249,7 @@ data:
   smart-factory-dashboard.json: |
     {
       "id": null,
+      "uid": "smart-factory-main",
       "title": "실시간 센서 데이터 대시보드 (메인)",
       "tags": ["sensors", "realtime", "factory", "main"],
       "style": "dark",
@@ -259,7 +260,7 @@ data:
             "name": "device",
             "type": "query",
             "label": "Device",
-            "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
+            "datasource": "TimescaleDB",
             "query": "SELECT DISTINCT device FROM sensor_data ORDER BY device",
             "refresh": 2,
             "includeAll": false,
@@ -276,7 +277,7 @@ data:
           "title": "전류 센서 (x, y, z) - ${device}",
           "type": "timeseries",
           "gridPos": {"h": 10, "w": 12, "x": 0, "y": 0},
-          "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
+          "datasource": "TimescaleDB",
           "targets": [
             {
               "refId": "A",
@@ -336,7 +337,7 @@ data:
           "title": "진동 센서 - ${device}",
           "type": "timeseries",
           "gridPos": {"h": 10, "w": 12, "x": 12, "y": 0},
-          "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
+          "datasource": "TimescaleDB",
           "targets": [
             {
               "refId": "A",
@@ -395,7 +396,7 @@ data:
           "title": "모든 디바이스 현재 상태",
           "type": "table",
           "gridPos": {"h": 8, "w": 24, "x": 0, "y": 10},
-          "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
+          "datasource": "TimescaleDB",
           "targets": [
             {
               "refId": "A",
@@ -423,7 +424,7 @@ data:
           "title": "전체 디바이스 실시간 현황",
           "type": "timeseries",
           "gridPos": {"h": 10, "w": 24, "x": 0, "y": 18},
-          "datasource": {"type": "postgres", "uid": "timescaledb-uid"},
+          "datasource": "TimescaleDB",
           "targets": [
             {
               "refId": "A",
