@@ -398,7 +398,16 @@ def main():
     )
 
     args = parser.parse_args()
-    sim = UnitySensorSimulator(args.host, args.port)
+    # 환경변수 우선 적용 (없으면 CLI 인자 사용)
+    env_host = os.getenv("MQTT_BROKER_HOST")
+    env_port = os.getenv("MQTT_BROKER_PORT")
+    host = env_host.strip() if env_host and env_host.strip() else args.host
+    try:
+        port = int(env_port) if env_port else args.port
+    except ValueError:
+        port = args.port
+
+    sim = UnitySensorSimulator(host, port)
     sim.publish_interval = args.interval
     # 이상치 주입 설정 덮어쓰기 (CLI)
     sim.target_device_id = args.target_device
