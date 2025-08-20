@@ -243,66 +243,34 @@ data:
         path: /etc/grafana/provisioning/dashboards
   smart-factory-dashboard.json: |
     {
-      "dashboard": {
-        "id": null,
-        "uid": "smart-factory-main",
-        "title": "스마트팩토리 예지보전 대시보드",
-        "tags": ["smart-factory", "predictive-maintenance"],
-        "style": "dark",
-        "timezone": "browser",
-        "panels": [
-          {
-            "id": 1,
-            "title": "실시간 센서 데이터",
-            "type": "graph",
-            "targets": [
-              {
-                "expr": "sensor_value",
-                "legendFormat": "{{sensor_id}}"
-              }
-            ],
-            "yAxes": [
-              {
-                "label": "값",
-                "show": true
-              }
-            ],
-            "xAxes": [
-              {
-                "show": true
-              }
-            ],
-            "gridPos": {
-              "h": 8,
-              "w": 12,
-              "x": 0,
-              "y": 0
-            }
-          },
-          {
-            "id": 2,
-            "title": "이상탐지 알림",
-            "type": "stat",
-            "targets": [
-              {
-                "expr": "anomaly_detected_total",
-                "legendFormat": "이상탐지"
-              }
-            ],
-            "gridPos": {
-              "h": 4,
-              "w": 6,
-              "x": 12,
-              "y": 0
-            }
-          }
-        ],
-        "time": {
-          "from": "now-1h",
-          "to": "now"
+      "id": null,
+      "uid": "smart-factory-main",
+      "title": "스마트팩토리 예지보전 대시보드",
+      "tags": ["smart-factory", "predictive-maintenance"],
+      "timezone": "browser",
+      "style": "dark",
+      "schemaVersion": 38,
+      "version": 1,
+      "panels": [
+        {
+          "id": 1,
+          "title": "실시간 센서 데이터",
+          "type": "graph",
+          "targets": [
+            { "expr": "sensor_value", "legendFormat": "{{sensor_id}}" }
+          ],
+          "yAxes": [ { "label": "값", "show": true } ],
+          "xAxes": [ { "show": true } ],
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
         },
-        "refresh": "5s"
-      },
-      "folderId": 0,
-      "overwrite": true
-    } 
+        {
+          "id": 2,
+          "title": "이상탐지 알림",
+          "type": "stat",
+          "targets": [ { "expr": "anomaly_detected_total", "legendFormat": "이상탐지" } ],
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 }
+        }
+      ],
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "5s"
+    }
