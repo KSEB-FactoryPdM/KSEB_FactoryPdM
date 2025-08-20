@@ -269,6 +269,8 @@ jobs:
         sed -i "s|smart-factory-frontend:latest|$FRONTEND_IMAGE:$GITHUB_SHA|g" k8s/core-frontend.yaml
         
         # Core 애플리케이션 배포 (backend, frontend, data-collector)
+        # 이전 실행에서 Deployment env 충돌을 남겼을 수 있으므로 frontend는 먼저 삭제 후 재적용
+        kubectl delete deployment smart-factory-frontend -n smart-factory-core --ignore-not-found=true
         kubectl apply -f k8s/core-apps.yaml
         kubectl apply -f k8s/core-frontend.yaml
         
@@ -318,21 +320,16 @@ jobs:
         echo "Backend LB IP: ${BACKEND_IP}"
         echo "Grafana LB IP: ${GRAFANA_IP}"
 
-        # 환경변수 패치 (없으면 추가)
+        # app-config ConfigMap 데이터 병합 패치 (Deployment env/valueFrom 충돌 방지)
         if [ -n "$BACKEND_IP" ]; then
-          kubectl set env deployment/smart-factory-frontend \
-            -n smart-factory-core \
-            NEXT_PUBLIC_API_URL="http://${BACKEND_IP}:8000" \
-            NEXT_PUBLIC_WEBSOCKET_URL="ws://${BACKEND_IP}:8000/api/v1/ws" || true
+          kubectl patch configmap app-config -n smart-factory-core --type merge -p "{\"data\":{\"APP_BACKEND_EXTERNAL_BASE_URL\":\"http://${BACKEND_IP}:8000/api/v1\",\"APP_BACKEND_WS_URL\":\"ws://${BACKEND_IP}:8000/api/v1/ws\"}}"
         fi
 
         if [ -n "$GRAFANA_IP" ]; then
-          kubectl set env deployment/smart-factory-frontend \
-            -n smart-factory-core \
-            NEXT_PUBLIC_GRAFANA_BASE_URL="http://${GRAFANA_IP}:3000" || true
+          kubectl patch configmap app-config -n smart-factory-core --type merge -p "{\"data\":{\"APP_GRAFANA_EXTERNAL_URL\":\"http://${GRAFANA_IP}:3000\"}}"
         fi
 
-        # 롤아웃 재시작으로 환경변수 반영
+        # 롤아웃 재시작으로 ConfigMap 변경 반영 (frontend Deployment는 valueFrom으로 참조)
         kubectl rollout restart deployment/smart-factory-frontend -n smart-factory-core
 
     - name: Health Check
