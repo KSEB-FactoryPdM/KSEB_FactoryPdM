@@ -199,7 +199,7 @@ services:
     ports:
       - "3002:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_BACKEND_BASE_URL=${NEXT_PUBLIC_BACKEND_BASE_URL:-http://localhost:8000/api/v1}
       - NEXT_PUBLIC_WEBSOCKET_URL=${NEXT_PUBLIC_WEBSOCKET_URL:-ws://localhost:8000/api/v1/ws}
       - NODE_ENV=${NODE_ENV:-development}
     depends_on:

@@ -40,4 +40,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
 # AI 모델 서비스 실행 (포트 8001)
-CMD ["python", "-m", "uvicorn", "app.services.ai_model_service:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["python", "-m", "uvicorn", "app.services.ai_model_service:app", "--host", "0.0.0.0", "--port", "8001", "--proxy-headers", "--forwarded-allow-ips=*"]

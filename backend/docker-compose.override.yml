@@ -9,7 +9,7 @@ services:
     volumes:
       - .:/app  # 코드 변경사항 실시간 반영
       - ./models:/app/models:ro
-    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips="*"
 
   data-collector:
     environment:
