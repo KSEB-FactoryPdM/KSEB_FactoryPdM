@@ -7,7 +7,6 @@ import { fetchWithAuth } from '@/lib/api'
 
 
 import useWebSocket from '@/hooks/useWebSocket'
-import Image from 'next/image'
 import DeviceSensorPanel from '@/components/DeviceSensorPanel'
 import { useState } from 'react'
 
@@ -112,7 +111,6 @@ export default function DeviceDetailPage() {
     { autoReconnect: true }
   )
 
-  const passthroughLoader = ({ src }: { src: string }) => src
 
   const filteredAnomalies = anomalies.filter(a => a.equipmentId === id)
   const filteredMaintenance = maintenance.filter(m => m.equipmentId === id)

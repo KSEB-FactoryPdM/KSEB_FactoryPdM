@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import * as d3 from 'd3'
 
 export type D3Point = { time: number; value: number; metric?: string }
@@ -40,7 +40,7 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
   const innerWidth = width - margin.left - margin.right
   const innerHeight = height - margin.top - margin.bottom
 
-  function resample(series: { time: Date; value: number }[]): { time: Date; value: number }[] {
+  const resample = useCallback((series: { time: Date; value: number }[]): { time: Date; value: number }[] => {
     if (!series.length || resampleSeconds <= 0) return series
     const bucketMs = resampleSeconds * 1000
     const map = new Map<number, { sum: number; count: number }>()
@@ -57,7 +57,7 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
     }
     result.sort((a, b) => a.time.getTime() - b.time.getTime())
     return result
-  }
+  }, [resampleSeconds])
 
   const prepared = useMemo(() => {
     if (!multi) {
@@ -70,7 +70,7 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
       const seriesByKey = keys.map(k => ({ key: k, values: resample(grouped[k].map(d => ({ time: new Date(d.time * 1000), value: d.value }))) }))
       return { kind: 'multi' as const, seriesByKey }
     }
-  }, [data, multi, resampleSeconds])
+  }, [data, multi, resample])
 
   useEffect(() => {
     const svg = d3.select(ref.current)
@@ -116,14 +116,15 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
     const fmt = domainSec <= 60 ? d3.timeFormat('%H:%M:%S') : (domainSec >= 86400 ? d3.timeFormat('%m-%d %H:%M') : d3.timeFormat('%H:%M'))
     const xAxis = d3.axisBottom<Date>(x).tickFormat(fmt)
     if (xTickSeconds && xTickSeconds > 0) {
-      xAxis.ticks(d3.timeSecond.every(xTickSeconds) as any)
+      const interval = d3.timeSecond.every(xTickSeconds)
+      if (interval) xAxis.ticks(interval)
     } else if (typeof xTickCount === 'number') {
-      xAxis.ticks(xTickCount as any)
+      xAxis.ticks(xTickCount)
     }
     const yAxis = d3.axisLeft<number>(y).ticks(5)
 
-    const ax = g.append('g').attr('transform', `translate(0,${innerHeight})`).call(xAxis as any)
-    const ay = g.append('g').call(yAxis as any)
+    const ax = g.append('g').attr('transform', `translate(0,${innerHeight})`).call(xAxis)
+    const ay = g.append('g').call(yAxis)
     ax.selectAll('text').attr('fill', '#cbd5e1')
     ax.selectAll('line,path').attr('stroke', '#334155')
     ay.selectAll('text').attr('fill', '#cbd5e1')
@@ -189,7 +190,6 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
       tempText.remove()
 
       // 동적으로 범례 크기 계산
-      const legendPadding = 16
       const legendWidth = textWidth + 36 // 좌우 패딩 + 색상 박스 여백
       const legendHeight = Math.max(textHeight + 12, 28)
       const legendX = margin.left + 16 // 왼쪽으로 이동

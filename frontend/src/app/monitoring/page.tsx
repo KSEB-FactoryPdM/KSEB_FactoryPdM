@@ -33,19 +33,7 @@ type MyType = Array<MyPoint>
 import type { Machine } from '@/components/filters/EquipmentFilter'
 
 interface Anomaly { id: number; equipmentId: string; type: string; status: string }
-interface EventItem {
-  id: number
-  time: string
-  device: string
-  type: string
-  severity: 'low' | 'medium' | 'high' | string
-}
-interface MaintenanceItem {
-  id: number
-  equipmentId: string
-  scheduledDate: string
-  status: string
-}
+ 
 
 // 고정 범위(초)
 const RANGE_SECONDS: Readonly<Record<'1h' | '24h' | '7d', number>> = {
@@ -127,11 +115,7 @@ export default function MonitoringPage() {
     queryFn: () => fetch('/mock-anomalies.json').then((r) => r.json() as Promise<Anomaly[]>),
     staleTime: 30000, gcTime: 300000,
   })
-  const { data: maintenance } = useQuery<MaintenanceItem[]>({
-    queryKey: ['maintenance'],
-    queryFn: () => fetch('/mock-maintenance.json').then((r) => r.json() as Promise<MaintenanceItem[]>),
-    staleTime: 30000, gcTime: 300000,
-  })
+  
 
   // 필터
   const [timeRange, setTimeRange] = useState<'1h' | '24h' | '7d'>('24h')
