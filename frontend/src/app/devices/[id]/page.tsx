@@ -8,6 +8,7 @@ import { fetchWithAuth } from '@/lib/api'
 
 import useWebSocket from '@/hooks/useWebSocket'
 import Image from 'next/image'
+import DeviceSensorPanel from '@/components/DeviceSensorPanel'
 import { useState } from 'react'
 
 interface AnomalyRow {
@@ -111,43 +112,6 @@ export default function DeviceDetailPage() {
     { autoReconnect: true }
   )
 
-  // Grafana embed URL builder (same logic as monitoring)
-  const GRAFANA_BASE = process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001'
-  const GRAFANA_UID = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || 'smart-factory-main'
-  const GRAFANA_SLUG = process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_SLUG || 'dashboard'
-  const GRAFANA_ORG = process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1'
-  const PANEL_CURRENT = process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || ''
-  const PANEL_VIBRATION = process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION_ID || ''
-  const DEFAULT_DASHBOARD_URL_PREFIX =
-    process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ||
-    'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device='
-
-  // 이미지 렌더링 URL (이전 표현 방식 유지)
-  const buildGrafanaPanelUrl = (sensor: 'current' | 'vibration', deviceId: string) => {
-    const from = 'now-24h'
-    const to = 'now'
-    const panelId = sensor === 'current' ? PANEL_CURRENT : PANEL_VIBRATION
-    if (GRAFANA_UID && panelId) {
-      const params = new URLSearchParams({
-        orgId: GRAFANA_ORG,
-        'var-device': deviceId,
-        panelId,
-        from,
-        to,
-        width: '800',
-        height: '400',
-        tz: 'browser',
-        '__feature.dashboardSceneSolo': 'true',
-      })
-      return `${GRAFANA_BASE}/render/d-solo/${GRAFANA_UID}/${GRAFANA_SLUG}?${params.toString()}`
-    }
-    const prefix = DEFAULT_DASHBOARD_URL_PREFIX.replace('/d/', '/render/d/')
-    const sep = prefix.includes('?') ? '&' : '?'
-    const base = `${prefix}${encodeURIComponent(deviceId)}`
-    const extra = `from=${encodeURIComponent(from)}&to=${to}&width=800&height=400&tz=browser`
-    return `${base}${sep}${extra}`
-  }
-
   const passthroughLoader = ({ src }: { src: string }) => src
 
   const filteredAnomalies = anomalies.filter(a => a.equipmentId === id)
@@ -223,47 +187,17 @@ export default function DeviceDetailPage() {
             </button>
           </div>
       </div>
-        {/* Grafana 이미지 렌더링: 기존 장치 카드 내 */}
-        {id && (
-          <div className="mt-4">
-            <Image
-              loader={passthroughLoader}
-              unoptimized
-              src={`${(process.env.NEXT_PUBLIC_GRAFANA_DEVICE_DASHBOARD_PREFIX ?? 'http://localhost:3001/d/63548124-8a50-4d38-b594-b21591792224/b2ee4e4?orgId=1&kiosk=tv&refresh=5s&var-device=').replace('/d/', '/render/d/')}${encodeURIComponent(id)}&width=1200&height=480&tz=browser`}
-              alt={`Device ${id} Dashboard`}
-              width={1200}
-              height={480}
-              style={{ width: '100%', height: 480, objectFit: 'contain' }}
-            />
-          </div>
-        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <h3 className="font-medium mb-1 text-sm">Current</h3>
-            <div style={{ height: 200 }}>
-              <Image
-                loader={passthroughLoader}
-                unoptimized
-                src={buildGrafanaPanelUrl('current', id)}
-                alt={`${id} - Current`}
-                width={800}
-                height={200}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
+            <div style={{ height: 220 }}>
+              <DeviceSensorPanel deviceId={id} sensor="current" range="24h" height={220} />
             </div>
           </div>
           <div>
             <h3 className="font-medium mb-1 text-sm">Vibration</h3>
-            <div style={{ height: 200 }}>
-              <Image
-                loader={passthroughLoader}
-                unoptimized
-                src={buildGrafanaPanelUrl('vibration', id)}
-                alt={`${id} - Vibration`}
-                width={800}
-                height={200}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
+            <div style={{ height: 220 }}>
+              <DeviceSensorPanel deviceId={id} sensor="vibration" range="24h" height={220} />
             </div>
           </div>
         </div>
