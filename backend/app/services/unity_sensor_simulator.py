@@ -198,7 +198,7 @@ class UnitySensorSimulator:
         self.client.on_disconnect = self.on_disconnect
 
         # 발행 주기(초)
-        self.publish_interval = 2.0
+        self.publish_interval = 3.0
         # 기본 활성화 (환경변수 불필요). 에러 없이 동작하도록 serve_ml_loader가 lazy-load/예외처리됨
         self.publish_serve_ml_features = True
         self.is_running = False
@@ -388,7 +388,7 @@ def main():
     parser.add_argument("--host", default="localhost", help="MQTT 브로커 호스트")
     parser.add_argument("--port", type=int, default=1883, help="MQTT 브로커 포트")
     parser.add_argument("--mode", choices=["realtime"], default="realtime", help="시뮬레이션 모드")
-    parser.add_argument("--interval", type=float, default=1.0, help="발행 간격(초)")
+    parser.add_argument("--interval", type=float, default=3.0, help="발행 간격(초)")
     parser.add_argument("--target-device", default="L-DEF-01", help="자주 이상치 발생 장비 ID")
     parser.add_argument(
         "--target-anomaly-prob", type=float, default=1.0, help="대상 장비 이상치 확률 (0~1)"
