@@ -10,6 +10,7 @@ import useWebSocket from '@/hooks/useWebSocket'
 import { useRequireRole } from '@/hooks/useRequireRole'
 import { useTranslation } from 'react-i18next'
 import { InformationCircleIcon } from '@heroicons/react/24/outline'
+import DeviceSensorPanel from '@/components/DeviceSensorPanel'
 
 type MyPoint = {
   time: number
@@ -53,67 +54,7 @@ const RANGE_SECONDS: Readonly<Record<'1h' | '24h' | '7d', number>> = {
   '7d': 604800,
 }
 
-// Grafana 설정 상수들
-const GRAFANA_CONFIG = {
-  baseUrl: process.env.NEXT_PUBLIC_GRAFANA_BASE_URL || 'http://localhost:3001',
-  orgId: process.env.NEXT_PUBLIC_GRAFANA_ORG_ID || '1',
-  dashboardUid: process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_UID || 'smart-factory-main',
-  dashboardSlug: process.env.NEXT_PUBLIC_GRAFANA_DASHBOARD_SLUG || 'dashboard',
-  panelIds: {
-    current: process.env.NEXT_PUBLIC_GRAFANA_PANEL_CURRENT_ID || '1',
-    vibration: process.env.NEXT_PUBLIC_GRAFANA_PANEL_VIBRATION_ID || '2'
-  }
-}
-
-// Grafana 컴포넌트들
-const GrafanaPanel = ({ 
-  sensor, 
-  deviceId, 
-  timeRange = '5m' 
-}: { 
-  sensor: 'current' | 'vibration'
-  deviceId: string
-  timeRange?: '1h' | '24h' | '7d' | '5m'
-}) => {
-  const { baseUrl, orgId, dashboardUid, dashboardSlug, panelIds } = GRAFANA_CONFIG
-  const panelId = panelIds[sensor]
-  
-  const timeParams = {
-    '1h': { from: 'now-1h', to: 'now' },
-    '24h': { from: 'now-24h', to: 'now' },
-    '7d': { from: 'now-7d', to: 'now' },
-    '5m': { from: 'now-5m', to: 'now' }
-  }[timeRange] || { from: 'now-5m', to: 'now' }
-
-  // iframe URL 생성
-  const iframeUrl = `${baseUrl}/d-solo/${dashboardUid}/${dashboardSlug}?` + 
-    new URLSearchParams({
-      orgId,
-      'var-device': deviceId,
-      panelId,
-      from: timeParams.from,
-      to: timeParams.to,
-      timezone: 'browser',
-      refresh: '5s',
-      kiosk: 'tv',
-      '__feature.dashboardSceneSolo': 'true'
-  }).toString()
-
-  return (
-    <div className="h-[300px] w-full border rounded-lg overflow-hidden">
-      <iframe
-        src={iframeUrl}
-        width="100%"
-        height="100%"
-        frameBorder="0"
-        title={`${deviceId} - ${sensor}`}
-        style={{ border: 'none', pointerEvents: 'none' }}
-      />
-    </div>
-  )
-}
-
-// Note: GrafanaDashboard 컴포넌트는 현재 사용되지 않으므로 제거하여 린트 오류 방지
+// Grafana 관련 코드는 제거되었습니다
 
 // useThemeColors 제거 (차트 제거로 미사용)
 
@@ -186,11 +127,6 @@ export default function MonitoringPage() {
     queryFn: () => fetch('/mock-anomalies.json').then((r) => r.json() as Promise<Anomaly[]>),
     staleTime: 30000, gcTime: 300000,
   })
-  const { data: events } = useQuery<EventItem[]>({
-    queryKey: ['alertEvents'],
-    queryFn: () => fetch('/mock-alerts.json').then((r) => r.json() as Promise<EventItem[]>),
-    staleTime: 30000, gcTime: 300000,
-  })
   const { data: maintenance } = useQuery<MaintenanceItem[]>({
     queryKey: ['maintenance'],
     queryFn: () => fetch('/mock-maintenance.json').then((r) => r.json() as Promise<MaintenanceItem[]>),
@@ -202,6 +138,33 @@ export default function MonitoringPage() {
   const [power, setPower] = useState('')
   const [selectedEquipment, setSelectedEquipment] = useState('')
   const [sensor, setSensor] = useState<'all' | keyof MyPoint>('all')
+  // 강조 지속 시간 관리용 타이머(1초)
+  const [nowMs, setNowMs] = useState<number>(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // 실제 모델 추론 결과에서 이상만 조회 (필터 선언 이후)
+  type AnomalyEvent = { event_time: string; device_id: string; is_anomaly: boolean; confidence?: number; scores?: unknown; thresholds?: unknown; modalities?: unknown }
+  type AnomalyResp = { events: AnomalyEvent[]; total: number; page: number; size: number }
+  const { data: anomaliesFromModel } = useQuery<AnomalyResp>({
+    queryKey: ['anomalyEvents', selectedEquipment, timeRange],
+    queryFn: async () => {
+      const now = Date.now()
+      const delta = timeRange === '1h' ? 3_600_000 : timeRange === '24h' ? 86_400_000 : 7 * 86_400_000
+      const start = new Date(now - delta).toISOString()
+      const end = new Date(now).toISOString()
+      const params = new URLSearchParams({ page: '1', size: '50', start_time: start, end_time: end })
+      if (selectedEquipment) params.set('device_id', selectedEquipment)
+      const url = `${backendBase}/anomalies/events?${params.toString()}`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('failed to load anomaly events')
+      return res.json() as Promise<AnomalyResp>
+    },
+    refetchInterval: 5000,
+    staleTime: 4000,
+  })
 
   // 파생 값
   const latestTs = (snap && snap.length && snap[snap.length - 1]?.time) || 0
@@ -286,18 +249,26 @@ export default function MonitoringPage() {
   const activeAlerts = anomalies?.filter((a) => a.status === 'open').length ?? 0
   const predictedToday = snap?.[snap.length - 1]?.total ?? 0
   const latestRul = snap?.[snap.length - 1]?.rul ?? 0
-  const upcomingMaintenance = useMemo(() => {
-    if (!maintenance?.length) return '-'
-    const pending = maintenance.filter((m: MaintenanceItem) => m.status === 'pending')
-    if (!pending.length) return '-'
-    pending.sort((a: MaintenanceItem, b: MaintenanceItem) => a.scheduledDate.localeCompare(b.scheduledDate))
-    return fmtDate(pending[0].scheduledDate)
-  }, [maintenance])
+  // 요청에 따라 다음 정비 날짜를 8월 28일자로 고정 표시
+  const upcomingMaintenance = useMemo(() => fmtDate('2024-08-28T00:00:00Z'), [])
 
   const filteredEvents = useMemo(() => {
-    if (!events?.length) return []
-    return events.filter((e: EventItem) => (selectedEquipment ? e.device === selectedEquipment : true))
-  }, [events, selectedEquipment])
+    const rows = anomaliesFromModel?.events ?? []
+    const anomaliesOnly = rows.filter((e) => e.is_anomaly)
+    anomaliesOnly.sort((a, b) => b.event_time.localeCompare(a.event_time))
+    return anomaliesOnly
+  }, [anomaliesFromModel])
+
+  // 최근(예: 10초 이내) 이상 발생 장비만 강조
+  const recentAnomalyDeviceIds = useMemo(() => {
+    const HIGHLIGHT_MS = 10_000
+    const set = new Set<string>()
+    for (const e of filteredEvents) {
+      const ts = new Date(e.event_time).getTime()
+      if (Number.isFinite(ts) && nowMs - ts <= HIGHLIGHT_MS) set.add(e.device_id)
+    }
+    return set
+  }, [filteredEvents, nowMs])
 
   const onExportCSV = useCallback(() => {
     if (!filteredData.length) return
@@ -378,58 +349,66 @@ export default function MonitoringPage() {
 
 
         {/* 최근 이벤트 */}
-        <ChartCard title={t('recentEvents')}>
-          {!events?.length ? (
+        <div className="relative z-0 mb-8 pointer-events-none">
+        <ChartCard title={t('recentEvents')} hoverable={false}>
+          {!filteredEvents.length ? (
             <div className="h-[220px] flex items-center justify-center text-slate-500">
               {t('noEvents')}
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-md border border-slate-200">
-              <table className="w-full table-fixed text-sm">
-                <colgroup>
-                  <col style={{ width: '28%' }} />
-                  <col style={{ width: '24%' }} />
-                  <col style={{ width: '28%' }} />
-                  <col style={{ width: '20%' }} />
-                </colgroup>
-                <thead className="bg-slate-50 text-left text-slate-700">
-                  <tr className="whitespace-nowrap">
-                    <th className="py-2 px-3 font-medium">{t('table.time')}</th>
-                    <th className="py-2 px-3 font-medium">{t('table.device')}</th>
-                    <th className="py-2 px-3 font-medium">{t('table.sensor')}</th>
-                    <th className="py-2 px-3 font-medium">{t('table.severity')}</th>
-                  </tr>
-                </thead>
-                <tbody className="text-slate-900">
-                  {filteredEvents.map((e) => (
-                    <tr key={e.id} className="border-t border-slate-100 align-middle">
-                      <td className="py-2 px-3">{e.time}</td>
-                      <td className="py-2 px-3">{e.device}</td>
-                      <td className="py-2 px-3">{e.type}</td>
-                      <td className="py-2 px-3">
-                        <span
-                          className={[
-                            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1',
-                            e.severity === 'high'
-                              ? 'bg-red-50 text-red-700 ring-red-200'
-                              : e.severity === 'medium'
-                              ? 'bg-amber-50 text-amber-700 ring-amber-200'
-                              : 'bg-slate-50 text-slate-600 ring-slate-200',
-                          ].join(' ')}
-                        >
-                          {e.severity}
-                        </span>
-                      </td>
+            <div className="overflow-x-auto rounded-md border border-slate-200 pointer-events-auto">
+              <div className="max-h-[240px] overflow-y-auto pointer-events-auto">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    <col style={{ width: '34%' }} />
+                    <col style={{ width: '28%' }} />
+                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '16%' }} />
+                  </colgroup>
+                  <thead className="bg-slate-50 text-left text-slate-700 sticky top-0">
+                    <tr className="whitespace-nowrap">
+                      <th className="py-2 px-3 font-medium">{t('table.time')}</th>
+                      <th className="py-2 px-3 font-medium">{t('table.device')}</th>
+                      <th className="py-2 px-3 font-medium">Confidence</th>
+                      <th className="py-2 px-3 font-medium">Severity</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-slate-900">
+                    {filteredEvents.map((e, idx) => {
+                      const c = typeof e.confidence === 'number' ? e.confidence : NaN
+                      const sev = !isFinite(c) ? 'low' : c > 0.8 ? 'high' : c > 0.6 ? 'medium' : 'low'
+                      return (
+                        <tr key={`${e.device_id}-${e.event_time}-${idx}`} className="border-t border-slate-100 align-middle">
+                          <td className="py-2 px-3">{new Date(e.event_time).toLocaleString('ko-KR')}</td>
+                          <td className="py-2 px-3">{e.device_id}</td>
+                          <td className="py-2 px-3">{isFinite(c) ? c.toFixed(2) : '-'}</td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={[
+                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1',
+                                sev === 'high'
+                                  ? 'bg-red-50 text-red-700 ring-red-200'
+                                  : sev === 'medium'
+                                  ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                                  : 'bg-slate-50 text-slate-600 ring-slate-200',
+                              ].join(' ')}
+                            >
+                              {sev}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </ChartCard>
+        </div>
 
         {/* 필터 */}
-        <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="relative z-50 mb-2 flex flex-wrap items-center gap-2 pointer-events-auto">
           <TimeRangeSelector value={timeRange} onChange={(v: string) => setTimeRange(v as '1h' | '24h' | '7d')} />
           <EquipmentFilter
             machines={machines ?? []}
@@ -471,7 +450,7 @@ export default function MonitoringPage() {
 
 
 
-        {/* 장비별 Grafana 패널들 */}
+        {/* 장비별 시계열 패널들 (D3) */}
         {machines && (
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
             {deviceIds
@@ -484,9 +463,9 @@ export default function MonitoringPage() {
                   <ChartCard
                     key={`${devId}-${s}`}
                     title={`${devId} - ${t('charts.' + s)} (RUL ${rulLabel})`}
-                    danger={devId === 'L-DEF-01'}
+                    danger={recentAnomalyDeviceIds.has(devId)}
                   >
-                    <GrafanaPanel sensor={s} deviceId={devId} timeRange="5m" />
+                    <DeviceSensorPanel sensor={s} deviceId={devId} range="5m" />
                   </ChartCard>
                 ))
               })}
