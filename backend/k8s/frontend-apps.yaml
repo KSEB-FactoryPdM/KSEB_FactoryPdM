@@ -48,11 +48,7 @@ spec:
             configMapKeyRef:
               name: app-config
               key: APP_BACKEND_WS_URL
-        - name: NEXT_PUBLIC_GRAFANA_BASE_URL
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: APP_GRAFANA_EXTERNAL_URL
+        # Grafana 환경변수 제거됨
         - name: NODE_ENV
           value: "production"
         resources:
