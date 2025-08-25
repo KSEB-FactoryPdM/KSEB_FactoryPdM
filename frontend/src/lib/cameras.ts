@@ -21,9 +21,12 @@ function inferProtocol(url: string): CameraProtocol {
   return 'hls';
 }
 
+import mockDevices from '../../public/mock-devices.json';
+
 const FACTORY_URL = process.env.NEXT_PUBLIC_CCTV_FACTORY_URL || '';
-const MACHINE1_URL = process.env.NEXT_PUBLIC_CCTV_MACHINE1_URL || '';
-const MACHINE2_URL = process.env.NEXT_PUBLIC_CCTV_MACHINE2_URL || '';
+const MACHINE_BASE_URL = process.env.NEXT_PUBLIC_CCTV_MACHINE_BASE_URL || '';
+
+type MockDevice = { id: string; name: string; status: string };
 
 export const cameras: Camera[] = [
   {
@@ -35,29 +38,17 @@ export const cameras: Camera[] = [
     active: true,
     badge: 'LIVE',
   },
-  {
-    id: 'L-CAHU-01R',
-    name: 'L-CAHU-01R',
-    kind: 'machine',
-    protocol: inferProtocol(MACHINE1_URL),
-    url: MACHINE1_URL,
-    active: true,
-    badge: 'LIVE',
-  },
-  {
-    id: 'R-CAHU-01R',
-    name: 'R-CAHU-01R',
-    kind: 'machine',
-    protocol: inferProtocol(MACHINE2_URL),
-    url: MACHINE2_URL,
-    active: true,
-    badge: 'LIVE',
-  },
-
-  // ===== 아래부터는 "있어 보이는" 비활성 타일들 =====
-  { id: 'M-VFD-11kW', name: 'M-VFD-11kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '관리자 권한 필요' },
-  { id: 'M-PUMP-22kW', name: 'M-PUMP-22kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '노드 오프라인' },
-  { id: 'M-FAN-2_2kW', name: 'M-FAN-2.2kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '점검 중' },
-  { id: 'M-GEAR-55kW', name: 'M-GEAR-55kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '대기' },
-  { id: 'M-MIXER-7_5kW', name: 'M-MIXER-7.5kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '배정 대기' },
+  ...((mockDevices as MockDevice[]).map((dev) => {
+    const url = MACHINE_BASE_URL ? `${MACHINE_BASE_URL}${dev.id}.m3u8` : '';
+    return {
+      id: dev.id,
+      name: dev.name,
+      kind: 'machine' as const,
+      protocol: inferProtocol(url),
+      url,
+      active: dev.status === 'online',
+      badge: dev.status === 'online' ? 'LIVE' : undefined,
+      note: dev.status !== 'online' ? 'offline' : undefined,
+    } as Camera;
+  })),
 ];
