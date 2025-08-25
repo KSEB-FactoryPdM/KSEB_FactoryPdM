@@ -7,25 +7,19 @@ jest.mock('@/components/DashboardLayout', () => ({
   default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }))
 
-jest.mock('@/components/ChartCard', () => ({
-  __esModule: true,
-  default: ({ title, children }: { title: string; children: ReactNode }) => (
-    <div>
-      <h3>{title}</h3>
-      {children}
-    </div>
-  ),
-}))
-
 describe('Help page', () => {
   it('filters FAQ items based on search', () => {
     render(<HelpPage />)
-    expect(screen.getByText('How do I reset my password?')).toBeInTheDocument()
-    const input = screen.getByPlaceholderText('Search the FAQ...')
-    fireEvent.change(input, { target: { value: 'contact' } })
-    expect(screen.getByText('How do I contact support?')).toBeInTheDocument()
     expect(
-      screen.queryByText('How do I reset my password?')
+      screen.getByText('실시간 모니터링이 연결되지 않아요.')
+    ).toBeInTheDocument()
+    const input = screen.getByPlaceholderText(
+      '검색: 예) WebSocket, 계정, 임계값'
+    )
+    fireEvent.change(input, { target: { value: '계정' } })
+    expect(screen.getByText('계정을 복구하려면?')).toBeInTheDocument()
+    expect(
+      screen.queryByText('실시간 모니터링이 연결되지 않아요.')
     ).not.toBeInTheDocument()
   })
 })
