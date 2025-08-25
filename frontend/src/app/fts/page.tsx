@@ -41,7 +41,8 @@ type Country = 'KR' | 'US'
 
 interface Factory {
   id: string
-  name: string
+  /** Factory name translations */
+  name: { en: string; ko: string }
   country: Country
   /** Region display name that should match the polygon's `{name}` from geodata */
   regionName: string
@@ -56,23 +57,23 @@ const FACTORIES: Factory[] = [
   // Korea examples
   {
     id: 'kr-seoul-01',
-    name: 'Seoul Plant A',
+    name: { en: 'Seoul Plant', ko: '서울 공장' },
     country: 'KR',
     regionName: 'Seoul',
     manager: '김미정',
     phone: '+82-2-1234-5678',
   },
   {
-    id: 'kr-busan-01',
-    name: 'Busan Plant',
+    id: 'kr-cj-01', // previously Busan Plant
+    name: { en: 'Cheongju Plant', ko: '청주 공장' },
     country: 'KR',
-    regionName: 'Busan',
+    regionName: 'Chungcheongbuk-do',
     manager: '이도현',
     phone: '+82-51-555-0101',
   },
   {
     id: 'kr-gg-01',
-    name: 'Gyeonggi Factory',
+    name: { en: 'Gyeonggi Factory', ko: '경기 공장' },
     country: 'KR',
     regionName: 'Gyeonggi-do',
     manager: '박지훈',
@@ -80,7 +81,7 @@ const FACTORIES: Factory[] = [
   },
   {
     id: 'kr-gg-02',
-    name: 'Sungkyunkwan Factory',
+    name: { en: 'Sungkyunkwan Factory', ko: '성균관 공장' },
     country: 'KR',
     regionName: 'Gyeonggi-do',
     manager: '정민수',
@@ -88,7 +89,7 @@ const FACTORIES: Factory[] = [
   },
   {
     id: 'kr-in-01',
-    name: 'Inha Factory',
+    name: { en: 'Inha Factory', ko: '인하 공장' },
     country: 'KR',
     regionName: 'Incheon',
     manager: '최영희',
@@ -98,7 +99,7 @@ const FACTORIES: Factory[] = [
   // USA examples
   {
     id: 'us-ca-01',
-    name: 'California Fab',
+    name: { en: 'California Fab', ko: 'California Fab' },
     country: 'US',
     regionName: 'California',
     manager: 'Ava Johnson',
@@ -106,7 +107,7 @@ const FACTORIES: Factory[] = [
   },
   {
     id: 'us-tx-01',
-    name: 'Texas Assembly',
+    name: { en: 'Texas Assembly', ko: 'Texas Assembly' },
     country: 'US',
     regionName: 'Texas',
     manager: 'Noah Davis',
@@ -114,7 +115,7 @@ const FACTORIES: Factory[] = [
   },
   {
     id: 'us-ny-01',
-    name: 'New York Hub',
+    name: { en: 'New York Hub', ko: 'New York Hub' },
     country: 'US',
     regionName: 'New York',
     manager: 'Liam Miller',
@@ -123,11 +124,23 @@ const FACTORIES: Factory[] = [
 ]
 
 const REGION_LABELS: Record<string, { en: string; ko: string }> = {
-  'Seoul': { en: 'Seoul', ko: '서울' },
-  'Busan': { en: 'Busan', ko: '부산' },
-  'Gyeonggi-do': { en: 'Gyeonggi', ko: '경기' },
-  'Gyeonggi': { en: 'Gyeonggi', ko: '경기' },
-  'Incheon': { en: 'Incheon', ko: '인천' },
+  'Seoul': { en: 'Seoul', ko: '서울특별시' },
+  'Busan': { en: 'Busan', ko: '부산광역시' },
+  'Daegu': { en: 'Daegu', ko: '대구광역시' },
+  'Gwangju': { en: 'Gwangju', ko: '광주광역시' },
+  'Daejeon': { en: 'Daejeon', ko: '대전광역시' },
+  'Ulsan': { en: 'Ulsan', ko: '울산광역시' },
+  'Incheon': { en: 'Incheon', ko: '인천광역시' },
+  'Gyeonggi-do': { en: 'Gyeonggi-do', ko: '경기도' },
+  'Gyeonggi': { en: 'Gyeonggi-do', ko: '경기도' },
+  'Gangwon-do': { en: 'Gangwon-do', ko: '강원도' },
+  'Chungcheongnam-do': { en: 'Chungcheongnam-do', ko: '충청남도' },
+  'Chungcheongbuk-do': { en: 'Chungcheongbuk-do', ko: '충청북도' },
+  'Jeollanam-do': { en: 'Jeollanam-do', ko: '전라남도' },
+  'Jeollabuk-do': { en: 'Jeollabuk-do', ko: '전라북도' },
+  'Gyeongsangnam-do': { en: 'Gyeongsangnam-do', ko: '경상남도' },
+  'Gyeongsangbuk-do': { en: 'Gyeongsangbuk-do', ko: '경상북도' },
+  'Jeju-do': { en: 'Jeju-do', ko: '제주도' },
   'California': { en: 'California', ko: '캘리포니아' },
   'Texas': { en: 'Texas', ko: '텍사스' },
   'New York': { en: 'New York', ko: '뉴욕' },
@@ -146,7 +159,7 @@ function unique<T>(arr: T[]): T[] {
 }
 
 function normalizeRegionName(name: string) {
-  return name.replace(/[-\s]/g, '').toLowerCase()
+  return name.replace(/[-\s]/g, '').replace(/do$/i, '').toLowerCase()
 }
 
 // ---------------------------
@@ -314,11 +327,12 @@ type FactoryPillsProps = {
   factories: Factory[]
   selectedFactoryId: string | null
   onSelect: (id: string | null) => void
+  getFactoryName: (f: Factory) => string
 }
 
-function FactoryPills({ factories, selectedFactoryId, onSelect }: FactoryPillsProps) {
+function FactoryPills({ factories, selectedFactoryId, onSelect, getFactoryName }: FactoryPillsProps) {
   const { t } = useTranslation('common')
-  const sorted = useMemo(() => factories.slice().sort((a, b) => a.name.localeCompare(b.name)), [factories])
+  const sorted = useMemo(() => factories.slice().sort((a, b) => getFactoryName(a).localeCompare(getFactoryName(b))), [factories, getFactoryName])
   const uniqueById = sorted // already unique
   return (
     <div className="flex flex-wrap gap-2">
@@ -341,16 +355,16 @@ function FactoryPills({ factories, selectedFactoryId, onSelect }: FactoryPillsPr
             selectedFactoryId === f.id ? 'bg-violet-600 border-violet-600 text-white' : 'hover:bg-gray-50 border-gray-200'
           )}
           onClick={() => onSelect(f.id)}
-          title={f.name}
+          title={getFactoryName(f)}
         >
-          {f.name}
+          {getFactoryName(f)}
         </button>
       ))}
     </div>
   )
 }
 
-function DirectoryList({ items, getRegionLabel }: { items: Factory[]; getRegionLabel: (name: string) => string }) {
+function DirectoryList({ items, getRegionLabel, getFactoryName }: { items: Factory[]; getRegionLabel: (name: string) => string; getFactoryName: (f: Factory) => string }) {
   const { t } = useTranslation('common')
   if (!items.length) {
     return (
@@ -367,8 +381,8 @@ function DirectoryList({ items, getRegionLabel }: { items: Factory[]; getRegionL
       <div className="divide-y divide-gray-100">
         {items.map((f) => (
           <div key={f.id} className="grid grid-cols-12 items-center px-4 py-3 text-sm">
-            <div className="col-span-4 truncate" title={`${f.name} · ${getRegionLabel(f.regionName)}`}>
-              <div className="font-medium text-gray-900">{f.name}</div>
+            <div className="col-span-4 truncate" title={`${getFactoryName(f)} · ${getRegionLabel(f.regionName)}`}>
+              <div className="font-medium text-gray-900">{getFactoryName(f)}</div>
               <div className="text-xs text-gray-500">{getRegionLabel(f.regionName)}</div>
             </div>
             <div className="col-span-4">
@@ -400,6 +414,7 @@ export default function FTSPage() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
 
   const getRegionLabel = (name: string) => REGION_LABELS[name]?.[i18n.language] || name
+  const getFactoryName = (f: Factory) => f.name[i18n.language as 'en' | 'ko'] || f.name.en
 
   // Factories filtered by country first
   const countryFactories = useMemo(() => FACTORIES.filter((f) => f.country === country), [country])
@@ -426,11 +441,11 @@ export default function FTSPage() {
     const q = search.trim().toLowerCase()
     if (!q) return factoryScoped
     return factoryScoped.filter((f) =>
-      f.name.toLowerCase().includes(q) ||
+      getFactoryName(f).toLowerCase().includes(q) ||
       f.manager.toLowerCase().includes(q) ||
       f.phone.toLowerCase().includes(q)
     )
-  }, [factoryScoped, search])
+  }, [factoryScoped, search, i18n.language])
 
   // Reset state when country changes
   useEffect(() => {
@@ -464,7 +479,12 @@ export default function FTSPage() {
           <div className="col-span-12 lg:col-span-5">
             <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
               <div className="mb-2 text-xs font-semibold text-gray-600">{t('fts.factoryShortcut')}</div>
-              <FactoryPills factories={pillsFactories} selectedFactoryId={selectedFactoryId} onSelect={setSelectedFactoryId} />
+              <FactoryPills
+                factories={pillsFactories}
+                selectedFactoryId={selectedFactoryId}
+                onSelect={setSelectedFactoryId}
+                getFactoryName={getFactoryName}
+              />
             </div>
           </div>
         </div>
@@ -519,7 +539,7 @@ export default function FTSPage() {
               </h2>
               <div className="text-xs text-gray-500">{t('fts.total', { count: finalList.length })}</div>
             </div>
-            <DirectoryList items={finalList} getRegionLabel={getRegionLabel} />
+            <DirectoryList items={finalList} getRegionLabel={getRegionLabel} getFactoryName={getFactoryName} />
           </section>
         </div>
       </div>
