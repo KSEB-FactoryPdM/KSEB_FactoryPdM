@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import DashboardLayout from '@/components/DashboardLayout'
 
 // UI primitives already in your repo
 import { Button } from '@/components/ui/button'
@@ -308,46 +309,48 @@ export default function HelpPage() {
   const { t } = useTranslation('common')
 
   return (
-    <main className="mx-auto max-w-7xl p-6">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
-            <LifeBuoy className="h-5 w-5 text-violet-700" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">{t('help.title', { defaultValue: 'Help Center' })}</h1>
-            <p className="text-sm text-gray-500">{t('help.subtitle', { defaultValue: '문서를 검색하고, 상태를 확인하고, 24h FTS 지원을 이용하세요.' })}</p>
+    <DashboardLayout>
+      <div className="mx-auto max-w-7xl p-6">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
+              <LifeBuoy className="h-5 w-5 text-violet-700" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold">{t('help.title', { defaultValue: 'Help Center' })}</h1>
+              <p className="text-sm text-gray-500">{t('help.subtitle', { defaultValue: '문서를 검색하고, 상태를 확인하고, 24h FTS 지원을 이용하세요.' })}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-12 gap-6">
-        <section className="col-span-12 lg:col-span-8 space-y-6">
-          <QuickActions/>
-          <SystemStatusCard/>
-          <FAQSection/>
-          <Troubleshoot/>
-        </section>
+        {/* Grid */}
+        <div className="grid grid-cols-12 gap-6">
+          <section className="col-span-12 lg:col-span-8 space-y-6">
+            <QuickActions/>
+            <SystemStatusCard/>
+            <FAQSection/>
+            <Troubleshoot/>
+          </section>
 
-        <aside className="col-span-12 lg:col-span-4 space-y-6">
-          <FTSSupportHours/>
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5"/> 빠른 링크</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc pl-5 space-y-2 text-sm">
-                <li><Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="text-violet-700 hover:underline">제품 문서</Link></li>
-                <li><Link href="/fts" className="text-violet-700 hover:underline">FTS 연락처</Link></li>
-                <li><Link href="/settings" className="text-violet-700 hover:underline">설정</Link></li>
-              </ul>
-            </CardContent>
-          </Card>
-        </aside>
+          <aside className="col-span-12 lg:col-span-4 space-y-6">
+            <FTSSupportHours/>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5"/> 빠른 링크</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc pl-5 space-y-2 text-sm">
+                  <li><Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="text-violet-700 hover:underline">제품 문서</Link></li>
+                  <li><Link href="/fts" className="text-violet-700 hover:underline">FTS 연락처</Link></li>
+                  <li><Link href="/settings" className="text-violet-700 hover:underline">설정</Link></li>
+                </ul>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
       </div>
-    </main>
+    </DashboardLayout>
   )
 }
 
