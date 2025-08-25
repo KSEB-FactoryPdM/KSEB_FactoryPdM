@@ -18,9 +18,28 @@ export default function SearchPage() {
   const params = useSearchParams();
   const query = (params?.get('query') ?? '').trim();
 
+  // Backend REST Base
+  const backendBase =
+    process.env.NEXT_PUBLIC_BACKEND_BASE_URL?.replace(/\/$/, '') ||
+    'http://localhost:8000/api/v1';
+
   const { data: devices = [] } = useQuery<Device[]>({
     queryKey: ['devices'],
-    queryFn: () => fetch('/mock-devices.json').then((r) => r.json()),
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${backendBase}/devices?limit=1000`);
+        if (!res.ok) throw new Error('failed to load devices');
+        const json = (await res.json()) as { devices?: Device[] };
+        return json.devices ?? [];
+      } catch (e) {
+        console.error('Failed to fetch devices', e);
+        try {
+          const mock = await fetch('/mock-devices.json');
+          if (mock.ok) return await mock.json();
+        } catch {}
+        return [];
+      }
+    },
     staleTime: 30000,
     gcTime: 300000,
   });
