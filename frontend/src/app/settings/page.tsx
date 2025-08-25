@@ -233,7 +233,7 @@ export default function SettingsPage() {
 
           <div className="flex items-center gap-2">
             <Button
-              className="border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50"
+              className="border border-blue-500 bg-transparent text-blue-500 hover:bg-blue-50"
               onClick={resetSettings}
               type="button"
             >
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                       className={[
                         'w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm',
                         isActive
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-blue-500 text-white'
                           : 'hover:bg-gray-50 text-gray-700',
                       ].join(' ')}
                     >
@@ -546,11 +546,12 @@ export default function SettingsPage() {
                         <Input id="apiKey" value={apiKey} readOnly className="flex-1" />
                         <Button
                           type="button"
-                          className="bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                          className="bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 flex items-center gap-1"
                           onClick={copyApiKey}
                           title={t('settings.advanced.copy', { defaultValue: 'Copy' }) as string}
                         >
                           <CopyIcon className="h-4 w-4" />
+                          {t('settings.advanced.copy', { defaultValue: 'Copy' })}
                         </Button>
                         <Button type="button" onClick={regenerateApiKey}>
                           {t('settings.advanced.regenerate')}

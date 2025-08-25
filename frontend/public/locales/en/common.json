@@ -119,6 +119,7 @@
     "advanced": {
       "beta": "Enable beta features",
       "apiKey": "API Key",
+      "copy": "Copy",
       "regenerate": "Regenerate"
     },
     "about": {
