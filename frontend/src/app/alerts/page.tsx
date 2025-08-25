@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import DashboardLayout from '@/components/DashboardLayout'
 import ChartCard from '@/components/ChartCard'
-import { alertList, AlertItem } from '@/mockData'
+import { AlertItem } from '@/mockData'
 import { EquipmentFilter, DateRange, FilterToolbar } from '@/components/filters'
 import type { Machine } from '@/components/filters/EquipmentFilter'
 import { useQuery } from '@tanstack/react-query'
@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import EmptyState from '@/components/EmptyState'
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState(alertList)
+  const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [selected, setSelected] = useState<AlertItem | null>(null)
   const [power, setPower] = useState('')
   const [equipment, setEquipment] = useState('')
@@ -30,6 +30,60 @@ export default function AlertsPage() {
     staleTime: 30000,
     gcTime: 300000,
   })
+
+  // Backend REST Base
+  const backendBase = (process.env.NEXT_PUBLIC_BACKEND_BASE_URL?.replace(/\/$/, '') || 'http://localhost:8000/api/v1')
+
+  // 최근 N초 내 발생한 anomaly를 주기적으로 조회하여 일시 경보로 표시
+  type AnomalyEvent = { event_time: string; device_id: string; is_anomaly: boolean; confidence?: number }
+  type AnomalyResp = { events: AnomalyEvent[]; total: number; page: number; size: number }
+  const EPHEMERAL_WINDOW_SEC = 20
+  const { data: recentAnomalies } = useQuery<AnomalyResp>({
+    queryKey: ['alerts-recent', equipment, severity],
+    queryFn: async () => {
+      try {
+        const now = Date.now()
+        const startIso = new Date(now - EPHEMERAL_WINDOW_SEC * 1000).toISOString()
+        const endIso = new Date(now).toISOString()
+        const params = new URLSearchParams({ page: '1', size: '100', start_time: startIso, end_time: endIso })
+        if (equipment) params.set('device_id', equipment)
+        const url = `${backendBase}/anomalies/events?${params.toString()}`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('failed to load recent anomalies')
+        return res.json() as Promise<AnomalyResp>
+      } catch (e) {
+        error('Failed to fetch recent anomalies', e)
+        return { events: [], total: 0, page: 1, size: 0 }
+      }
+    },
+    refetchInterval: 2000,
+    staleTime: 1500,
+  })
+
+  // 이벤트를 AlertItem으로 매핑하여 일시 목록으로 반영
+  useEffect(() => {
+    const rows = recentAnomalies?.events ?? []
+    const items: AlertItem[] = rows
+      .filter((e) => e.is_anomaly)
+      .map((e, idx) => {
+        const c = typeof e.confidence === 'number' ? e.confidence : NaN
+        const sev = !Number.isFinite(c) ? 'Low' : c > 0.8 ? 'Critical' : c > 0.6 ? 'High' : 'Medium'
+        return {
+          id: Date.parse(e.event_time) + idx,
+          time: new Date(e.event_time).toLocaleString('ko-KR'),
+          power: '-',
+          device: e.device_id,
+          type: 'Anomaly',
+          severity: sev,
+          status: 'new',
+          cause: '',
+          snapshot: '',
+        }
+      })
+    // 최신순 정렬
+    items.sort((a, b) => b.id - a.id)
+    setAlerts(items)
+  }, [recentAnomalies])
   const severityOptions = useMemo(
     () => Array.from(new Set(alerts.map((a) => a.severity))),
     [alerts]

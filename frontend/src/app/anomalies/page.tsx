@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { error } from '@/lib/logger'
 import AnomalyDetailsModal from '@/components/AnomalyDetailsModal'
 
-type Anomaly = { id: number; equipmentId: string; type: string; timestamp: string; status: string; description?: string; severity?: string }
+type Anomaly = { id: string; equipmentId: string; type: string; timestamp: string; status: string; description?: string; severity?: string }
 
 function StatusBadge({ status }: { status: string }) {
   const color = status === 'resolved' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'
@@ -42,19 +42,48 @@ export default function AnomaliesPage() {
     gcTime: 300000,
   })
 
+  // Backend REST Base
+  const backendBase = (process.env.NEXT_PUBLIC_BACKEND_BASE_URL?.replace(/\/$/, '') || 'http://localhost:8000/api/v1')
+
+  type AnomalyEvent = { event_time: string; device_id: string; is_anomaly: boolean; confidence?: number; scores?: unknown; thresholds?: unknown; modalities?: unknown }
+  type AnomalyResp = { events: AnomalyEvent[]; total: number; page: number; size: number }
   const { data: anomalies, isLoading } = useQuery<Anomaly[]>({
-    queryKey: ['anomalies'],
+    queryKey: ['anomalies', equipment, range, startDate, endDate],
     queryFn: async () => {
       try {
-        const res = await fetch('/mock-anomalies.json')
-        const json = (await res.json()) as Anomaly[]
-        return json
+        const now = Date.now()
+        const delta = range === '1h' ? 3_600_000 : range === '24h' ? 86_400_000 : range === '7d' ? 604_800_000 : 86_400_000
+        const startIso = range === 'custom' && startDate ? new Date(startDate).toISOString() : new Date(now - delta).toISOString()
+        const endIso = range === 'custom' && endDate ? new Date(endDate).toISOString() : new Date(now).toISOString()
+        const params = new URLSearchParams({ page: '1', size: '200', start_time: startIso, end_time: endIso })
+        if (equipment) params.set('device_id', equipment)
+        const url = `${backendBase}/anomalies/events?${params.toString()}`
+        const res = await fetch(url)
+        if (!res.ok) throw new Error('failed to load anomalies')
+        const json = (await res.json()) as AnomalyResp
+        const mapped: Anomaly[] = (json.events || [])
+          .filter((e) => e.is_anomaly)
+          .map((e) => {
+            const c = typeof e.confidence === 'number' ? e.confidence : NaN
+            const sev = !Number.isFinite(c) ? 'low' : c > 0.8 ? 'high' : c > 0.6 ? 'medium' : 'low'
+            return {
+              id: `${e.device_id}-${e.event_time}`,
+              timestamp: e.event_time,
+              equipmentId: e.device_id,
+              type: 'anomaly',
+              status: 'open',
+              severity: sev,
+              description: '',
+            }
+          })
+        return mapped
       } catch (e) {
         error('Failed to fetch anomalies', e)
         return []
       }
     },
-    staleTime: 30000,
+    refetchInterval: 4000,
+    staleTime: 3000,
     gcTime: 300000,
   })
 
