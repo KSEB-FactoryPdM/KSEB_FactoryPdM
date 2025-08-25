@@ -1,5 +1,4 @@
-
-'use client'
+'use client';
 
 /**
  * FTS (Follow‑the‑Sun) Call Desk — Next.js App Router (single‑file drop‑in)
@@ -351,7 +350,6 @@ function FactoryPills({ factories, selectedFactoryId, onSelect }: FactoryPillsPr
   )
 }
 
-function DirectoryList({ items }: { items: Factory[] }) {
 function DirectoryList({ items, getRegionLabel }: { items: Factory[]; getRegionLabel: (name: string) => string }) {
   const { t } = useTranslation('common')
   if (!items.length) {

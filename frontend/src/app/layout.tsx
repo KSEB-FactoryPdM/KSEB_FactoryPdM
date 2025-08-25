@@ -1,24 +1,18 @@
 // src/app/layout.tsx
 
 import type { Metadata } from 'next';
-import { Noto_Sans_KR, Roboto } from 'next/font/google';
 import QueryProvider from '@/components/QueryProvider';
 import Sidebar from '@/components/Sidebar';
 import I18nProvider from '@/components/I18nProvider';
 import LanguageListener from '@/components/LanguageListener';
 import './globals.css';
 
-const notoSans = Noto_Sans_KR({
-  weight: ['400', '700'],
-  subsets: ['latin'],
-  variable: '--font-noto-sans',
-});
-
-const roboto = Roboto({
-  weight: ['400', '500', '700'],
-  subsets: ['latin'],
-  variable: '--font-roboto',
-});
+// Preload fonts locally to avoid network fetch during build
+import '@fontsource/noto-sans-kr/400.css';
+import '@fontsource/noto-sans-kr/700.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/500.css';
+import '@fontsource/roboto/700.css';
 
 export const metadata: Metadata = {
   title: 'Factory PdM Monitoring Dashboard',
@@ -32,9 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body
-        className={`${notoSans.variable} ${roboto.variable} antialiased bg-gray-100`}
-      >
+      <body className="antialiased bg-gray-100">
         <I18nProvider>
           <LanguageListener />
           <QueryProvider>
