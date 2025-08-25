@@ -480,8 +480,15 @@ export default function FTSPage() {
   const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
 
-  const getRegionLabel = useCallback((name: string) => REGION_LABELS[name]?.[i18n.language] || name, [i18n.language])
-  const getFactoryName = useCallback((f: Factory) => f.name[i18n.language as 'en' | 'ko'] || f.name.en, [i18n.language])
+  const getRegionLabel = useCallback((name: string) => {
+    const langKey: 'en' | 'ko' = i18n.language?.startsWith('ko') ? 'ko' : 'en'
+    const labels = REGION_LABELS[name]
+    return labels ? labels[langKey] : name
+  }, [i18n.language])
+  const getFactoryName = useCallback((f: Factory) => {
+    const langKey: 'en' | 'ko' = i18n.language?.startsWith('ko') ? 'ko' : 'en'
+    return f.name[langKey] || f.name.en
+  }, [i18n.language])
 
   // Factories filtered by country first
   const countryFactories = useMemo(() => FACTORIES.filter((f) => f.country === country), [country])
