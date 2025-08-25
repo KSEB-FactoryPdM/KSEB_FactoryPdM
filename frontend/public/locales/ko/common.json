@@ -194,6 +194,27 @@
       "details": "세부 정보"
     }
   },
+  "fts": {
+    "title": "FTS (Follow-the-Sun) 콜 데스크",
+    "subtitle": "지역별 공장 책임자 즉시 연락",
+    "searchPlaceholder": "공장명 / 관리자 / 전화번호 검색",
+    "factoryShortcut": "공장 바로가기",
+    "map": "지도",
+    "selectedRegion": "선택 지역: {{region}}",
+    "clickRegion": "지역을 클릭해 필터링",
+    "clearRegion": "지역 선택 해제",
+    "allContacts": "{{country}} 전체 연락처",
+    "regionContacts": "{{region}} 지역 연락처",
+    "korea": "대한민국",
+    "usa": "미국",
+    "noResults": "검색 결과가 없습니다.",
+    "factoryName": "공장명",
+    "manager": "관리자",
+    "phone": "전화",
+    "all": "전체",
+    "total": "총 {{count}}건",
+    "clear": "지우기"
+  },
   "monitoring": {
     "title": "라이브 장비 대시보드",
     "subtitle": "장비 상태, 이상 징후, 센서 신호를 즉시 파악하세요.",
