@@ -13,14 +13,13 @@ import {
   CogIcon,
   ClipboardDocumentListIcon,
   ArrowLeftOnRectangleIcon,
-  QuestionMarkCircleIcon,
   ExclamationTriangleIcon,
   Cog8ToothIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
 } from '@heroicons/react/24/outline';
 
-import { Phone } from 'lucide-react';
+import { Phone, LifeBuoy } from 'lucide-react';
 
 
 const navItems = [
@@ -31,7 +30,7 @@ const navItems = [
   { href: '/equipment' as Route, label: 'nav.equipment', icon: ClipboardDocumentListIcon },
   { href: '/fts' as Route, label: 'nav.call', icon: Phone },
   { href: '/settings' as Route, label: 'nav.settings', icon: Cog8ToothIcon },
-  { href: '/help' as Route, label: 'nav.help', icon: QuestionMarkCircleIcon },
+  { href: '/help' as Route, label: 'nav.help', icon: LifeBuoy },
 
 ];
 
