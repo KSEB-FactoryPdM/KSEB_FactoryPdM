@@ -24,6 +24,11 @@ class AIModelService:
         
         # 모델 설정
         self.models_path = os.getenv('MODEL_PATH', './models')
+        # serve_ml 번들 루트 (serve_ml 경로 우선 사용)
+        self.serve_ml_root = os.getenv('SERVE_ML_ROOT', '/app/serve_ml')
+        # Kafka 상태 표기를 위한 정보 (실제 소비는 사용하지 않음)
+        self.kafka_servers = os.getenv('KAFKA_BOOTSTRAP_SERVERS', '')
+        self.consumer_topic = os.getenv('KAFKA_CONSUMER_TOPIC', '')
         
         # 센서별 데이터 버퍼 (동적으로 생성)
         self.sensor_buffers = {}
@@ -52,8 +57,14 @@ class AIModelService:
     def init_models(self):
         """AI 모델 초기화 (models 폴더에서 XGBoost 모델 로드)"""
         try:
-            # XGBoost 모델 로드
-            self.load_xgboost_models()
+            # 레거시 pkl 로드는 기본 비활성화 (serve_ml 경로 사용)
+            enable_legacy = os.getenv('ENABLE_LEGACY_PKL', 'false').lower() in ("1", "true", "yes")
+            if enable_legacy:
+                self.load_xgboost_models()
+            else:
+                self.current_model = None
+                self.vibration_model = None
+                logger.info("레거시 XGBoost pkl 로드를 비활성화했습니다 (serve_ml 번들 사용 권장)")
             
             logger.info("AI 모델 초기화 완료")
             
@@ -82,10 +93,13 @@ class AIModelService:
             else:
                 logger.warning(f"Vibration 모델 파일을 찾을 수 없습니다: {vibration_model_path}")
                 
-            # 최소 하나의 모델은 로드되어야 함
+            # 최소 하나의 모델은 로드되어야 함 (옵션: 더미 생성)
             if self.current_model is None and self.vibration_model is None:
-                logger.warning("사용 가능한 XGBoost 모델이 없습니다. 더미 모델을 생성합니다.")
-                self.create_dummy_models()
+                if os.getenv('ENABLE_DUMMY_MODELS', 'false').lower() in ("1", "true", "yes"):
+                    logger.warning("사용 가능한 XGBoost 모델이 없습니다. 더미 모델을 생성합니다.")
+                    self.create_dummy_models()
+                else:
+                    logger.warning("사용 가능한 XGBoost 모델이 없습니다. 더미 모델 생성을 비활성화했습니다.")
                 
             logger.info("XGBoost 모델 로드 완료")
                     
@@ -425,6 +439,7 @@ class AIModelService:
             
             # Kafka Consumer는 사용하지 않음
             
+            self.running = True
             logger.info("AI 모델 서비스가 정상적으로 시작되었습니다")
             
         except Exception as e:
@@ -575,6 +590,9 @@ async def get_models_status():
             "running": ai_service.running,
             "servers": ai_service.kafka_servers,
             "topic": ai_service.consumer_topic
+        },
+        "serve_ml": {
+            "root": ai_service.serve_ml_root
         }
     }
 
