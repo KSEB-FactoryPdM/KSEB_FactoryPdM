@@ -172,15 +172,15 @@ function QuickActions() {
           <Link href="/fts" className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <Phone className="h-4 w-4"/> Call
           </Link>
-          <Link href={process.env.NEXT_PUBLIC_HELP_CHAT_URL || '#'} className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
+          <a href={process.env.NEXT_PUBLIC_HELP_CHAT_URL || '#'} target="_blank" rel="noopener noreferrer" className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <MessageCircle className="h-4 w-4"/> Chat
-          </Link>
+          </a>
           <a href={`mailto:${process.env.NEXT_PUBLIC_HELP_EMAIL || 'support@example.com'}`} className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <Mail className="h-4 w-4"/> Email
           </a>
-          <Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
+          <a href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} target="_blank" rel="noopener noreferrer" className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <BookOpen className="h-4 w-4"/> Docs
-          </Link>
+          </a>
         </div>
       </CardContent>
     </Card>
@@ -342,7 +342,7 @@ export default function HelpPage() {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc pl-5 space-y-2 text-sm">
-                    <li><Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="text-primary hover:underline">제품 문서</Link></li>
+                    <li><a href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">제품 문서</a></li>
                     <li><Link href="/fts" className="text-primary hover:underline">FTS 연락처</Link></li>
                     <li><Link href="/settings" className="text-primary hover:underline">설정</Link></li>
                 </ul>
