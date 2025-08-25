@@ -324,7 +324,7 @@ function CountryToggle({ value, onChange }: CountryToggleProps) {
             type="button"
             className={cx(
               'px-4 py-2 text-sm font-medium transition',
-              active ? 'bg-red-600 text-white' : 'hover:bg-red-50 text-gray-700'
+              active ? 'bg-primary text-white' : 'hover:bg-primary/10 text-gray-700'
             )}
             onClick={() => onChange(code as Country)}
           >
@@ -348,7 +348,7 @@ function SearchBox({ value, onChange, placeholder }: SearchBoxProps) {
     <div className="relative w-full">
       <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
       <input
-        className="w-full rounded-full border border-gray-200 bg-white pl-10 pr-10 py-2 text-sm shadow-sm focus:border-red-400 focus:outline-none"
+        className="w-full rounded-full border border-gray-200 bg-white pl-10 pr-10 py-2 text-sm shadow-sm focus:border-primary focus:outline-none"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -384,7 +384,7 @@ function FactoryPills({ factories, selectedFactoryId, onSelect, getFactoryName }
         type="button"
         className={cx(
           'px-3 py-1.5 rounded-full border text-xs font-medium',
-          !selectedFactoryId ? 'bg-red-600 border-red-600 text-white' : 'hover:bg-gray-50 border-gray-200'
+          !selectedFactoryId ? 'bg-primary border-primary text-white' : 'hover:bg-gray-50 border-gray-200'
         )}
         onClick={() => onSelect(null)}
       >
@@ -396,7 +396,7 @@ function FactoryPills({ factories, selectedFactoryId, onSelect, getFactoryName }
           type="button"
           className={cx(
             'px-3 py-1.5 rounded-full border text-xs font-medium transition',
-            selectedFactoryId === f.id ? 'bg-red-600 border-red-600 text-white' : 'hover:bg-gray-50 border-gray-200'
+            selectedFactoryId === f.id ? 'bg-primary border-primary text-white' : 'hover:bg-gray-50 border-gray-200'
           )}
           onClick={() => onSelect(f.id)}
           title={getFactoryName(f)}
@@ -507,8 +507,8 @@ export default function FTSPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100">
-              <Phone className="h-5 w-5 text-red-700" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <Phone className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h1 className="text-xl font-semibold">{t('fts.title')}</h1>

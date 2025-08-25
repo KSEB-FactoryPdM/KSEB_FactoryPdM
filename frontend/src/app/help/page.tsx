@@ -151,7 +151,7 @@ function SystemStatusCard() {
         </div>
         {ts && <div className="mt-3 text-xs text-gray-500">업데이트: {ts}</div>}
         <div className="mt-3 text-xs">
-          <Link href="/status" className="inline-flex items-center gap-1 text-red-700 hover:underline">
+          <Link href="/status" className="inline-flex items-center gap-1 text-primary hover:underline">
             자세히 보기 <ExternalLink className="h-3.5 w-3.5"/>
           </Link>
         </div>
@@ -314,8 +314,8 @@ export default function HelpPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100">
-              <LifeBuoy className="h-5 w-5 text-red-700" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <LifeBuoy className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold">{t('help.title', { defaultValue: 'Help Center' })}</h1>
@@ -341,9 +341,9 @@ export default function HelpPage() {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc pl-5 space-y-2 text-sm">
-                  <li><Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="text-red-700 hover:underline">제품 문서</Link></li>
-                  <li><Link href="/fts" className="text-red-700 hover:underline">FTS 연락처</Link></li>
-                  <li><Link href="/settings" className="text-red-700 hover:underline">설정</Link></li>
+                    <li><Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="text-primary hover:underline">제품 문서</Link></li>
+                    <li><Link href="/fts" className="text-primary hover:underline">FTS 연락처</Link></li>
+                    <li><Link href="/settings" className="text-primary hover:underline">설정</Link></li>
                 </ul>
               </CardContent>
             </Card>
