@@ -18,7 +18,7 @@ export const CardHeader: FC<{ children: ReactNode; className?: string }> = ({
   className = '',
 }) => (
   <div
-    className={`px-6 py-4 border-b border-gray-200 bg-primary text-white rounded-t-lg ${className}`}
+    className={`px-6 py-4 border-b border-gray-200 bg-blue-600 text-white rounded-t-lg ${className}`}
   >
     {children}
   </div>
