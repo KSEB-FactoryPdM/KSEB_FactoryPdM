@@ -6,7 +6,6 @@ import QueryProvider from '@/components/QueryProvider';
 import Sidebar from '@/components/Sidebar';
 import I18nProvider from '@/components/I18nProvider';
 import LanguageListener from '@/components/LanguageListener';
-import InputBlocker from '../components/InputBlocker';
 import './globals.css';
 
 const notoSans = Noto_Sans_KR({
@@ -38,7 +37,6 @@ export default function RootLayout({
       >
         <I18nProvider>
           <LanguageListener />
-          <InputBlocker />
           <QueryProvider>
             <div className="flex h-screen border-0 p-0 m-0">
               <Sidebar />
