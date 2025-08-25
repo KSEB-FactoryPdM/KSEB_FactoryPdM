@@ -37,7 +37,7 @@ class UnitySensorSimulator:
 
         # 시뮬레이터 설정
         self.devices = parse_devices(os.getenv("SIM_DEVICES", "L-CAHU-01R"))
-        self.interval_ms = int(os.getenv("SIM_INTERVAL_MS", "1000"))
+        self.interval_ms = int(os.getenv("SIM_INTERVAL_MS", "3000"))
         self.mode = os.getenv("SIM_MODE", "both").lower()  # both|data|vibration
         # 시뮬레이터 파라미터(전역)
         self.base = float(os.getenv("SIM_BASE", "50"))

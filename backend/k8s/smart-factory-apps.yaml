@@ -285,7 +285,7 @@ spec:
         - name: SIM_DEVICES
           value: "L-CAHU-01R,L-SF-01"
         - name: SIM_INTERVAL_MS
-          value: "1000"
+          value: "3000"
         - name: SIM_MODE
           value: "both"
         - name: SERVE_ML_PUBLISH
