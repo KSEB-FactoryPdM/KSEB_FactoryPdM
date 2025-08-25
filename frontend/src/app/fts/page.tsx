@@ -28,7 +28,7 @@
  *   Save this as app/fts/page.tsx
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { Phone, PhoneCall, Search as SearchIcon, X } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { useTranslation } from 'react-i18next'
@@ -179,9 +179,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
 }
 
-function unique<T>(arr: T[]): T[] {
-  return Array.from(new Set(arr))
-}
+// unique 유틸은 사용하지 않아 제거
 
 function normalizeRegionName(name: string) {
   return name.replace(/[-\s]/g, '').replace(/do$/i, '').toLowerCase()
@@ -200,101 +198,126 @@ type MapRegionPickerProps = {
 }
 
 function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionSelect, getRegionLabel }: MapRegionPickerProps) {
-  const chartRef = useRef<any>(null)
+  const chartRef = useRef<unknown>(null)
   const containerId = 'ftsMap'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Runtime require to avoid SSR breakage
-    const am4core = require('@amcharts/amcharts4/core')
-    const am4maps = require('@amcharts/amcharts4/maps')
+    // 동적 import로 SSR 문제 회피
+    let am4core: typeof import('@amcharts/amcharts4/core')
+    let am4maps: typeof import('@amcharts/amcharts4/maps')
+    let cleanup = () => {}
 
-    // Resolve geodata per country; try official first, fallback to local if you ship one
-    let geodata: any
-    try {
-      geodata = country === 'KR'
-        ? require('@amcharts/amcharts4-geodata/southKoreaLow').default
-        : require('@amcharts/amcharts4-geodata/usaLow').default
-    } catch (e) {
-      // Optional local fallback (put your file at src/geodata/southKoreaLow.js exporting default)
-      if (country === 'KR') geodata = require('@/geodata/southKoreaLow').default
-    }
+    const load = async () => {
+      const core = await import('@amcharts/amcharts4/core')
+      const maps = await import('@amcharts/amcharts4/maps')
+      am4core = core
+      am4maps = maps
 
-    const chart = am4core.create(containerId, am4maps.MapChart)
-    chart.geodata = geodata
-    chart.projection = new am4maps.projections.Miller()
-    chart.chartContainer.wheelable = false
-    chart.series.clear()
-
-    const series = chart.series.push(new am4maps.MapPolygonSeries())
-    series.useGeodata = true
-
-    const template = series.mapPolygons.template
-    template.tooltipText = '{name}'
-    template.adapter.add('tooltipText', (_: any, target: any) => {
-      const name = (target.dataItem?.dataContext as any)?.name
-      return name ? getRegionLabel(name) : ''
-    })
-    template.fill = am4core.color('#f4effc')
-    template.stroke = am4core.color('#d9d6e5')
-    template.togglable = true
-
-    const hover = template.states.create('hover')
-    hover.properties.fill = am4core.color('#cbb5ff')
-
-    const active = template.states.create('active')
-    active.properties.fill = am4core.color('#8b5cf6')
-
-    // On click, toggle active and emit region name
-    template.events.on('hit', (ev: any) => {
-      const polygon = ev.target
-      // toggle active (exclusive select)
-      series.mapPolygons.each((p: any) => (p.isActive = false))
-      polygon.isActive = true
-      const name = (polygon.dataItem?.dataContext as any)?.name ?? null
-      onRegionSelect?.(name)
-    })
-
-    // Preselect highlight region if provided
-    if (highlightRegionName) {
-      setTimeout(() => {
-        try {
-          series.mapPolygons.each((p: any) => {
-            const n = (p.dataItem?.dataContext as any)?.name
-            if (n && n.toLowerCase() === highlightRegionName.toLowerCase()) {
-              p.isActive = true
-            }
-          })
-        } catch {}
-      }, 0)
-    }
-
-    let dragStartY: number | null = null
-    chart.chartContainer.background.events.on('down', (ev: any) => {
-      if (ev.event.shiftKey) {
-        dragStartY = ev.pointer.point.y
-        chart.seriesContainer.draggable = false
-      }
-    })
-    chart.chartContainer.background.events.on('up', (ev: any) => {
-      if (dragStartY !== null && ev.event.shiftKey) {
-        const dy = dragStartY - ev.pointer.point.y
-        if (Math.abs(dy) > 5) {
-          if (dy > 0) chart.zoomIn()
-          else chart.zoomOut()
+      // 국가별 geodata 로드
+      let geodata: unknown
+      try {
+        geodata = country === 'KR'
+          ? (await import('@amcharts/amcharts4-geodata/southKoreaLow')).default
+          : (await import('@amcharts/amcharts4-geodata/usaLow')).default
+      } catch {
+        if (country === 'KR') {
+          try {
+            geodata = (await import('@/geodata/southKoreaLow')).default
+          } catch {}
         }
       }
-      dragStartY = null
-      chart.seriesContainer.draggable = true
-    })
 
-    chartRef.current = chart
-    return () => {
-      try { chart.dispose() } catch {}
-      chartRef.current = null
+      const chart = am4core.create(containerId, am4maps.MapChart)
+      chart.geodata = geodata as any
+      chart.projection = new am4maps.projections.Miller()
+      chart.chartContainer.wheelable = false
+      chart.series.clear()
+
+      const series = chart.series.push(new am4maps.MapPolygonSeries())
+      series.useGeodata = true
+
+      const template = series.mapPolygons.template
+      template.tooltipText = '{name}'
+      template.adapter.add('tooltipText', (_: unknown, target: unknown) => {
+        const dataCtx = (target as { dataItem?: { dataContext?: Record<string, unknown> } })?.dataItem?.dataContext
+        const rawName = dataCtx?.['name']
+        const name = typeof rawName === 'string' ? rawName : ''
+        return name ? getRegionLabel(name) : ''
+      })
+      template.fill = am4core.color('#f4effc')
+      template.stroke = am4core.color('#d9d6e5')
+      template.togglable = true
+
+      const hover = template.states.create('hover')
+      hover.properties.fill = am4core.color('#cbb5ff')
+
+      const active = template.states.create('active')
+      active.properties.fill = am4core.color('#8b5cf6')
+
+      // On click, toggle active and emit region name
+      template.events.on('hit', (ev: unknown) => {
+        const polygon = (ev as { target?: unknown }).target as { isActive?: boolean; dataItem?: { dataContext?: Record<string, unknown> } } | undefined
+        series.mapPolygons.each((p: unknown) => {
+          const poly = p as { isActive?: boolean }
+          if (poly) poly.isActive = false
+        })
+        if (polygon) polygon.isActive = true
+        const rawName = polygon?.dataItem?.dataContext?.['name']
+        const name = typeof rawName === 'string' ? rawName : null
+        onRegionSelect?.(name)
+      })
+
+      // Preselect highlight region if provided
+      if (highlightRegionName) {
+        setTimeout(() => {
+          try {
+            series.mapPolygons.each((p: unknown) => {
+              const poly = p as { isActive?: boolean; dataItem?: { dataContext?: Record<string, unknown> } }
+              const raw = poly?.dataItem?.dataContext?.['name']
+              const n = typeof raw === 'string' ? raw : undefined
+              if (n && n.toLowerCase() === highlightRegionName.toLowerCase()) {
+                if (poly) poly.isActive = true
+              }
+            })
+          } catch {}
+        }, 0)
+      }
+
+      let dragStartY: number | null = null
+      chart.chartContainer.background.events.on('down', (ev: unknown) => {
+        const evt = ev as { event?: { shiftKey?: boolean }; pointer?: { point?: { y?: number } } }
+        if (evt?.event?.shiftKey) {
+          dragStartY = evt?.pointer?.point?.y ?? null
+          chart.seriesContainer.draggable = false
+        }
+      })
+      chart.chartContainer.background.events.on('up', (ev: unknown) => {
+        const evt = ev as { event?: { shiftKey?: boolean }; pointer?: { point?: { y?: number } } }
+        if (dragStartY !== null && evt?.event?.shiftKey) {
+          const currentY = evt?.pointer?.point?.y
+          if (typeof currentY === 'number') {
+            const dy = dragStartY - currentY
+            if (Math.abs(dy) > 5) {
+              if (dy > 0) chart.zoomIn()
+              else chart.zoomOut()
+            }
+          }
+        }
+        dragStartY = null
+        chart.seriesContainer.draggable = true
+      })
+
+      chartRef.current = chart
+      cleanup = () => {
+        try { chart.dispose() } catch {}
+        chartRef.current = null
+      }
     }
-  }, [country, highlightRegionName, getRegionLabel])
+    load()
+    return () => cleanup()
+  }, [country, highlightRegionName, getRegionLabel, onRegionSelect])
 
   return (
     <div className="w-full">
@@ -457,8 +480,8 @@ export default function FTSPage() {
   const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
 
-  const getRegionLabel = (name: string) => REGION_LABELS[name]?.[i18n.language] || name
-  const getFactoryName = (f: Factory) => f.name[i18n.language as 'en' | 'ko'] || f.name.en
+  const getRegionLabel = useCallback((name: string) => REGION_LABELS[name]?.[i18n.language] || name, [i18n.language])
+  const getFactoryName = useCallback((f: Factory) => f.name[i18n.language as 'en' | 'ko'] || f.name.en, [i18n.language])
 
   // Factories filtered by country first
   const countryFactories = useMemo(() => FACTORIES.filter((f) => f.country === country), [country])

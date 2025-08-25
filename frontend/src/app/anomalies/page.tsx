@@ -14,11 +14,6 @@ import AnomalyDetailsModal from '@/components/AnomalyDetailsModal'
 
 type Anomaly = { id: string; equipmentId: string; type: string; timestamp: string; severity: string; description?: string }
 
-function StatusBadge({ status }: { status: string }) {
-  const color = status === 'resolved' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'
-  return <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded ${color}`}>{status}</span>
-}
-
 function SeverityBadge({ level }: { level: string }) {
   const color = level === 'high'
     ? 'bg-red-100 text-red-800 border-red-200'
@@ -248,7 +243,7 @@ export default function AnomaliesPage() {
             aria-label={t('anomalies.filters.type')}
           >
             <option value="">{t('anomalies.allTypes')}</option>
-            {typeOptions.map((opt) => (
+            {typeOptions.map((opt: string) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>

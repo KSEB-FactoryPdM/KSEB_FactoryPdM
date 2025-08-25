@@ -91,7 +91,7 @@ export default function Header() {
     fetchUnread();
     const id = setInterval(fetchUnread, 30000);
     return () => clearInterval(id);
-  }, []);
+  }, [backendBase]);
 
   // 사용자명 로딩
   useEffect(() => {
