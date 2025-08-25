@@ -38,12 +38,12 @@ export default function RootLayout({
         <I18nProvider>
           <LanguageListener />
           <QueryProvider>
-            <fieldset disabled className="flex h-screen border-0 p-0 m-0">
+            <div className="flex h-screen border-0 p-0 m-0">
               <Sidebar />
               <main className="flex-1 overflow-auto p-6">
                 {children}
               </main>
-            </fieldset>
+            </div>
           </QueryProvider>
         </I18nProvider>
       </body>
