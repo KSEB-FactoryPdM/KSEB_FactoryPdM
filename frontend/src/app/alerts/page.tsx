@@ -43,11 +43,11 @@ export default function AlertsPage() {
     queryFn: async () => {
       try {
         const now = Date.now()
-        const toIsoSeconds = (d: Date) => (d.toISOString().split('.')[0] + 'Z')
-        const startIso = toIsoSeconds(new Date(now - EPHEMERAL_WINDOW_SEC * 1000))
-        const endIso = toIsoSeconds(new Date(now))
-        const qs = `page=1&size=100&start_time=${encodeURIComponent(startIso)}&end_time=${encodeURIComponent(endIso)}${equipment ? `&device_id=${encodeURIComponent(equipment)}` : ''}`
-        const url = `${backendBase}/anomalies/events?${qs}`
+        const startIso = new Date(now - EPHEMERAL_WINDOW_SEC * 1000).toISOString()
+        const endIso = new Date(now).toISOString()
+        const params = new URLSearchParams({ page: '1', size: '100', start_time: startIso, end_time: endIso })
+        if (equipment) params.set('device_id', equipment)
+        const url = `${backendBase}/anomalies/events?${params.toString()}`
         const res = await fetch(url)
         if (!res.ok) throw new Error('failed to load recent anomalies')
         return res.json() as Promise<AnomalyResp>

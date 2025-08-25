@@ -25,10 +25,7 @@ const mockDevices = [
 describe('SearchPage', () => {
   beforeEach(() => {
     global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ devices: mockDevices }),
-      })
+      Promise.resolve({ json: () => Promise.resolve(mockDevices) })
     ) as jest.Mock
   })
 

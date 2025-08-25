@@ -14,29 +14,11 @@ interface Device {
 const PAGE_SIZE = 5
 
 export default function DevicesPage() {
-  // Backend REST Base
-  const backendBase =
-    process.env.NEXT_PUBLIC_BACKEND_BASE_URL?.replace(/\/$/, '') ||
-    'http://localhost:8000/api/v1';
-
-  // Fetch all devices; fall back to mock data on failure
+  // Static mock data rarely changes, so we cache it for a short period to
+  // avoid unnecessary refetches while still allowing manual refreshes.
   const { data: devices = [] } = useQuery<Device[]>({
     queryKey: ['devices'],
-    queryFn: async () => {
-      try {
-        const res = await fetch(`${backendBase}/devices?limit=1000`);
-        if (!res.ok) throw new Error('failed to load devices');
-        const json = (await res.json()) as { devices?: Device[] };
-        return json.devices ?? [];
-      } catch (e) {
-        console.error('Failed to fetch devices', e);
-        try {
-          const mock = await fetch('/mock-devices.json');
-          if (mock.ok) return await mock.json();
-        } catch {}
-        return [];
-      }
-    },
+    queryFn: () => fetch('/mock-devices.json').then(r => r.json()),
     staleTime: 30000, // treat data as fresh for 30s
     gcTime: 300000, // keep in cache for 5 minutes
   })

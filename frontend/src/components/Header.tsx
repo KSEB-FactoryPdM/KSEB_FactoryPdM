@@ -47,9 +47,6 @@ export default function Header() {
   const [search, setSearch] = useState('');
   const router = useRouter();
 
-  // Backend REST Base
-  const backendBase = (process.env.NEXT_PUBLIC_BACKEND_BASE_URL?.replace(/\/$/, '') || 'http://localhost:8000/api/v1');
-
   // i18n에서 현재 적용된 언어(해결된 언어 우선)
   const locale = (i18n as { resolvedLanguage?: string; language: string })?.resolvedLanguage || i18n.language || 'en';
 
@@ -63,35 +60,29 @@ export default function Header() {
   useEffect(() => {
     async function fetchUnread() {
       try {
-        // 최근 짧은 시간창(예: 30초) 내의 이상 개수를 집계하여 미읽음 카운트로 사용
-        const nowMs = Date.now();
-        const toIsoSeconds = (d: Date) => (d.toISOString().split('.')[0] + 'Z');
-        const startIso = toIsoSeconds(new Date(nowMs - 30_000));
-        const endIso = toIsoSeconds(new Date(nowMs));
-        const qs = `page=1&size=100&start_time=${encodeURIComponent(startIso)}&end_time=${encodeURIComponent(endIso)}`;
-        const url = `${backendBase}/anomalies/events?${qs}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('unread fetch failed');
-        const json = await res.json() as { events?: Array<{ is_anomaly?: boolean }> };
-        const cnt = (json.events ?? []).filter((e) => e?.is_anomaly === true).length;
-        setUnread(cnt);
-      } catch (err) {
-        console.error('Failed to fetch unread alerts', err);
-        // 실패 시 public의 mock 데이터 폴백
-        try {
+        let count = 0;
+        // 우선 API 시도
+        const res = await fetch('/api/alerts?status=new');
+        if (res.ok) {
+          const data = await res.json();
+          count = Array.isArray(data) ? data.length : data?.count ?? 0;
+        } else {
+          // 실패 시 public의 mock 데이터 폴백
           const mock = await fetch('/mock-alerts.json');
           if (mock.ok) {
             const arr = await mock.json();
-            const cnt = Array.isArray(arr) ? arr.filter((a: { status?: string }) => a?.status === 'new').length : 0;
-            setUnread(cnt);
+            count = Array.isArray(arr) ? arr.filter((a: { status?: string }) => a?.status === 'new').length : 0;
           }
-        } catch {}
+        }
+        setUnread(count);
+      } catch (err) {
+        console.error('Failed to fetch unread alerts', err);
       }
     }
     fetchUnread();
     const id = setInterval(fetchUnread, 30000);
     return () => clearInterval(id);
-  }, [backendBase]);
+  }, []);
 
   // 사용자명 로딩
   useEffect(() => {

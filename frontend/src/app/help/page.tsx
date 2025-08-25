@@ -24,7 +24,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
-import type { Route } from 'next'
 
 // Icons (lucide-react already installed)
 import {
@@ -152,7 +151,7 @@ function SystemStatusCard() {
         </div>
         {ts && <div className="mt-3 text-xs text-gray-500">업데이트: {ts}</div>}
         <div className="mt-3 text-xs">
-          <Link href={'/status' as Route} className="inline-flex items-center gap-1 text-primary hover:underline">
+          <Link href="/status" className="inline-flex items-center gap-1 text-primary hover:underline">
             자세히 보기 <ExternalLink className="h-3.5 w-3.5"/>
           </Link>
         </div>
@@ -172,15 +171,15 @@ function QuickActions() {
           <Link href="/fts" className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <Phone className="h-4 w-4"/> Call
           </Link>
-          <a href={process.env.NEXT_PUBLIC_HELP_CHAT_URL || '#'} target="_blank" rel="noopener noreferrer" className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
+          <Link href={process.env.NEXT_PUBLIC_HELP_CHAT_URL || '#'} className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <MessageCircle className="h-4 w-4"/> Chat
-          </a>
+          </Link>
           <a href={`mailto:${process.env.NEXT_PUBLIC_HELP_EMAIL || 'support@example.com'}`} className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <Mail className="h-4 w-4"/> Email
           </a>
-          <a href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} target="_blank" rel="noopener noreferrer" className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
+          <Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="rounded-xl border p-3 hover:bg-gray-50 flex items-center justify-center gap-2">
             <BookOpen className="h-4 w-4"/> Docs
-          </a>
+          </Link>
         </div>
       </CardContent>
     </Card>
@@ -292,19 +291,14 @@ function Troubleshoot() {
           </li>
         </ol>
         <div className="mt-4 flex flex-wrap gap-2">
-          <a
-            href="/api/logs.zip"
-            download
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
-          >
-            <FileDown className="h-4 w-4"/> 로그 다운로드
-          </a>
-          <a
-            href={`mailto:${process.env.NEXT_PUBLIC_HELP_EMAIL || 'support@example.com'}`}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90"
-          >
-            문의 메일 보내기
-          </a>
+          <Button asChild variant="outline" className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+            <a href="/api/logs.zip" download>
+              <FileDown className="h-4 w-4 mr-2"/> 로그 다운로드
+            </a>
+          </Button>
+          <Button asChild>
+            <a href={`mailto:${process.env.NEXT_PUBLIC_HELP_EMAIL || 'support@example.com'}`}>문의 메일 보내기</a>
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -347,7 +341,7 @@ export default function HelpPage() {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc pl-5 space-y-2 text-sm">
-                    <li><a href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">제품 문서</a></li>
+                    <li><Link href={process.env.NEXT_PUBLIC_DOCS_URL || '#'} className="text-primary hover:underline">제품 문서</Link></li>
                     <li><Link href="/fts" className="text-primary hover:underline">FTS 연락처</Link></li>
                     <li><Link href="/settings" className="text-primary hover:underline">설정</Link></li>
                 </ul>

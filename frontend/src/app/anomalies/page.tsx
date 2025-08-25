@@ -12,15 +12,11 @@ import { useTranslation } from 'react-i18next'
 import { error } from '@/lib/logger'
 import AnomalyDetailsModal from '@/components/AnomalyDetailsModal'
 
-type Anomaly = { id: string; equipmentId: string; type: string; timestamp: string; severity: string; description?: string }
+type Anomaly = { id: string; equipmentId: string; type: string; timestamp: string; status: string; description?: string; severity?: string }
 
-function SeverityBadge({ level }: { level: string }) {
-  const color = level === 'high'
-    ? 'bg-red-100 text-red-800 border-red-200'
-    : level === 'medium'
-    ? 'bg-amber-100 text-amber-800 border-amber-200'
-    : 'bg-slate-100 text-slate-800 border-slate-200'
-  return <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded ${color}`}>{level}</span>
+function StatusBadge({ status }: { status: string }) {
+  const color = status === 'resolved' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'
+  return <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded ${color}`}>{status}</span>
 }
 
 export default function AnomaliesPage() {
@@ -30,17 +26,14 @@ export default function AnomaliesPage() {
   const [power, setPower] = useState('')
   const [equipment, setEquipment] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
-  const [severityFilter, setSeverityFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [range, setRange] = useState<'1h' | '24h' | '7d' | 'custom'>('24h')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [sortBy, setSortBy] = useState<'timestamp' | 'equipment' | 'type' | 'severity'>('timestamp')
+  const [sortBy, setSortBy] = useState<'timestamp' | 'equipment' | 'type' | 'status'>('timestamp')
   const [sortAsc, setSortAsc] = useState(false)
   const [selected, setSelected] = useState<Anomaly | null>(null)
-
-  // Persistent archive of anomalies (append-only, de-duplicated by id)
-  const [archive, setArchive] = useState<Anomaly[]>([])
 
   const { data: machines } = useQuery<Machine[]>({
     queryKey: ['machines'],
@@ -60,11 +53,11 @@ export default function AnomaliesPage() {
       try {
         const now = Date.now()
         const delta = range === '1h' ? 3_600_000 : range === '24h' ? 86_400_000 : range === '7d' ? 604_800_000 : 86_400_000
-        const toIsoSeconds = (d: Date) => (d.toISOString().split('.')[0] + 'Z')
-        const startIso = toIsoSeconds(range === 'custom' && startDate ? new Date(startDate) : new Date(now - delta))
-        const endIso = toIsoSeconds(range === 'custom' && endDate ? new Date(endDate) : new Date(now))
-        const qs = `page=1&size=100&start_time=${encodeURIComponent(startIso)}&end_time=${encodeURIComponent(endIso)}${equipment ? `&device_id=${encodeURIComponent(equipment)}` : ''}`
-        const url = `${backendBase}/anomalies/events?${qs}`
+        const startIso = range === 'custom' && startDate ? new Date(startDate).toISOString() : new Date(now - delta).toISOString()
+        const endIso = range === 'custom' && endDate ? new Date(endDate).toISOString() : new Date(now).toISOString()
+        const params = new URLSearchParams({ page: '1', size: '200', start_time: startIso, end_time: endIso })
+        if (equipment) params.set('device_id', equipment)
+        const url = `${backendBase}/anomalies/events?${params.toString()}`
         const res = await fetch(url)
         if (!res.ok) throw new Error('failed to load anomalies')
         const json = (await res.json()) as AnomalyResp
@@ -78,6 +71,7 @@ export default function AnomaliesPage() {
               timestamp: e.event_time,
               equipmentId: e.device_id,
               type: 'anomaly',
+              status: 'open',
               severity: sev,
               description: '',
             }
@@ -93,28 +87,16 @@ export default function AnomaliesPage() {
     gcTime: 300000,
   })
 
-  // Append new anomalies into archive (dedupe by id)
-  useEffect(() => {
-    if (!anomalies || !anomalies.length) return
-    setArchive((prev) => {
-      const byId = new Map(prev.map((a) => [a.id, a]))
-      for (const a of anomalies) {
-        if (!byId.has(a.id)) byId.set(a.id, a)
-      }
-      return Array.from(byId.values())
-    })
-  }, [anomalies])
-
   const typeOptions = useMemo(
-    () => Array.from(new Set((archive ?? []).map((a: Anomaly) => a.type))).sort(),
-    [archive],
+    () => Array.from(new Set((anomalies ?? []).map((a: Anomaly) => a.type))).sort(),
+    [anomalies],
   )
 
   const filtered = useMemo(() => {
-    const items = (archive ?? []).filter((a: Anomaly) => {
+    const items = (anomalies ?? []).filter((a: Anomaly) => {
       if (equipment && a.equipmentId !== equipment) return false
       if (typeFilter && a.type !== typeFilter) return false
-      if (severityFilter && a.severity !== severityFilter) return false
+      if (statusFilter && a.status !== statusFilter) return false
       const ts = new Date(a.timestamp)
       const now = new Date()
       let startBound: Date | null = null
@@ -129,7 +111,7 @@ export default function AnomaliesPage() {
       if (startBound && ts < startBound) return false
       if (endBound && ts > endBound) return false
       if (search) {
-        const hay = `${a.equipmentId} ${a.type} ${a.severity}`.toLowerCase()
+        const hay = `${a.equipmentId} ${a.type} ${a.status}`.toLowerCase()
         if (!hay.includes(search.toLowerCase())) return false
       }
       return true
@@ -147,15 +129,15 @@ export default function AnomaliesPage() {
         va = a.type
         vb = b.type
       } else {
-        va = a.severity
-        vb = b.severity
+        va = a.status
+        vb = b.status
       }
       if (va < vb) return sortAsc ? -1 : 1
       if (va > vb) return sortAsc ? 1 : -1
       return 0
     })
     return sorted
-  }, [archive, equipment, typeFilter, severityFilter, startDate, endDate, search, range, sortBy, sortAsc])
+  }, [anomalies, equipment, typeFilter, statusFilter, startDate, endDate, search, range, sortBy, sortAsc])
 
   const toggleSort = (key: typeof sortBy) => {
     if (sortBy === key) {
@@ -189,7 +171,7 @@ export default function AnomaliesPage() {
     setPower('')
     setEquipment('')
     setTypeFilter('')
-    setSeverityFilter('')
+    setStatusFilter('')
     setSearch('')
     setRange('24h')
     setStartDate('')
@@ -197,8 +179,8 @@ export default function AnomaliesPage() {
   }
 
   const exportCsv = () => {
-    const headers = ['id', 'timestamp', 'equipmentId', 'type', 'severity']
-    const lines = [headers.join(','), ...filtered.map((a) => [a.id, a.timestamp, a.equipmentId, a.type, a.severity].join(','))]
+    const headers = ['id', 'timestamp', 'equipmentId', 'type', 'status']
+    const lines = [headers.join(','), ...filtered.map((a) => [a.id, a.timestamp, a.equipmentId, a.type, a.status].join(','))]
     const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -243,7 +225,7 @@ export default function AnomaliesPage() {
             aria-label={t('anomalies.filters.type')}
           >
             <option value="">{t('anomalies.allTypes')}</option>
-            {typeOptions.map((opt: string) => (
+            {typeOptions.map((opt) => (
               <option key={opt} value={opt}>
                 {opt}
               </option>
@@ -251,14 +233,13 @@ export default function AnomaliesPage() {
           </select>
           <select
             className="border rounded px-2 py-1"
-            value={severityFilter}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setSeverityFilter(e.target.value)}
-            aria-label={'Severity'}
+            value={statusFilter}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
+            aria-label={t('anomalies.filters.status')}
           >
-            <option value="">Severity</option>
-            <option value="high">high</option>
-            <option value="medium">medium</option>
-            <option value="low">low</option>
+            <option value="">{t('anomalies.allStatus')}</option>
+            <option value="open">{t('anomalies.status.open')}</option>
+            <option value="resolved">{t('anomalies.status.resolved')}</option>
           </select>
           {range === 'custom' && (
             <DateRange
@@ -304,7 +285,7 @@ export default function AnomaliesPage() {
                     <SortHeader label={t('anomalies.headers.type')} keyName={'type'} />
                   </th>
                   <th className="py-2 cursor-pointer select-none">
-                    <SortHeader label={'Severity'} keyName={'severity'} />
+                    <SortHeader label={t('anomalies.headers.status')} keyName={'status'} />
                   </th>
                   <th className="py-2">{t('anomalies.headers.actions')}</th>
                 </tr>
@@ -315,7 +296,7 @@ export default function AnomaliesPage() {
                     <td className="py-2">{new Date(a.timestamp).toLocaleString()}</td>
                     <td className="py-2">{a.equipmentId}</td>
                     <td className="py-2 capitalize">{a.type}</td>
-                    <td className="py-2"><SeverityBadge level={a.severity} /></td>
+                    <td className="py-2"><StatusBadge status={a.status} /></td>
                     <td className="py-2">
                       <button className="text-primary underline" onClick={() => setSelected(a)}>{t('anomalies.buttons.details')}</button>
                     </td>

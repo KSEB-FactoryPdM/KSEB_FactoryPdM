@@ -23,7 +23,8 @@
     "help": "Help",
     "sidebarLabel": "Main navigation",
     "logout": "Logout",
-    "call": "Call"
+    "call": "Call",
+    "cctv": "CCTV"
   },
   "login": {
     "title": "Sign In",
