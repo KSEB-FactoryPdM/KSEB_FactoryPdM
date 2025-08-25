@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars */
 
 /**
  * FTS (Follow‑the‑Sun) Call Desk — Next.js App Router (single‑file drop‑in)
@@ -177,10 +178,6 @@ const REGION_LABELS: Record<string, { en: string; ko: string }> = {
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
-}
-
-function unique<T>(arr: T[]): T[] {
-  return Array.from(new Set(arr))
 }
 
 function normalizeRegionName(name: string) {
@@ -457,7 +454,7 @@ export default function FTSPage() {
   const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
 
-  const getRegionLabel = (name: string) => REGION_LABELS[name]?.[i18n.language] || name
+  const getRegionLabel = (name: string) => REGION_LABELS[name]?.[i18n.language as 'en' | 'ko'] || name
   const getFactoryName = (f: Factory) => f.name[i18n.language as 'en' | 'ko'] || f.name.en
 
   // Factories filtered by country first

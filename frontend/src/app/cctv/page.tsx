@@ -1,11 +1,16 @@
+"use client";
+
+import { useState } from 'react';
 import { cameras } from '@/lib/cameras';
 import CctvPlayer from '@/components/CctvPlayer';
 
 export const dynamic = 'force-dynamic';
 
 export default function CctvPage() {
-  const overview = cameras.find((c) => c.kind === 'overview');
+  const overviews = cameras.filter((c) => c.kind === 'overview');
   const machines = cameras.filter((c) => c.kind === 'machine');
+  const [zoneIdx, setZoneIdx] = useState(0);
+  const overview = overviews[zoneIdx];
 
   return (
     <main className="p-6 space-y-8">
@@ -19,7 +24,25 @@ export default function CctvPage() {
       {/* 공장 전체 */}
       {overview ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">공장 전체</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">공장 전체</h2>
+            <div className="flex gap-2">
+              {overviews.slice(1).map((cam, idx) => (
+                <button
+                  key={cam.id}
+                  type="button"
+                  onClick={() => setZoneIdx(zoneIdx === idx + 1 ? 0 : idx + 1)}
+                  className={`px-3 py-1 rounded-full border text-xs transition ${
+                    zoneIdx === idx + 1
+                      ? 'bg-purple-600 border-purple-600 text-white'
+                      : 'border-zinc-700 text-zinc-300 hover:bg-purple-600/10'
+                  }`}
+                >
+                  {cam.name}
+                </button>
+              ))}
+            </div>
+          </div>
           {overview.active ? (
             <CctvPlayer
               title={overview.name}

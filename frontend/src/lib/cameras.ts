@@ -21,34 +21,55 @@ function inferProtocol(url: string): CameraProtocol {
   return 'hls';
 }
 
-import mockDevices from '../../public/mock-devices.json';
+import machines from '../../public/machines.json';
 
 const FACTORY_URL = process.env.NEXT_PUBLIC_CCTV_FACTORY_URL || '';
+const FACTORY_ZONE_BASE_URL = process.env.NEXT_PUBLIC_CCTV_FACTORY_ZONE_BASE_URL || '';
 const MACHINE_BASE_URL = process.env.NEXT_PUBLIC_CCTV_MACHINE_BASE_URL || '';
 
-type MockDevice = { id: string; name: string; status: string };
+type Machine = { id: string };
 
-export const cameras: Camera[] = [
+const overviewCameras: Camera[] = [
   {
     id: 'factory-overview',
     name: '공장 전체',
     kind: 'overview',
     protocol: inferProtocol(FACTORY_URL),
     url: FACTORY_URL,
-    active: true,
-    badge: 'LIVE',
+    active: Boolean(FACTORY_URL),
+    badge: FACTORY_URL ? 'LIVE' : undefined,
+    note: FACTORY_URL ? undefined : '대기',
   },
-  ...((mockDevices as MockDevice[]).map((dev) => {
-    const url = MACHINE_BASE_URL ? `${MACHINE_BASE_URL}${dev.id}.m3u8` : '';
+  ...Array.from({ length: 4 }, (_, i) => {
+    const url = FACTORY_ZONE_BASE_URL ? `${FACTORY_ZONE_BASE_URL}${i + 1}.m3u8` : '';
+    const active = Boolean(FACTORY_ZONE_BASE_URL);
     return {
-      id: dev.id,
-      name: dev.name,
+      id: `factory-zone${i + 1}`,
+      name: `${i + 1}구역`,
+      kind: 'overview' as const,
+      protocol: inferProtocol(url),
+      url,
+      active,
+      badge: active ? 'LIVE' : undefined,
+      note: active ? undefined : '대기',
+    } as Camera;
+  }),
+];
+
+export const cameras: Camera[] = [
+  ...overviewCameras,
+  ...(machines as Machine[]).map((m) => {
+    const url = MACHINE_BASE_URL ? `${MACHINE_BASE_URL}${m.id}.m3u8` : '';
+    const active = Boolean(MACHINE_BASE_URL);
+    return {
+      id: m.id,
+      name: m.id,
       kind: 'machine' as const,
       protocol: inferProtocol(url),
       url,
-      active: dev.status === 'online',
-      badge: dev.status === 'online' ? 'LIVE' : undefined,
-      note: dev.status !== 'online' ? 'offline' : undefined,
+      active,
+      badge: active ? 'LIVE' : undefined,
+      note: active ? undefined : '대기',
     } as Camera;
-  })),
+  }),
 ];

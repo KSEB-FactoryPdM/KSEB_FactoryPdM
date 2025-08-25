@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 
-type Anomaly = { id: number; equipmentId: string; type: string; timestamp: string; status: string; description?: string; severity?: string }
+type Anomaly = { id: string; equipmentId: string; type: string; timestamp: string; status: string; description?: string; severity?: string }
 
 export default function AnomalyDetailsModal({ anomaly, onClose }: { anomaly: Anomaly; onClose: () => void }) {
   return (
