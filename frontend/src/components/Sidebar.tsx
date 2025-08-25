@@ -17,6 +17,7 @@ import {
   Cog8ToothIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
+  VideoCameraIcon,
 } from '@heroicons/react/24/outline';
 
 import { Phone, LifeBuoy } from 'lucide-react';
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/maintenance' as Route, label: 'nav.maintenance', icon: CogIcon },
   { href: '/equipment' as Route, label: 'nav.equipment', icon: ClipboardDocumentListIcon },
   { href: '/fts' as Route, label: 'nav.call', icon: Phone },
+  { href: '/cctv' as Route, label: 'nav.cctv', icon: VideoCameraIcon },
   { href: '/settings' as Route, label: 'nav.settings', icon: Cog8ToothIcon },
   { href: '/help' as Route, label: 'nav.help', icon: LifeBuoy },
 
