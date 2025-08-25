@@ -233,8 +233,7 @@ export default function MonitoringPage() {
   const activeAlerts = anomalies?.filter((a) => a.status === 'open').length ?? 0
   const predictedToday = snap?.[snap.length - 1]?.total ?? 0
   const latestRul = snap?.[snap.length - 1]?.rul ?? 0
-  // 요청에 따라 다음 정비 날짜를 8월 28일자로 고정 표시
-  const upcomingMaintenance = useMemo(() => fmtDate('2024-08-28T00:00:00Z'), [])
+  const upcomingMaintenance = useMemo(() => fmtDate('2025-08-28T00:00:00Z'), [])
 
   const filteredEvents = useMemo(() => {
     const rows = anomaliesFromModel?.events ?? []
