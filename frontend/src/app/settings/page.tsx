@@ -233,7 +233,7 @@ export default function SettingsPage() {
 
           <div className="flex items-center gap-2">
             <Button
-              className="border border-primary bg-transparent text-primary hover:bg-primary/5"
+              className="border border-blue-600 bg-transparent text-blue-600 hover:bg-blue-50"
               onClick={resetSettings}
               type="button"
             >
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                       className={[
                         'w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm',
                         isActive
-                          ? 'bg-primary text-white'
+                          ? 'bg-blue-600 text-white'
                           : 'hover:bg-gray-50 text-gray-700',
                       ].join(' ')}
                     >
