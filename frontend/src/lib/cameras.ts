@@ -21,43 +21,55 @@ function inferProtocol(url: string): CameraProtocol {
   return 'hls';
 }
 
-const FACTORY_URL = process.env.NEXT_PUBLIC_CCTV_FACTORY_URL || '';
-const MACHINE1_URL = process.env.NEXT_PUBLIC_CCTV_MACHINE1_URL || '';
-const MACHINE2_URL = process.env.NEXT_PUBLIC_CCTV_MACHINE2_URL || '';
+import machines from '../../public/machines.json';
 
-export const cameras: Camera[] = [
+const FACTORY_URL = process.env.NEXT_PUBLIC_CCTV_FACTORY_URL || '';
+const FACTORY_ZONE_BASE_URL = process.env.NEXT_PUBLIC_CCTV_FACTORY_ZONE_BASE_URL || '';
+const MACHINE_BASE_URL = process.env.NEXT_PUBLIC_CCTV_MACHINE_BASE_URL || '';
+
+type Machine = { id: string };
+
+const overviewCameras: Camera[] = [
   {
     id: 'factory-overview',
     name: '공장 전체',
     kind: 'overview',
     protocol: inferProtocol(FACTORY_URL),
     url: FACTORY_URL,
-    active: true,
-    badge: 'LIVE',
+    active: Boolean(FACTORY_URL),
+    badge: FACTORY_URL ? 'LIVE' : undefined,
+    note: FACTORY_URL ? undefined : '대기',
   },
-  {
-    id: 'L-CAHU-01R',
-    name: 'L-CAHU-01R',
-    kind: 'machine',
-    protocol: inferProtocol(MACHINE1_URL),
-    url: MACHINE1_URL,
-    active: true,
-    badge: 'LIVE',
-  },
-  {
-    id: 'R-CAHU-01R',
-    name: 'R-CAHU-01R',
-    kind: 'machine',
-    protocol: inferProtocol(MACHINE2_URL),
-    url: MACHINE2_URL,
-    active: true,
-    badge: 'LIVE',
-  },
+  ...Array.from({ length: 4 }, (_, i) => {
+    const url = FACTORY_ZONE_BASE_URL ? `${FACTORY_ZONE_BASE_URL}${i + 1}.m3u8` : '';
+    const active = Boolean(FACTORY_ZONE_BASE_URL);
+    return {
+      id: `factory-zone${i + 1}`,
+      name: `${i + 1}구역`,
+      kind: 'overview' as const,
+      protocol: inferProtocol(url),
+      url,
+      active,
+      badge: active ? 'LIVE' : undefined,
+      note: active ? undefined : '대기',
+    } as Camera;
+  }),
+];
 
-  // ===== 아래부터는 "있어 보이는" 비활성 타일들 =====
-  { id: 'M-VFD-11kW', name: 'M-VFD-11kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '관리자 권한 필요' },
-  { id: 'M-PUMP-22kW', name: 'M-PUMP-22kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '노드 오프라인' },
-  { id: 'M-FAN-2_2kW', name: 'M-FAN-2.2kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '점검 중' },
-  { id: 'M-GEAR-55kW', name: 'M-GEAR-55kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '대기' },
-  { id: 'M-MIXER-7_5kW', name: 'M-MIXER-7.5kW', kind: 'machine', protocol: 'hls', url: '#', active: false, note: '배정 대기' },
+export const cameras: Camera[] = [
+  ...overviewCameras,
+  ...(machines as Machine[]).map((m) => {
+    const url = MACHINE_BASE_URL ? `${MACHINE_BASE_URL}${m.id}.m3u8` : '';
+    const active = Boolean(MACHINE_BASE_URL);
+    return {
+      id: m.id,
+      name: m.id,
+      kind: 'machine' as const,
+      protocol: inferProtocol(url),
+      url,
+      active,
+      badge: active ? 'LIVE' : undefined,
+      note: active ? undefined : '대기',
+    } as Camera;
+  }),
 ];
