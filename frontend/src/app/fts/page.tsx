@@ -56,20 +56,28 @@ interface Factory {
 const FACTORIES: Factory[] = [
   // Korea examples
   {
-    id: 'kr-seoul-01',
-    name: { en: 'Seoul Plant', ko: '서울 공장' },
+    id: 'kr-ss-01',
+    name: { en: 'Shinsegae Seongsu Plant', ko: '신세계 성수 공장' },
     country: 'KR',
     regionName: 'Seoul',
     manager: '김미정',
     phone: '+82-2-1234-5678',
   },
   {
-    id: 'kr-cj-01', // previously Busan Plant
-    name: { en: 'Cheongju Plant', ko: '청주 공장' },
+    id: 'kr-cn-01',
+    name: { en: 'Shinsegae Cheonan Plant', ko: '신세계 천안 공장' },
+    country: 'KR',
+    regionName: 'Chungcheongnam-do',
+    manager: '이도현',
+    phone: '+82-41-555-0101',
+  },
+  {
+    id: 'kr-es-01',
+    name: { en: 'Shinsegae Eumseong Plant', ko: '신세계 음성 공장' },
     country: 'KR',
     regionName: 'Chungcheongbuk-do',
-    manager: '이도현',
-    phone: '+82-51-555-0101',
+    manager: '박지훈',
+    phone: '+82-43-555-0101',
   },
   {
     id: 'kr-gg-01',
@@ -97,6 +105,22 @@ const FACTORIES: Factory[] = [
   },
 
   // USA examples
+  {
+    id: 'us-or-01',
+    name: { en: 'Shinsegae Foods', ko: 'Shinsegae Foods' },
+    country: 'US',
+    regionName: 'Oregon',
+    manager: 'Olivia Brown',
+    phone: '+1-503-555-0100',
+  },
+  {
+    id: 'us-ca-02',
+    name: { en: 'Better Foods Inc.', ko: 'Better Foods Inc.' },
+    country: 'US',
+    regionName: 'California',
+    manager: 'Mason Lee',
+    phone: '+1-408-555-0199',
+  },
   {
     id: 'us-ca-01',
     name: { en: 'California Fab', ko: 'California Fab' },
@@ -142,6 +166,7 @@ const REGION_LABELS: Record<string, { en: string; ko: string }> = {
   'Gyeongsangbuk-do': { en: 'Gyeongsangbuk-do', ko: '경상북도' },
   'Jeju-do': { en: 'Jeju-do', ko: '제주도' },
   'California': { en: 'California', ko: '캘리포니아' },
+  'Oregon': { en: 'Oregon', ko: '오리건' },
   'Texas': { en: 'Texas', ko: '텍사스' },
   'New York': { en: 'New York', ko: '뉴욕' },
 }
@@ -244,6 +269,25 @@ function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionS
         } catch {}
       }, 0)
     }
+
+    let dragStartY: number | null = null
+    chart.chartContainer.background.events.on('down', (ev: any) => {
+      if (ev.event.shiftKey) {
+        dragStartY = ev.pointer.point.y
+        chart.seriesContainer.draggable = false
+      }
+    })
+    chart.chartContainer.background.events.on('up', (ev: any) => {
+      if (dragStartY !== null && ev.event.shiftKey) {
+        const dy = dragStartY - ev.pointer.point.y
+        if (Math.abs(dy) > 5) {
+          if (dy > 0) chart.zoomIn()
+          else chart.zoomOut()
+        }
+      }
+      dragStartY = null
+      chart.seriesContainer.draggable = true
+    })
 
     chartRef.current = chart
     return () => {
