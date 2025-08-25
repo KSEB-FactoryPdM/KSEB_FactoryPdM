@@ -194,6 +194,10 @@ jobs:
         
         # Compute Cluster 전용 네임스페이스 생성
         kubectl create namespace smart-factory-compute --dry-run=client -o yaml | kubectl apply -f -
+
+        # 노드 라벨 보정: 기존 클러스터의 노드에 라벨이 없을 수 있으므로 강제 주입
+        # ai-model-service는 nodeSelector(workload-type=compute-intensive)를 요구함
+        kubectl get nodes -o name | xargs -r -I{} kubectl label {} workload-type=compute-intensive --overwrite
         
         # Compute Cluster 시크릿 생성
         kubectl create secret generic compute-cluster-secrets \
@@ -354,6 +358,11 @@ jobs:
           name: ai-model-service
           namespace: smart-factory-compute
         spec:
+          strategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxUnavailable: 1
+              maxSurge: 0
           replicas: 2
           selector:
             matchLabels:
@@ -429,7 +438,7 @@ jobs:
             apiVersion: apps/v1
             kind: Deployment
             name: ai-model-service
-          minReplicas: 2
+          minReplicas: 1
           maxReplicas: 6
           metrics:
           - type: Resource
