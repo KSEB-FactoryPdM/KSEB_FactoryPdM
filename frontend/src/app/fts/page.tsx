@@ -28,7 +28,7 @@
  *   Save this as app/fts/page.tsx
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Phone, PhoneCall, Search as SearchIcon, X } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { useTranslation } from 'react-i18next'
@@ -230,7 +230,7 @@ function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionS
       }
 
       const chart = am4core.create(containerId, am4maps.MapChart)
-      chart.geodata = geodata as any
+      chart.geodata = geodata as unknown
       chart.projection = new am4maps.projections.Miller()
       chart.chartContainer.wheelable = false
       chart.series.clear()
@@ -515,7 +515,7 @@ export default function FTSPage() {
       f.manager.toLowerCase().includes(q) ||
       f.phone.toLowerCase().includes(q)
     )
-  }, [factoryScoped, search, i18n.language])
+  }, [factoryScoped, search])
 
   // Reset state when country changes
   useEffect(() => {
