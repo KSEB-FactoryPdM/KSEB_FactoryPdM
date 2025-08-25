@@ -485,7 +485,10 @@ export default function FTSPage() {
     const q = search.trim().toLowerCase()
     if (!q) return factoryScoped
     return factoryScoped.filter((f) =>
-      getFactoryName(f).toLowerCase().includes(q) ||
+      // match against both Korean and English names regardless of UI language
+      Object.values(f.name)
+        .map((n) => n.toLowerCase())
+        .some((n) => n.includes(q)) ||
       f.manager.toLowerCase().includes(q) ||
       f.phone.toLowerCase().includes(q)
     )
@@ -517,10 +520,10 @@ export default function FTSPage() {
 
         {/* Controls */}
         <div className="mb-5 grid grid-cols-12 gap-4">
-          <div className="col-span-12 lg:col-span-7">
+          <div className="col-span-12 lg:col-span-6">
             <SearchBox value={search} onChange={setSearch} placeholder={t('fts.searchPlaceholder')} />
           </div>
-          <div className="col-span-12 lg:col-span-5">
+          <div className="col-span-12 lg:col-span-6">
             <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
               <div className="mb-2 text-xs font-semibold text-gray-600">{t('fts.factoryShortcut')}</div>
               <FactoryPills
