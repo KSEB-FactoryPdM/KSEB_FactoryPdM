@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 
-type Anomaly = { id: number; equipmentId: string; type: string; timestamp: string; status: string; description?: string; severity?: string }
+type Anomaly = { id: string | number; equipmentId: string; type: string; timestamp: string; status?: string; description?: string; severity?: string }
 
 export default function AnomalyDetailsModal({ anomaly, onClose }: { anomaly: Anomaly; onClose: () => void }) {
   return (
@@ -13,7 +13,7 @@ export default function AnomalyDetailsModal({ anomaly, onClose }: { anomaly: Ano
           <p><strong>Time:</strong> {new Date(anomaly.timestamp).toLocaleString()}</p>
           <p><strong>Equipment:</strong> {anomaly.equipmentId}</p>
           <p><strong>Type:</strong> {anomaly.type}</p>
-          <p><strong>Status:</strong> {anomaly.status}</p>
+          <p><strong>Status:</strong> {anomaly.status ?? '-'}</p>
           {anomaly.severity && <p><strong>Severity:</strong> {anomaly.severity}</p>}
           {anomaly.description && (
             <p className="pt-1"><strong>Description:</strong> {anomaly.description}</p>
