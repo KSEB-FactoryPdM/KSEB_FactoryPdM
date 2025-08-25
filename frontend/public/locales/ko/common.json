@@ -22,7 +22,8 @@
     "settings": "설정",
     "help": "도움말",
     "sidebarLabel": "주요 탐색",
-    "logout": "로그아웃"
+    "logout": "로그아웃",
+    "call": "전화"
   },
   "login": {
     "title": "로그인",

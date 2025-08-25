@@ -20,6 +20,8 @@ import {
   ChevronLeftIcon,
 } from '@heroicons/react/24/outline';
 
+import { Phone } from 'lucide-react';
+
 
 const navItems = [
   { href: '/monitoring' as Route, label: 'nav.dashboard', icon: HomeIcon },
@@ -27,6 +29,7 @@ const navItems = [
   { href: '/alerts' as Route, label: 'nav.alerts', icon: ExclamationTriangleIcon },
   { href: '/maintenance' as Route, label: 'nav.maintenance', icon: CogIcon },
   { href: '/equipment' as Route, label: 'nav.equipment', icon: ClipboardDocumentListIcon },
+  { href: '/fts' as Route, label: 'nav.call', icon: Phone },
   { href: '/settings' as Route, label: 'nav.settings', icon: Cog8ToothIcon },
   { href: '/help' as Route, label: 'nav.help', icon: QuestionMarkCircleIcon },
 

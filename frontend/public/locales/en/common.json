@@ -22,7 +22,8 @@
     "settings": "Settings",
     "help": "Help",
     "sidebarLabel": "Main navigation",
-    "logout": "Logout"
+    "logout": "Logout",
+    "call": "Call"
   },
   "login": {
     "title": "Sign In",
