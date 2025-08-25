@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
+import type { Route } from 'next'
 
 // Icons (lucide-react already installed)
 import {
@@ -151,7 +152,7 @@ function SystemStatusCard() {
         </div>
         {ts && <div className="mt-3 text-xs text-gray-500">업데이트: {ts}</div>}
         <div className="mt-3 text-xs">
-          <Link href="/status" className="inline-flex items-center gap-1 text-primary hover:underline">
+          <Link href={'/status' as Route} className="inline-flex items-center gap-1 text-primary hover:underline">
             자세히 보기 <ExternalLink className="h-3.5 w-3.5"/>
           </Link>
         </div>
