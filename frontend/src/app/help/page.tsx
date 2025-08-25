@@ -292,14 +292,19 @@ function Troubleshoot() {
           </li>
         </ol>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
-            <a href="/api/logs.zip" download>
-              <FileDown className="h-4 w-4 mr-2"/> 로그 다운로드
-            </a>
-          </Button>
-          <Button asChild>
-            <a href={`mailto:${process.env.NEXT_PUBLIC_HELP_EMAIL || 'support@example.com'}`}>문의 메일 보내기</a>
-          </Button>
+          <a
+            href="/api/logs.zip"
+            download
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+          >
+            <FileDown className="h-4 w-4"/> 로그 다운로드
+          </a>
+          <a
+            href={`mailto:${process.env.NEXT_PUBLIC_HELP_EMAIL || 'support@example.com'}`}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-white hover:bg-primary/90"
+          >
+            문의 메일 보내기
+          </a>
         </div>
       </CardContent>
     </Card>
