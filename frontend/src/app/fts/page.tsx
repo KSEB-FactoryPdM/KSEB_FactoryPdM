@@ -31,6 +31,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Phone, PhoneCall, Search as SearchIcon, X } from 'lucide-react'
+import DashboardLayout from '@/components/DashboardLayout'
 
 // ---------------------------
 // Types & Mock Data
@@ -352,80 +353,82 @@ export default function FTSPage() {
   }, [country])
 
   return (
-    <main className="mx-auto max-w-7xl p-6">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
-            <Phone className="h-5 w-5 text-violet-700" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold">FTS (Follow‑the‑Sun) Call Desk</h1>
-            <p className="text-sm text-gray-500">지역별 공장 책임자 즉시 연락</p>
-          </div>
-        </div>
-        <CountryToggle value={country} onChange={setCountry} />
-      </div>
-
-      {/* Controls */}
-      <div className="mb-5 grid grid-cols-12 gap-4">
-        <div className="col-span-12 lg:col-span-7">
-          <SearchBox value={search} onChange={setSearch} placeholder="공장명 / 관리자 / 전화번호 검색" />
-        </div>
-        <div className="col-span-12 lg:col-span-5">
-          <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
-            <div className="mb-2 text-xs font-semibold text-gray-600">공장 바로가기</div>
-            <FactoryPills factories={pillsFactories} selectedFactoryId={selectedFactoryId} onSelect={setSelectedFactoryId} />
-          </div>
-        </div>
-      </div>
-
-      {/* Content: Map (left) + Directory (right) */}
-      <div className="grid grid-cols-12 gap-6">
-        {/* Left: Map */}
-        <section className="col-span-12 lg:col-span-6">
-          <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-700">지도</div>
-              <div className="text-xs text-gray-500">
-                {selectedRegion ? (
-                  <span>선택 지역: <span className="font-medium text-violet-700">{selectedRegion}</span></span>
-                ) : (
-                  <span>지역을 클릭해 필터링</span>
-                )}
-              </div>
+    <DashboardLayout>
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
+              <Phone className="h-5 w-5 text-violet-700" />
             </div>
-            <MapRegionPicker
-              country={country}
-              height={440}
-              highlightRegionName={selectedRegion}
-              onRegionSelect={(r) => setSelectedRegion(r)}
-            />
-            {selectedRegion && (
-              <div className="mt-3 text-right">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRegion(null)}
-                  className="text-xs text-gray-500 hover:text-gray-700 underline"
-                >
-                  지역 선택 해제
-                </button>
-              </div>
-            )}
+            <div>
+              <h1 className="text-xl font-semibold">FTS (Follow‑the‑Sun) Call Desk</h1>
+              <p className="text-sm text-gray-500">지역별 공장 책임자 즉시 연락</p>
+            </div>
           </div>
-        </section>
+          <CountryToggle value={country} onChange={setCountry} />
+        </div>
 
-        {/* Right: Directory */}
-        <section className="col-span-12 lg:col-span-6">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">
-              {selectedRegion ? `${selectedRegion} 지역 연락처` : (country === 'KR' ? '대한민국 전체 연락처' : 'United States — All contacts')}
-            </h2>
-            <div className="text-xs text-gray-500">총 {finalList.length}건</div>
+        {/* Controls */}
+        <div className="mb-5 grid grid-cols-12 gap-4">
+          <div className="col-span-12 lg:col-span-7">
+            <SearchBox value={search} onChange={setSearch} placeholder="공장명 / 관리자 / 전화번호 검색" />
           </div>
-          <DirectoryList items={finalList} />
-        </section>
+          <div className="col-span-12 lg:col-span-5">
+            <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
+              <div className="mb-2 text-xs font-semibold text-gray-600">공장 바로가기</div>
+              <FactoryPills factories={pillsFactories} selectedFactoryId={selectedFactoryId} onSelect={setSelectedFactoryId} />
+            </div>
+          </div>
+        </div>
+
+        {/* Content: Map (left) + Directory (right) */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left: Map */}
+          <section className="col-span-12 lg:col-span-6">
+            <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-sm font-semibold text-gray-700">지도</div>
+                <div className="text-xs text-gray-500">
+                  {selectedRegion ? (
+                    <span>선택 지역: <span className="font-medium text-violet-700">{selectedRegion}</span></span>
+                  ) : (
+                    <span>지역을 클릭해 필터링</span>
+                  )}
+                </div>
+              </div>
+              <MapRegionPicker
+                country={country}
+                height={440}
+                highlightRegionName={selectedRegion}
+                onRegionSelect={(r) => setSelectedRegion(r)}
+              />
+              {selectedRegion && (
+                <div className="mt-3 text-right">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRegion(null)}
+                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                  >
+                    지역 선택 해제
+                  </button>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Right: Directory */}
+          <section className="col-span-12 lg:col-span-6">
+            <div className="mb-2 flex items-baseline justify-between">
+              <h2 className="text-sm font-semibold text-gray-700">
+                {selectedRegion ? `${selectedRegion} 지역 연락처` : (country === 'KR' ? '대한민국 전체 연락처' : 'United States — All contacts')}
+              </h2>
+              <div className="text-xs text-gray-500">총 {finalList.length}건</div>
+            </div>
+            <DirectoryList items={finalList} />
+          </section>
+        </div>
       </div>
-    </main>
+    </DashboardLayout>
   )
 }
