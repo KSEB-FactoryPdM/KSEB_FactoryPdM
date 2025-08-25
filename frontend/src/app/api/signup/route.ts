@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   // 요청 본문 파싱(안전)
-  let payload: any = null
+  let payload: unknown = null
   try {
     const raw = await req.text()
     payload = raw ? JSON.parse(raw) : {}
@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid json body' }, { status: 400 })
   }
 
-  const { username, email, password } = payload || {}
+  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+  const { username, email, password } = isRecord(payload) ? payload : ({} as Record<string, unknown>)
   if (!username || !email || !password) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })
   }
@@ -34,8 +35,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error }, { status })
     }
     return NextResponse.json({ ok: true })
-  } catch (err: any) {
-    const msg = typeof err?.message === 'string' ? err.message : 'backend request failed'
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'backend request failed'
     console.error('[api/signup] fetch error', msg)
     return NextResponse.json({ error: `signup failed: ${msg}` }, { status: 502 })
   }
@@ -44,20 +45,33 @@ export async function POST(req: NextRequest) {
 async function extractError(res: Response): Promise<{ error: string, status: number }> {
   try {
     const raw = await res.clone().text()
-    let parsed: any = null
+    let parsed: unknown = null
     try { parsed = JSON.parse(raw) } catch {}
-    if (parsed?.detail) {
-      if (Array.isArray(parsed.detail)) {
-        const msgs = parsed.detail.map((d: any) => d?.msg || (typeof d === 'string' ? d : '')).filter(Boolean)
+
+    const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+
+    if (isRecord(parsed) && 'detail' in parsed) {
+      const detail = (parsed as { detail?: unknown }).detail
+      if (Array.isArray(detail)) {
+        const msgs = detail
+          .map((d) => {
+            if (typeof d === 'string') return d
+            if (typeof d === 'object' && d !== null && typeof (d as { msg?: unknown }).msg === 'string') {
+              return (d as { msg?: string }).msg as string
+            }
+            return ''
+          })
+          .filter((s): s is string => Boolean(s))
         if (msgs.length) return { error: msgs.join('; '), status: res.status }
-      } else if (typeof parsed.detail === 'string') {
-        return { error: parsed.detail, status: res.status }
-      } else {
-        return { error: JSON.stringify(parsed.detail), status: res.status }
+      } else if (typeof detail === 'string') {
+        return { error: detail, status: res.status }
+      } else if (isRecord(detail)) {
+        return { error: JSON.stringify(detail), status: res.status }
       }
     }
-    if (typeof parsed?.error === 'string') return { error: parsed.error, status: res.status }
-    if (typeof parsed?.message === 'string') return { error: parsed.message, status: res.status }
+
+    if (isRecord(parsed) && typeof parsed.error === 'string') return { error: parsed.error, status: res.status }
+    if (isRecord(parsed) && typeof parsed.message === 'string') return { error: parsed.message, status: res.status }
     if (raw) return { error: raw, status: res.status }
   } catch {}
   return { error: 'signup failed', status: res.status }

@@ -71,9 +71,7 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ')
 }
 
-function unique<T>(arr: T[]): T[] {
-  return Array.from(new Set(arr))
-}
+// (removed unused helper `unique`)
 
 // ---------------------------
 // MapRegionPicker (amCharts v4)
@@ -86,79 +84,121 @@ type MapRegionPickerProps = {
   onRegionSelect?: (regionName: string | null) => void
 }
 
+// Minimal runtime types to avoid explicit `any`
+type DataContextWithName = { name?: string }
+type DataItem = { dataContext?: DataContextWithName }
+type Polygon = { isActive?: boolean; dataItem?: DataItem }
+type TemplateState = { properties: { fill?: unknown } }
+type TemplateStatesApi = { create: (name: string) => TemplateState }
+type TemplateEventsApi = { on: (name: string, cb: (ev: { target: Polygon }) => void) => void }
+type MapPolygonsApi = { template: {
+  tooltipText?: string
+  fill?: unknown
+  stroke?: unknown
+  togglable?: boolean
+  states: TemplateStatesApi
+  events: TemplateEventsApi
+} ; each: (cb: (p: Polygon) => void) => void }
+type PolygonSeriesLike = { useGeodata?: boolean; mapPolygons: MapPolygonsApi }
+type ChartLike = {
+  geodata: unknown
+  projection: unknown
+  chartContainer: { wheelable: boolean }
+  series: { clear: () => void; push: (s: unknown) => unknown }
+}
+type Am4CoreLike = { create: (id: string, ctor: unknown) => unknown; color: (hex: string) => unknown }
+type Am4MapsLike = {
+  MapChart: unknown
+  projections: { Miller: new () => unknown }
+  MapPolygonSeries: new () => unknown
+}
+
 function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionSelect }: MapRegionPickerProps) {
-  const chartRef = useRef<any>(null)
+  const chartRef = useRef<{ dispose: () => void } | null>(null)
   const containerId = 'ftsMap'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Runtime require to avoid SSR breakage
-    const am4core = require('@amcharts/amcharts4/core')
-    const am4maps = require('@amcharts/amcharts4/maps')
+    let disposed = false
+    let localChart: { dispose: () => void } | null = null
 
-    // Resolve geodata per country; try official first, fallback to local if you ship one
-    let geodata: any
-    try {
-      geodata = country === 'KR'
-        ? require('@amcharts/amcharts4-geodata/southKoreaLow').default
-        : require('@amcharts/amcharts4-geodata/usaLow').default
-    } catch (e) {
-      // Optional local fallback (put your file at src/geodata/southKoreaLow.js exporting default)
-      if (country === 'KR') geodata = require('@/geodata/southKoreaLow').default
-    }
+    ;(async () => {
+      const am4core = (await import('@amcharts/amcharts4/core')) as unknown as Am4CoreLike
+      const am4maps = (await import('@amcharts/amcharts4/maps')) as unknown as Am4MapsLike
 
-    const chart = am4core.create(containerId, am4maps.MapChart)
-    chart.geodata = geodata
-    chart.projection = new am4maps.projections.Miller()
-    chart.chartContainer.wheelable = false
-    chart.series.clear()
+      // Resolve geodata per country; try official first, fallback to local if present
+      let geodataModule: { default: unknown } | null = null
+      try {
+        geodataModule = country === 'KR'
+          ? await import('@amcharts/amcharts4-geodata/southKoreaLow')
+          : await import('@amcharts/amcharts4-geodata/usaLow')
+      } catch {}
+      if (!geodataModule && country === 'KR') {
+        try { geodataModule = await import('@/geodata/southKoreaLow') } catch {}
+      }
 
-    const series = chart.series.push(new am4maps.MapPolygonSeries())
-    series.useGeodata = true
+      const chart = (am4core.create(containerId, am4maps.MapChart)) as unknown as ChartLike
+      chart.geodata = geodataModule?.default ?? null
+      chart.projection = new am4maps.projections.Miller()
+      chart.chartContainer.wheelable = false
+      chart.series.clear()
 
-    const template = series.mapPolygons.template
-    template.tooltipText = '{name}'
-    template.fill = am4core.color('#f4effc')
-    template.stroke = am4core.color('#d9d6e5')
-    template.togglable = true
+      const series = (chart.series.push(new am4maps.MapPolygonSeries())) as unknown as PolygonSeriesLike
+      series.useGeodata = true
 
-    const hover = template.states.create('hover')
-    hover.properties.fill = am4core.color('#cbb5ff')
+      const template = series.mapPolygons.template
+      template.tooltipText = '{name}'
+      template.fill = am4core.color('#f4effc')
+      template.stroke = am4core.color('#d9d6e5')
+      template.togglable = true
 
-    const active = template.states.create('active')
-    active.properties.fill = am4core.color('#8b5cf6')
+      const hover = template.states.create('hover')
+      hover.properties.fill = am4core.color('#cbb5ff')
 
-    // On click, toggle active and emit region name
-    template.events.on('hit', (ev: any) => {
-      const polygon = ev.target
-      // toggle active (exclusive select)
-      series.mapPolygons.each((p: any) => (p.isActive = false))
-      polygon.isActive = true
-      const name = (polygon.dataItem?.dataContext as any)?.name ?? null
-      onRegionSelect?.(name)
-    })
+      const active = template.states.create('active')
+      active.properties.fill = am4core.color('#8b5cf6')
 
-    // Preselect highlight region if provided
-    if (highlightRegionName) {
-      setTimeout(() => {
-        try {
-          series.mapPolygons.each((p: any) => {
-            const n = (p.dataItem?.dataContext as any)?.name
-            if (n && n.toLowerCase() === highlightRegionName.toLowerCase()) {
-              p.isActive = true
-            }
-          })
-        } catch {}
-      }, 0)
-    }
+      // On click, toggle active and emit region name
+      template.events.on('hit', (ev: { target: Polygon }) => {
+        const polygon = ev.target
+        // toggle active (exclusive select)
+        series.mapPolygons.each((p) => { p.isActive = false })
+        polygon.isActive = true
+        const nameVal = polygon?.dataItem?.dataContext?.name
+        const name = typeof nameVal === 'string' ? nameVal : null
+        onRegionSelect?.(name)
+      })
 
-    chartRef.current = chart
+      // Preselect highlight region if provided
+      if (highlightRegionName) {
+        setTimeout(() => {
+          try {
+            series.mapPolygons.each((p) => {
+              const nVal = p?.dataItem?.dataContext?.name
+              const n = typeof nVal === 'string' ? nVal : null
+              if (n && n.toLowerCase() === highlightRegionName.toLowerCase()) {
+                p.isActive = true
+              }
+            })
+          } catch {}
+        }, 0)
+      }
+
+      localChart = { dispose: () => { try { (chart as unknown as { dispose: () => void }).dispose() } catch {} } }
+      chartRef.current = localChart
+      if (disposed && localChart) {
+        try { localChart.dispose() } catch {}
+      }
+    })()
+
     return () => {
-      try { chart.dispose() } catch {}
+      disposed = true
+      const c = chartRef.current
+      if (c) { try { c.dispose() } catch {} }
       chartRef.current = null
     }
-  }, [country, highlightRegionName])
+  }, [country, highlightRegionName, onRegionSelect])
 
   return (
     <div className="w-full">
