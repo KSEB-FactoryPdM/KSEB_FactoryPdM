@@ -172,6 +172,7 @@ jobs:
             && pip install --no-cache-dir scikit-learn
 
         # 애플리케이션 코드 복사
+        RUN mkdir -p /app/models
         COPY . .
 
         # AI 모델 서비스 포트 노출
@@ -291,8 +292,6 @@ jobs:
                   value: "zookeeper-service:2181"
                 - name: KAFKA_LISTENERS
                   value: "PLAINTEXT://:9092,EXTERNAL://:9093"
-                - name: KAFKA_ADVERTISED_LISTENERS
-                  value: "PLAINTEXT://kafka-service:9092,EXTERNAL://$(POD_IP):9093"
                 - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
                   value: "PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
                 - name: KAFKA_INTER_BROKER_LISTENER_NAME
@@ -311,6 +310,7 @@ jobs:
                   valueFrom:
                     fieldRef:
                       fieldPath: status.podIP
+                command: ['sh','-c','export KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://kafka-service:9092,EXTERNAL://$POD_IP:9093"; exec /etc/confluent/docker/run']
                 resources:
                   requests:
                     memory: "2Gi"
@@ -374,7 +374,7 @@ jobs:
                 - name: DATABASE_URL
                   value: "sqlite:////data/ai_service.db"
                 - name: MODEL_PATH
-                  value: "/models"
+                  value: "/app/models"
                 - name: KAFKA_BOOTSTRAP_SERVERS
                   valueFrom:
                     secretKeyRef:
@@ -402,12 +402,8 @@ jobs:
                 volumeMounts:
                 - name: data
                   mountPath: /data
-                - name: models
-                  mountPath: /models
               volumes:
               - name: data
-                emptyDir: {}
-              - name: models
                 emptyDir: {}
         ---
         apiVersion: v1
