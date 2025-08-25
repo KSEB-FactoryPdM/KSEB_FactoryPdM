@@ -144,7 +144,7 @@
         "overrides": [
           {
             "matcher": {"id": "byName", "options": "vibration"},
-            "properties": [{"id": "color", "value": {"fixedColor": "purple", "mode": "fixed"}}]
+            "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
           }
         ]
       },
