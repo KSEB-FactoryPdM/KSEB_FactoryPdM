@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-SF-02",
+  "power": "5.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "bearing"
+  ],
+  "th_ae": {
+    "current": 7.074856281280518,
+    "vibration": 2.279428243637085
+  },
+  "files_sha256": {
+    "metadata.json": "94b96ca6370d2b3daeefee981865129f3229c769e752c8067d54b1d5254a12a8",
+    "ae_vibration.pt": "d5979ac3513686283a3c2004603bcf91619b12be7c958e88594454e924e99360",
+    "ae_current.pt": "745bee02f4dd0a48007ac048ac7501ed327bb169a8ba8dd8474639692a3cd0ec",
+    "standard_scaler_vibration.joblib": "eb69625245cf9a8b8fb7e2b83a60c9f9faac31b14a15e9e4be316ee388ef5150",
+    "xgb.json": "211895a8d57080c2d3b5d38c0fbdded6abfe7e0faa651a8020ad29419aa3333f",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "7e0c6b9a39e5706dec89e94037296914b2d1f4cb0f1e1af941e67727f16227fe"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "bearing"
+  },
+  "metrics": {
+    "accuracy": 0.9986807387862797,
+    "f1_macro": 0.9811456856453498,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9285714285714286,
+        "recall": 1.0,
+        "f1-score": 0.9629629629629629,
+        "support": 13.0
+      },
+      "bearing": {
+        "precision": 1.0,
+        "recall": 0.9986577181208054,
+        "f1-score": 0.9993284083277367,
+        "support": 745.0
+      },
+      "accuracy": 0.9986807387862797,
+      "macro avg": {
+        "precision": 0.9642857142857143,
+        "recall": 0.9993288590604027,
+        "f1-score": 0.9811456856453498,
+        "support": 758.0
+      },
+      "weighted avg": {
+        "precision": 0.9987749717301169,
+        "recall": 0.9986807387862797,
+        "f1-score": 0.9987047265470743,
+        "support": 758.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        13,
+        0
+      ],
+      [
+        1,
+        744
+      ]
+    ]
+  }
+}

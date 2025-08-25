@@ -1,0 +1,51 @@
+# 개발 환경용 오버라이드 설정
+# docker-compose up 시 자동으로 적용됨
+
+services:
+  backend:
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - .:/app  # 코드 변경사항 실시간 반영
+      - ./models:/app/models:ro
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips="*"
+
+  data-collector:
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - .:/app
+
+  frontend:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ../frontend:/app  # 프론트엔드 코드 실시간 반영
+      - /app/node_modules
+      - /app/.next
+
+  # 개발용 추가 서비스들
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - app-network
+    profiles:
+      - dev
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - app-network
+    profiles:
+      - dev

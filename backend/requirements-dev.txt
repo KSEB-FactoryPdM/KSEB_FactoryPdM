@@ -1,0 +1,19 @@
+# 개발 및 테스트용 의존성
+-r requirements.txt
+
+# 테스트 프레임워크
+pytest==7.4.3
+pytest-asyncio==0.23.2
+pytest-cov==4.1.0
+
+# HTTP 클라이언트 (테스트용)
+httpx==0.25.2
+
+# 개발 도구
+black==23.12.1
+isort==5.13.2
+flake8==6.1.0
+mypy==1.8.0
+
+# 디버깅
+ipdb==0.13.13

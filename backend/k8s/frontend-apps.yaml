@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: smart-factory-frontend
+  namespace: smart-factory
+  labels:
+    app: smart-factory-frontend
+spec:
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+  selector:
+    app: smart-factory-frontend
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smart-factory-frontend
+  namespace: smart-factory
+  labels:
+    app: smart-factory-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: smart-factory-frontend
+  template:
+    metadata:
+      labels:
+        app: smart-factory-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: gcr.io/PROJECT_ID/smart-factory-frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_BACKEND_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_BACKEND_EXTERNAL_BASE_URL
+        - name: NEXT_PUBLIC_WEBSOCKET_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: APP_BACKEND_WS_URL
+        # Grafana 환경변수 제거됨
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

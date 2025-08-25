@@ -1,0 +1,14 @@
+{
+  "id": "EQ-1",
+  "name": "Pump",
+  "model": "PX-1",
+  "location": "Line A",
+  "lastInspection": "2023-04-01",
+  "threshold": 50,
+  "history": [
+    {"time": 1, "value": 20},
+    {"time": 2, "value": 30},
+    {"time": 3, "value": 40},
+    {"time": 4, "value": 35}
+  ]
+}

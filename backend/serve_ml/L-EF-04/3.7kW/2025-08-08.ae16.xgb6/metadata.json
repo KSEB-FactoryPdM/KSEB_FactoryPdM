@@ -1,0 +1,23 @@
+{
+  "equipment_id": "L-EF-04",
+  "power": "3.7kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "A",
+  "faults": [],
+  "th_ae": {
+    "current": 0.9785639047622681,
+    "vibration": 5.328860282897949
+  },
+  "files_sha256": {
+    "metadata.json": "0ff6f24699c69cfa87bf4eb4aaaa7466329289258b294822b69c4a512810b106",
+    "ae_vibration.pt": "cc39454775428d12280d52cbaba7c9029d832360d23e64e8c86bb06ac8a3ece4",
+    "ae_current.pt": "08b3c19b1465a7d604cdcee5151c2060736cc445340190a33441d685ae3607ae",
+    "standard_scaler_vibration.joblib": "a5a11d1a63565aa3afb34f008b4f0b4370a42c5ff257e70cca3dc96c22b08df7",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "7cec04f00e25e5d7fc27af97701e015895864ddd94659b4dd7e80c2779d33cb9"
+  }
+}

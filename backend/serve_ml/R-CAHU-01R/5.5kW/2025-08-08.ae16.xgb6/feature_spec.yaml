@@ -1,0 +1,173 @@
+features:
+- cur_x_mean
+- cur_x_std
+- cur_x_min
+- cur_x_max
+- cur_x_p2p
+- cur_x_rms
+- cur_x_skew
+- cur_x_kurt
+- cur_x_crest
+- cur_x_band_0_100
+- cur_x_band_100_500
+- cur_x_band_500_1000
+- cur_x_band_1000_2000
+- cur_x_band_2000_4000
+- cur_x_dom_freq
+- cur_x_env_band_0_100
+- cur_x_env_band_100_500
+- cur_x_env_band_500_1000
+- cur_x_env_band_1000_2000
+- cur_x_env_band_2000_4000
+- cur_x_env_dom_freq
+- cur_y_mean
+- cur_y_std
+- cur_y_min
+- cur_y_max
+- cur_y_p2p
+- cur_y_rms
+- cur_y_skew
+- cur_y_kurt
+- cur_y_crest
+- cur_y_band_0_100
+- cur_y_band_100_500
+- cur_y_band_500_1000
+- cur_y_band_1000_2000
+- cur_y_band_2000_4000
+- cur_y_dom_freq
+- cur_y_env_band_0_100
+- cur_y_env_band_100_500
+- cur_y_env_band_500_1000
+- cur_y_env_band_1000_2000
+- cur_y_env_band_2000_4000
+- cur_y_env_dom_freq
+- cur_z_mean
+- cur_z_std
+- cur_z_min
+- cur_z_max
+- cur_z_p2p
+- cur_z_rms
+- cur_z_skew
+- cur_z_kurt
+- cur_z_crest
+- cur_z_band_0_100
+- cur_z_band_100_500
+- cur_z_band_500_1000
+- cur_z_band_1000_2000
+- cur_z_band_2000_4000
+- cur_z_dom_freq
+- cur_z_env_band_0_100
+- cur_z_env_band_100_500
+- cur_z_env_band_500_1000
+- cur_z_env_band_1000_2000
+- cur_z_env_band_2000_4000
+- cur_z_env_dom_freq
+- vib_mean
+- vib_std
+- vib_min
+- vib_max
+- vib_p2p
+- vib_rms
+- vib_skew
+- vib_kurt
+- vib_crest
+- vib_band_0_100
+- vib_band_100_500
+- vib_band_500_1000
+- vib_band_1000_2000
+- vib_band_2000_4000
+- vib_dom_freq
+- vib_env_band_0_100
+- vib_env_band_100_500
+- vib_env_band_500_1000
+- vib_env_band_1000_2000
+- vib_env_band_2000_4000
+- vib_env_dom_freq
+modal_map:
+  current:
+  - cur_x_mean
+  - cur_x_std
+  - cur_x_min
+  - cur_x_max
+  - cur_x_p2p
+  - cur_x_rms
+  - cur_x_skew
+  - cur_x_kurt
+  - cur_x_crest
+  - cur_x_band_0_100
+  - cur_x_band_100_500
+  - cur_x_band_500_1000
+  - cur_x_band_1000_2000
+  - cur_x_band_2000_4000
+  - cur_x_dom_freq
+  - cur_x_env_band_0_100
+  - cur_x_env_band_100_500
+  - cur_x_env_band_500_1000
+  - cur_x_env_band_1000_2000
+  - cur_x_env_band_2000_4000
+  - cur_x_env_dom_freq
+  - cur_y_mean
+  - cur_y_std
+  - cur_y_min
+  - cur_y_max
+  - cur_y_p2p
+  - cur_y_rms
+  - cur_y_skew
+  - cur_y_kurt
+  - cur_y_crest
+  - cur_y_band_0_100
+  - cur_y_band_100_500
+  - cur_y_band_500_1000
+  - cur_y_band_1000_2000
+  - cur_y_band_2000_4000
+  - cur_y_dom_freq
+  - cur_y_env_band_0_100
+  - cur_y_env_band_100_500
+  - cur_y_env_band_500_1000
+  - cur_y_env_band_1000_2000
+  - cur_y_env_band_2000_4000
+  - cur_y_env_dom_freq
+  - cur_z_mean
+  - cur_z_std
+  - cur_z_min
+  - cur_z_max
+  - cur_z_p2p
+  - cur_z_rms
+  - cur_z_skew
+  - cur_z_kurt
+  - cur_z_crest
+  - cur_z_band_0_100
+  - cur_z_band_100_500
+  - cur_z_band_500_1000
+  - cur_z_band_1000_2000
+  - cur_z_band_2000_4000
+  - cur_z_dom_freq
+  - cur_z_env_band_0_100
+  - cur_z_env_band_100_500
+  - cur_z_env_band_500_1000
+  - cur_z_env_band_1000_2000
+  - cur_z_env_band_2000_4000
+  - cur_z_env_dom_freq
+  vibration:
+  - vib_mean
+  - vib_std
+  - vib_min
+  - vib_max
+  - vib_p2p
+  - vib_rms
+  - vib_skew
+  - vib_kurt
+  - vib_crest
+  - vib_band_0_100
+  - vib_band_100_500
+  - vib_band_500_1000
+  - vib_band_1000_2000
+  - vib_band_2000_4000
+  - vib_dom_freq
+  - vib_env_band_0_100
+  - vib_env_band_100_500
+  - vib_env_band_500_1000
+  - vib_env_band_1000_2000
+  - vib_env_band_2000_4000
+  - vib_env_dom_freq
+scaling: standard_separate

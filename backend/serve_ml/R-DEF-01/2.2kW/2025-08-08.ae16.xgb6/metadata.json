@@ -1,0 +1,23 @@
+{
+  "equipment_id": "R-DEF-01",
+  "power": "2.2kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "A",
+  "faults": [],
+  "th_ae": {
+    "current": 0.6601457595825195,
+    "vibration": 3.367860794067383
+  },
+  "files_sha256": {
+    "metadata.json": "e9b2c9a3ec13732df6d2854b4d20b848a2f41d0899f82a7e50c86feeca57d779",
+    "ae_vibration.pt": "f294c9f171bf27f841aa48b9f07c03f03d3cf8b148858d9baf46d364ddfe7f3e",
+    "ae_current.pt": "959c7e4b7c24f10a78a5535f72ab1b1e077a87b9db4338b5998df97f17492cc1",
+    "standard_scaler_vibration.joblib": "97963829a92ae1e9cef7ff962d4bde623a6059ea9db83ba0f048277e750207f8",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "1e8f89c15f7f2b97fca8e68ac92bb39ad3c0d878956521f62de5c8884fae5c44"
+  }
+}

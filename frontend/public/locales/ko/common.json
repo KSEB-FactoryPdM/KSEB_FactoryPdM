@@ -1,0 +1,269 @@
+{
+  "header": {
+    "title": "공장 PMS",
+    "searchPlaceholder": "장비 ID · 이벤트 검색",
+    "notifications": "알림",
+    "unreadAlerts": "읽지 않은 알림 {{count}}개",
+    "user": "사용자",
+    "toggleTheme": "테마 전환",
+    "enableHighContrast": "고대비 모드 활성화",
+    "disableHighContrast": "고대비 모드 비활성화",
+    "fontSize": "기본 글꼴 크기",
+    "language": "언어",
+    "datetime": "{{datetime}}",
+    "userInfo": "{{username}} ({{role}})"
+  },
+  "nav": {
+    "dashboard": "대시보드",
+    "anomalies": "이상",
+    "maintenance": "유지보수",
+    "equipment": "장비",
+    "alerts": "알림",
+    "settings": "설정",
+    "help": "도움말",
+    "sidebarLabel": "주요 탐색",
+    "logout": "로그아웃",
+    "call": "전화"
+  },
+  "login": {
+    "title": "로그인",
+    "username": "사용자 이름",
+    "password": "비밀번호",
+    "button": "로그인",
+    "failed": "로그인 실패",
+    "signupPrompt": "계정이 없으신가요?",
+    "signupLink": "회원가입"
+  },
+  "signup": {
+    "title": "회원가입",
+    "username": "사용자 이름",
+    "email": "이메일",
+    "password": "비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "button": "회원가입",
+    "failed": "회원가입 실패",
+    "loginPrompt": "이미 계정이 있으신가요?",
+    "loginLink": "로그인"
+  },
+  "footer": {
+    "version": "버전 {{version}}",
+    "contact": "© {{year}} 공장 PdM"
+  },
+  "filters": {
+    "allPower": "모든 kW",
+    "allEquipment": "모든 장비",
+    "allSensors": "모든 센서",
+    "power": "kW",
+    "equipment": "장비"
+  },
+  "status": {
+    "normal": "정상",
+    "misalignment": "축정렬불량",
+    "unbalance": "회전체불평형",
+    "belt_loose": "벨트느슨함",
+    "bearing_fault": "베어링불량"
+  },
+  "settings": {
+    "name": "이름",
+    "email": "이메일",
+    "password": "비밀번호",
+    "plcEndpoint": "PLC/SCADA 엔드포인트",
+    "mqttEndpoint": "MQTT 엔드포인트",
+    "opcuaEndpoint": "OPC UA 엔드포인트",
+    "role": "역할",
+    "roles": {
+      "admin": "관리자",
+      "operator": "운영자",
+      "viewer": "뷰어"
+    },
+    "sections": {
+      "profile": "프로필/계정",
+      "notifications": "알림",
+      "security": "보안/프라이버시",
+      "preferences": "앱 환경",
+      "advanced": "고급",
+      "about": "버전 정보 & 도움말"
+    },
+    "search": "설정 검색",
+    "save": "저장",
+    "saved": "저장 완료",
+    "reset": "초기화",
+    "profile": {
+      "name": "이름",
+      "email": "이메일",
+      "password": "비밀번호",
+      "sns": "SNS 계정",
+      "link": "연결",
+      "unlink": "해제"
+    },
+    "notifications": {
+      "push": "푸시",
+      "email": "이메일",
+      "sms": "SMS",
+      "frequency": "알림 주기",
+      "daily": "일간",
+      "weekly": "주간",
+      "monthly": "월간"
+    },
+    "security": {
+      "twoFactor": "2단계 인증",
+      "sessions": "로그인한 기기",
+      "logout": "로그아웃",
+      "download": "데이터 다운로드",
+      "delete": "계정 삭제"
+    },
+    "preferences": {
+      "language": "언어",
+      "theme": "테마"
+    },
+    "advanced": {
+      "beta": "베타 기능 사용",
+      "apiKey": "API 키",
+      "copy": "복사",
+      "regenerate": "재발급"
+    },
+    "about": {
+      "version": "버전"
+    }
+  },
+  "errorBoundary": {
+    "message": "문제가 발생했습니다",
+    "retry": "다시 시도"
+  },
+  "alerts": {
+    "title": "알림",
+    "allSeverity": "모든 심각도",
+    "allStatus": "모든 상태",
+    "acknowledgeSelected": "선택 항목 확인",
+    "clearSelected": "선택 항목 삭제",
+    "headers": {
+      "time": "시간",
+      "kw": "kW",
+      "device": "장치",
+      "type": "유형",
+      "severity": "심각도",
+      "actions": "동작"
+    },
+    "buttons": {
+      "acknowledge": "확인",
+      "clear": "삭제",
+      "details": "세부 정보"
+    },
+    "noAlerts": "알림 없음",
+    "filters": {
+      "severity": "심각도",
+      "startDate": "시작 날짜",
+      "endDate": "종료 날짜",
+      "status": "상태"
+    },
+    "status": {
+      "new": "신규",
+      "acknowledged": "확인됨",
+      "cleared": "해결됨"
+    }
+  },
+  "anomalies": {
+    "title": "이상",
+    "sort": "정렬",
+    "allTypes": "모든 유형",
+    "allStatus": "모든 상태",
+    "loading": "불러오는 중...",
+    "noAnomalies": "이상 없음",
+    "tryFilters": "필터를 조정해 보세요",
+    "search": "이상 검색",
+    "reset": "초기화",
+    "exportCsv": "CSV 내보내기",
+    "filters": {
+      "range": "기간",
+      "type": "유형",
+      "status": "상태",
+      "startDate": "시작 날짜",
+      "endDate": "종료 날짜"
+    },
+    "status": {
+      "open": "진행중",
+      "resolved": "해결됨"
+    },
+    "headers": {
+      "time": "시간",
+      "equipment": "장비",
+      "type": "유형",
+      "status": "상태",
+      "actions": "동작"
+    },
+    "buttons": {
+      "details": "세부 정보"
+    }
+  },
+  "fts": {
+    "title": "FTS (Follow-the-Sun) 콜 데스크",
+    "subtitle": "지역별 공장 책임자 즉시 연락",
+    "searchPlaceholder": "공장명 / 관리자 / 전화번호 검색",
+    "factoryShortcut": "공장 바로가기",
+    "map": "지도",
+    "selectedRegion": "선택 지역: {{region}}",
+    "clickRegion": "지역을 클릭해 필터링",
+    "clearRegion": "지역 선택 해제",
+    "allContacts": "{{country}} 전체 연락처",
+    "regionContacts": "{{region}} 지역 연락처",
+    "korea": "대한민국",
+    "usa": "미국",
+    "noResults": "검색 결과가 없습니다.",
+    "factoryName": "공장명",
+    "manager": "관리자",
+    "phone": "전화",
+    "all": "전체",
+    "total": "총 {{count}}건",
+    "clear": "지우기"
+  },
+  "monitoring": {
+    "title": "라이브 장비 대시보드",
+    "subtitle": "장비 상태, 이상 징후, 센서 신호를 즉시 파악하세요.",
+    "connecting": "서버 연결 중…",
+    "error": "연결 오류(자동 재시도)",
+    "connected": "실시간 연결됨",
+    "resume": "재개",
+    "pause": "일시정지",
+    "exportCsv": "CSV 내보내기",
+    "resumeTitle": "실시간 갱신 재개",
+    "pauseTitle": "실시간 갱신 일시정지",
+    "exportTitle": "현재 범위 데이터 CSV 저장",
+    "summary": {
+      "totalEquipment": "전체 장비",
+      "activeAlerts": "활성 알림",
+      "todaysPredicted": "오늘 예측값",
+      "latestRul": "최신 RUL",
+      "nextMaintenance": "다음 유지보수"
+    },
+    "recentEvents": "최근 이상 이벤트",
+    "noEvents": "최근 이벤트가 없습니다.",
+    "table": {
+      "time": "시간",
+      "device": "장비",
+      "sensor": "센서",
+      "severity": "심각도"
+    },
+    "activeFilters": {
+      "period": "기간",
+      "equipment": "장비",
+      "power": "전력",
+      "sensor": "센서"
+    },
+    "filters": {
+      "allSensors": "모든 센서"
+    },
+    "charts": {
+      "anomalyTotal": "이상 발생 수(전체)",
+      "anomalyByType": "이상 발생 수(유형별)",
+      "anomalyByZone": "이상 발생 수(영역별)",
+      "predictionRul": "예측(잔여 수명)",
+      "sensorData": "센서 데이터(전류·진동)",
+      "realTimeSelected": "실시간 신호(선택)",
+      "current": "전류",
+      "vibration": "진동",
+      "noData": "데이터 없음"
+    },
+    "connectingNotice": "서버에 연결 중입니다…",
+    "errorNotice": "연결 오류가 발생했습니다. 자동으로 재시도합니다."
+  }
+}

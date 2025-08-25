@@ -1,0 +1,310 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: smart-factory-backend
+  namespace: smart-factory
+  labels:
+    app: smart-factory-backend
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  selector:
+    app: smart-factory-backend
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smart-factory-backend
+  namespace: smart-factory
+  labels:
+    app: smart-factory-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smart-factory-backend
+  template:
+    metadata:
+      labels:
+        app: smart-factory-backend
+    spec:
+      containers:
+      - name: backend
+        image: gcr.io/PROJECT_ID/smart-factory-backend:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_DB
+        - name: DATABASE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
+        - name: TIMESCALE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: AI_MODEL_SERVICE_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: AI_MODEL_SERVICE_ENDPOINT
+              optional: true
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SECRET_KEY
+              optional: false
+        - name: EMAIL_SMTP_SERVER
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_SMTP_SERVER
+              optional: true
+        - name: EMAIL_SMTP_PORT
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_SMTP_PORT
+              optional: true
+        - name: EMAIL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_USERNAME
+              optional: true
+        - name: EMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: EMAIL_PASSWORD
+              optional: true
+        - name: ADMIN_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: ADMIN_EMAIL
+              optional: true
+        - name: SLACK_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SLACK_BOT_TOKEN
+              optional: true
+        - name: SLACK_ADMIN_USER_ID
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SLACK_ADMIN_USER_ID
+              optional: true
+        - name: SLACK_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: SLACK_WEBHOOK_URL
+              optional: true
+        envFrom:
+        - configMapRef:
+            name: smart-factory-config
+        - configMapRef:
+            name: app-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 20
+          periodSeconds: 5
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-collector
+  namespace: smart-factory
+  labels:
+    app: data-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-collector
+  template:
+    metadata:
+      labels:
+        app: data-collector
+    spec:
+      containers:
+      - name: data-collector
+        image: gcr.io/PROJECT_ID/smart-factory-backend:latest
+        command: ["python", "-m", "app.services.data_collector"]
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: KAFKA_BOOTSTRAP_SERVERS
+        envFrom:
+        - configMapRef:
+            name: smart-factory-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-timescale-sink
+  namespace: smart-factory
+  labels:
+    app: kafka-timescale-sink
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-timescale-sink
+  template:
+    metadata:
+      labels:
+        app: kafka-timescale-sink
+    spec:
+      containers:
+      - name: kafka-timescale-sink
+        image: gcr.io/PROJECT_ID/smart-factory-backend:latest
+        command: ["python", "-m", "app.services.kafka_timescale_sink"]
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_DB
+        - name: TIMESCALE_URL
+          value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: KAFKA_BOOTSTRAP_SERVERS
+        envFrom:
+        - configMapRef:
+            name: smart-factory-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sensor-simulator
+  namespace: smart-factory
+  labels:
+    app: sensor-simulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sensor-simulator
+  template:
+    metadata:
+      labels:
+        app: sensor-simulator
+    spec:
+      containers:
+      - name: sensor-simulator
+        image: gcr.io/PROJECT_ID/smart-factory-backend:latest
+        command: ["python", "-m", "app.services.unity_sensor_simulator"]
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: KAFKA_BOOTSTRAP_SERVERS
+              optional: true
+        - name: MQTT_BROKER_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: smart-factory-config
+              key: MQTT_BROKER_HOST
+        - name: MQTT_BROKER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: smart-factory-config
+              key: MQTT_BROKER_PORT
+        - name: SIM_DEVICES
+          value: "L-CAHU-01R,L-SF-01"
+        - name: SIM_INTERVAL_MS
+          value: "3000"
+        - name: SIM_MODE
+          value: "both"
+        - name: SERVE_ML_PUBLISH
+          value: "true"
+        - name: SERVE_ML_FEATURE_TOPIC_BASE
+          value: "serve-ml"
+        - name: SIM_POWER
+          value: "11kW"
+        - name: SIM_MODEL_VERSION
+          value: "demo.v1"
+        envFrom:
+        - configMapRef:
+            name: smart-factory-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+
+ 

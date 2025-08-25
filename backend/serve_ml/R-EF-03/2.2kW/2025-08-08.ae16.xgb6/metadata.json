@@ -1,0 +1,23 @@
+{
+  "equipment_id": "R-EF-03",
+  "power": "2.2kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "A",
+  "faults": [],
+  "th_ae": {
+    "current": 42.472530364990234,
+    "vibration": 5.923071384429932
+  },
+  "files_sha256": {
+    "metadata.json": "3ab07ce5cd73b00f690e317544dffb65ea0bf171481e7f54139d2c57db8bb1eb",
+    "ae_vibration.pt": "9f740abd48c3a438c3ca393e265e87b3e421f211cb1183ad059abeeea2571d20",
+    "ae_current.pt": "63301c96aeb07fd4f1ccd2b806b67e85296a860a34b36387fa81c07cfed18bea",
+    "standard_scaler_vibration.joblib": "0cc27ce610d7145982829361f5f39b4e60326618774b1408c54b03a4d81e990e",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "aa68aaa88a703fe65ba1802d7848b8859817d9a29cd8d79dab1a675f6185ba19"
+  }
+}

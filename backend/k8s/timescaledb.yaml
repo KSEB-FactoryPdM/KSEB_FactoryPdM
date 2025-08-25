@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: smart-factory
+  labels:
+    app: timescaledb
+spec:
+  serviceName: timescaledb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: timescaledb
+  template:
+    metadata:
+      labels:
+        app: timescaledb
+    spec:
+      containers:
+      - name: timescaledb
+        image: timescale/timescaledb:latest-pg14
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: smart-factory-secrets
+              key: POSTGRES_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - $(POSTGRES_DB)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - $(POSTGRES_DB)
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: init-script
+        configMap:
+          name: timescaledb-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 20Gi
+      storageClassName: standard
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timescaledb
+  namespace: smart-factory
+  labels:
+    app: timescaledb
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+  selector:
+    app: timescaledb
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timescaledb-init-script
+  namespace: smart-factory
+data:
+  init_timescaledb.sql: |
+    -- TimescaleDB 확장 활성화
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+    -- 센서 원본 데이터 테이블 (프로젝트 포맷 x,y,z,vibe)
+    CREATE TABLE IF NOT EXISTS sensor_data (
+        time TIMESTAMPTZ NOT NULL,
+        device VARCHAR(50) NOT NULL,
+        device_id VARCHAR(50),
+        sensor_type VARCHAR(20) NOT NULL, -- x | y | z | vibe
+        value DOUBLE PRECISION NOT NULL,
+        unit VARCHAR(10),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (time, device, sensor_type)
+    );
+    SELECT create_hypertable('sensor_data', 'time', if_not_exists => TRUE);
+    CREATE INDEX IF NOT EXISTS idx_sensor_data_device_time ON sensor_data (device, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_sensor_data_device_id_time ON sensor_data (device_id, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_sensor_data_device_type ON sensor_data (device, sensor_type);
+
+    -- serve_ml 예측 결과 테이블
+    CREATE TABLE IF NOT EXISTS serve_ml_predictions (
+        time TIMESTAMPTZ NOT NULL,
+        equipment_id VARCHAR(50) NOT NULL,
+        power VARCHAR(50) NOT NULL,
+        model_version VARCHAR(100) NOT NULL,
+        is_anomaly BOOLEAN NOT NULL,
+        confidence DOUBLE PRECISION NOT NULL,
+        scores JSONB,
+        thresholds JSONB,
+        modalities JSONB,
+        features JSONB,
+        bundle_path TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    SELECT create_hypertable('serve_ml_predictions', 'time', if_not_exists => TRUE);
+    CREATE INDEX IF NOT EXISTS idx_smp_equipment_time ON serve_ml_predictions (equipment_id, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_smp_equipment_power_version ON serve_ml_predictions (equipment_id, power, model_version);
+
+    -- serve_ml 모델 메타
+    CREATE TABLE IF NOT EXISTS serve_ml_models (
+        equipment_id VARCHAR(50) NOT NULL,
+        power VARCHAR(50) NOT NULL,
+        model_version VARCHAR(100) NOT NULL,
+        modalities JSONB NOT NULL,
+        thresholds JSONB,
+        class_map JSONB,
+        sha256 VARCHAR(128),
+        bundle_path TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (equipment_id, power, model_version)
+    );

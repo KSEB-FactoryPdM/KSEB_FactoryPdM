@@ -1,0 +1,220 @@
+# 통합 Docker Compose 파일 (Core/Compute 로컬 시뮬레이션 가능)
+
+services:
+  # 백엔드 API 서버
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+      - TIMESCALE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - RUL_CALIB_PATH=/app/configs/rul_calib.json
+      
+      - SERVE_ML_ROOT=/app/serve_ml
+    depends_on:
+      - timescaledb
+      - mqtt
+      - kafka
+      - redis
+    volumes:
+      - ./models:/app/models:ro
+      - ./serve_ml:/app/serve_ml:ro
+      - ./configs:/app/configs:ro
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 데이터 수집기 (MQTT → Kafka) - Unity 센서에서 MQTT 데이터 수집
+  data-collector:
+    build: .
+    command: python -m app.services.data_collector
+    environment:
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - DIRECT_TIMESCALE_WRITE=false
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+      - TIMESCALE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+      - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+    depends_on:
+      - mqtt
+      - kafka
+      - timescaledb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # 센서 시뮬레이터 (MQTT 퍼블리시)
+  sensor-simulator:
+    build: .
+    command: python -m app.services.unity_sensor_simulator --host mqtt --port 1883 --mode realtime --interval 3.0
+    environment:
+      - MQTT_BROKER_HOST=mqtt
+      - MQTT_BROKER_PORT=1883
+      - SIM_DEVICES=L-CAHU-01R,L-CAHU-03R,R-CAHU-01R,R-CAHU-02R,L-CAHU-01S,R-CAHU-01S,R-CAHU-03S,R-CAHU-02S,L-DEF-01,L-DSF-01,L-EF-04,L-SF-04,R-DEF-01,R-EF-03,R-EF-05,R-SF-03,L-CAHU-02S,R-PAC-01R,L-EF-01,L-EF-02,L-PAC-01,R-EF-01,R-PAHU-03S,L-PAHU-02S,L-SF-01,L-SF-02,R-SF-01,L-PAHU-03S,R-PAHU-04S,R-CAHU-03R,R-PAC-01S
+      - SERVE_ML_ROOT=/app/serve_ml
+    volumes:
+      - ./serve_ml:/app/serve_ml:ro
+    depends_on:
+      - mqtt
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  kafka-timescale-sink:
+    build: .
+    command: python -m app.services.kafka_timescale_sink
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_SENSOR_RAW_TOPIC=sensor-data-raw
+      - TIMESCALE_URL=postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@timescaledb:5432/${POSTGRES_DB:-predictive_maintenance}
+    depends_on:
+      - kafka
+      - timescaledb
+    networks:
+      - app-network
+    restart: unless-stopped
+
+
+  # Zookeeper (Kafka 의존성)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - app-network
+
+  # Kafka 브로커
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - app-network
+
+  # Redis (캐시 및 세션 저장소)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # TimescaleDB (PostgreSQL + TimescaleDB)
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-predictive_maintenance}
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./scripts/init_timescaledb.sql:/docker-entrypoint-initdb.d/init_timescaledb.sql:ro
+    networks:
+      - app-network
+
+  # MQTT 브로커 (Unity 센서 시뮬레이터 연결용)
+  mqtt:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - app-network
+
+  # Kafka UI (개발용)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - app-network
+
+  # Prometheus (모니터링)
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - app-network
+
+  # Frontend (Next.js)
+  frontend:
+    build: 
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3000"
+    environment:
+      - BACKEND_BASE_URL=http://backend:8000/api/v1
+      - NEXT_PUBLIC_BACKEND_BASE_URL=${NEXT_PUBLIC_BACKEND_BASE_URL:-http://localhost:8000/api/v1}
+      - NEXT_PUBLIC_WEBSOCKET_URL=${NEXT_PUBLIC_WEBSOCKET_URL:-ws://localhost:8000/api/v1/ws}
+      - NODE_ENV=${NODE_ENV:-development}
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+
+volumes:
+  timescale_data:
+  prometheus_data:
+  kafka_data:
+  zookeeper_data:
+
+networks:
+  app-network:
+    driver: bridge

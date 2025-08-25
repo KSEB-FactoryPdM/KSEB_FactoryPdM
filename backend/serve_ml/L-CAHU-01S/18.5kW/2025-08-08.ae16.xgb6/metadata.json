@@ -1,0 +1,20 @@
+{
+  "equipment_id": "L-CAHU-01S",
+  "power": "18.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current"
+  ],
+  "case": "A",
+  "faults": [],
+  "th_ae": {
+    "current": 5.491291046142578,
+    "vibration": null
+  },
+  "files_sha256": {
+    "metadata.json": "be72669c471896cb238b63cd5e4080de9b2356a1c49f1ba2f424ab6415405674",
+    "ae_current.pt": "46915b86d834d212b8b3f14c21d5b65502234e3e24fb36c5022196f0ec72d15f",
+    "feature_spec.yaml": "2776c717af2ec613692cbc7af3b21c99f381fde37d870fc88fdf8024f9435c5d",
+    "standard_scaler_current.joblib": "567090ecd531aeda7a9ff8fe7a96f6e470bb4796c15167acaebdc7864194caff"
+  }
+}

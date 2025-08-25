@@ -1,0 +1,269 @@
+{
+  "header": {
+    "title": "Factory PMS",
+    "searchPlaceholder": "Search equipment or events",
+    "notifications": "Notifications",
+    "unreadAlerts": "{{count}} unread alerts",
+    "user": "User",
+    "toggleTheme": "Toggle theme",
+    "enableHighContrast": "Enable high contrast mode",
+    "disableHighContrast": "Disable high contrast mode",
+    "fontSize": "Base font size",
+    "language": "Language",
+    "datetime": "{{datetime}}",
+    "userInfo": "{{username}} ({{role}})"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "anomalies": "Anomalies",
+    "maintenance": "Maintenance",
+    "equipment": "Equipment",
+    "alerts": "Alerts",
+    "settings": "Settings",
+    "help": "Help",
+    "sidebarLabel": "Main navigation",
+    "logout": "Logout",
+    "call": "Call"
+  },
+  "login": {
+    "title": "Sign In",
+    "username": "Username",
+    "password": "Password",
+    "button": "Login",
+    "failed": "Login failed",
+    "signupPrompt": "Don't have an account?",
+    "signupLink": "Sign up"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "username": "Username",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "button": "Sign Up",
+    "failed": "Sign up failed",
+    "loginPrompt": "Already have an account?",
+    "loginLink": "Login"
+  },
+  "footer": {
+    "version": "Version {{version}}",
+    "contact": "© {{year}} Factory PdM"
+  },
+  "filters": {
+    "allPower": "All kW",
+    "allEquipment": "All Equipment",
+    "allSensors": "All Sensors",
+    "power": "kW",
+    "equipment": "Equipment"
+  },
+  "status": {
+    "normal": "Normal",
+    "misalignment": "Misalignment",
+    "unbalance": "Rotational imbalance",
+    "belt_loose": "Loose belt",
+    "bearing_fault": "Bearing fault"
+  },
+  "settings": {
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "plcEndpoint": "PLC/SCADA Endpoint",
+    "mqttEndpoint": "MQTT Endpoint",
+    "opcuaEndpoint": "OPC UA Endpoint",
+    "role": "Role",
+    "roles": {
+      "admin": "Admin",
+      "operator": "Operator",
+      "viewer": "Viewer"
+    },
+    "sections": {
+      "profile": "Profile & Account",
+      "notifications": "Notifications",
+      "security": "Security & Privacy",
+      "preferences": "App Preferences",
+      "advanced": "Advanced",
+      "about": "About & Help"
+    },
+    "search": "Search settings",
+    "save": "Save Changes",
+    "saved": "Settings saved",
+    "reset": "Reset",
+    "profile": {
+      "name": "Name",
+      "email": "Email",
+      "password": "Password",
+      "sns": "SNS Accounts",
+      "link": "Link",
+      "unlink": "Unlink"
+    },
+    "notifications": {
+      "push": "Push",
+      "email": "Email",
+      "sms": "SMS",
+      "frequency": "Frequency",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "monthly": "Monthly"
+    },
+    "security": {
+      "twoFactor": "Two-factor authentication",
+      "sessions": "Active sessions",
+      "logout": "Logout",
+      "download": "Download data",
+      "delete": "Delete account"
+    },
+    "preferences": {
+      "language": "Language",
+      "theme": "Theme"
+    },
+    "advanced": {
+      "beta": "Enable beta features",
+      "apiKey": "API Key",
+      "copy": "Copy",
+      "regenerate": "Regenerate"
+    },
+    "about": {
+      "version": "Version"
+    }
+  },
+  "errorBoundary": {
+    "message": "An error occurred",
+    "retry": "Retry"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "allSeverity": "All Severity",
+    "allStatus": "All Status",
+    "acknowledgeSelected": "Acknowledge Selected",
+    "clearSelected": "Clear Selected",
+    "headers": {
+      "time": "Time",
+      "kw": "kW",
+      "device": "Device",
+      "type": "Type",
+      "severity": "Severity",
+      "actions": "Actions"
+    },
+    "buttons": {
+      "acknowledge": "Acknowledge",
+      "clear": "Clear",
+      "details": "Details"
+    },
+    "noAlerts": "No alerts",
+    "filters": {
+      "severity": "Severity",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "status": "Status"
+    },
+    "status": {
+      "new": "new",
+      "acknowledged": "acknowledged",
+      "cleared": "cleared"
+    }
+  },
+  "anomalies": {
+    "title": "Anomalies",
+    "sort": "Sort",
+    "allTypes": "All Types",
+    "allStatus": "All Status",
+    "loading": "Loading...",
+    "noAnomalies": "No anomalies",
+    "tryFilters": "Try adjusting filters",
+    "search": "Search anomalies",
+    "reset": "Reset",
+    "exportCsv": "Export CSV",
+    "filters": {
+      "range": "Range",
+      "type": "Type",
+      "status": "Status",
+      "startDate": "Start Date",
+      "endDate": "End Date"
+    },
+    "status": {
+      "open": "open",
+      "resolved": "resolved"
+    },
+    "headers": {
+      "time": "Time",
+      "equipment": "Equipment",
+      "type": "Type",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "buttons": {
+      "details": "Details"
+    }
+  },
+  "fts": {
+    "title": "FTS (Follow-the-Sun) Call Desk",
+    "subtitle": "Instant contact to factory managers by region",
+    "searchPlaceholder": "Search factory / manager / phone",
+    "factoryShortcut": "Factory shortcuts",
+    "map": "Map",
+    "selectedRegion": "Selected region: {{region}}",
+    "clickRegion": "Click a region to filter",
+    "clearRegion": "Clear selection",
+    "allContacts": "All contacts in {{country}}",
+    "regionContacts": "{{region}} contacts",
+    "korea": "South Korea",
+    "usa": "United States",
+    "noResults": "No results found",
+    "factoryName": "Factory",
+    "manager": "Manager",
+    "phone": "Phone",
+    "all": "All",
+    "total": "{{count}} results",
+    "clear": "clear"
+  },
+  "monitoring": {
+    "title": "Live Equipment Dashboard",
+    "subtitle": "Visualize equipment health, anomalies, and sensor signals instantly.",
+    "connecting": "Connecting to server…",
+    "error": "Connection error (retrying)",
+    "connected": "Live connection",
+    "resume": "Resume",
+    "pause": "Pause",
+    "exportCsv": "Export CSV",
+    "resumeTitle": "Resume live updates",
+    "pauseTitle": "Pause live updates",
+    "exportTitle": "Save current range as CSV",
+    "summary": {
+      "totalEquipment": "Total Equipment",
+      "activeAlerts": "Active Alerts",
+      "todaysPredicted": "Today's Predicted",
+      "latestRul": "Latest RUL",
+      "nextMaintenance": "Next Maintenance"
+    },
+    "recentEvents": "Recent Anomaly Events",
+    "noEvents": "No recent events.",
+    "table": {
+      "time": "Time",
+      "device": "Device",
+      "sensor": "Sensor",
+      "severity": "Severity"
+    },
+    "activeFilters": {
+      "period": "Range",
+      "equipment": "Equipment",
+      "power": "Power",
+      "sensor": "Sensor"
+    },
+    "filters": {
+      "allSensors": "All Sensors"
+    },
+    "charts": {
+      "anomalyTotal": "Anomaly Count (total)",
+      "anomalyByType": "Anomaly Count (by type)",
+      "anomalyByZone": "Anomaly Count (by zone)",
+      "predictionRul": "Prediction (Remaining Useful Life)",
+      "sensorData": "Sensor Data (Current & Vibration)",
+      "realTimeSelected": "Real-Time Signal (selected)",
+      "current": "Current",
+      "vibration": "Vibration",
+      "noData": "No data"
+    },
+    "connectingNotice": "Connecting to server…",
+    "errorNotice": "A connection error occurred. Retrying automatically."
+  }
+}

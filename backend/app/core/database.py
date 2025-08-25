@@ -1,0 +1,264 @@
+"""
+데이터베이스 연결 및 초기화 관리
+"""
+from sqlalchemy import create_engine, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+import logging
+from typing import Generator
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+# SQLAlchemy 설정
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+
+# 엔진 생성
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    poolclass=StaticPool,
+    pool_pre_ping=True,
+    echo=settings.DEBUG
+)
+
+# 세션 팩토리
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 베이스 클래스
+Base = declarative_base()
+
+# 메타데이터
+metadata = MetaData()
+
+
+def get_db() -> Generator:
+    """데이터베이스 세션 의존성"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+async def init_db():
+    """데이터베이스 초기화"""
+    try:
+        # 테이블 생성
+        Base.metadata.create_all(bind=engine)
+        logger.info("데이터베이스 테이블 생성 완료")
+        
+        # TimescaleDB 하이퍼테이블 생성
+        await create_timescale_tables()
+        
+    except Exception as e:
+        logger.error(f"데이터베이스 초기화 실패: {e}")
+        raise
+
+
+async def create_timescale_tables():
+    """TimescaleDB 하이퍼테이블 생성"""
+    try:
+        from sqlalchemy import text
+        
+        # Timescale 전용 엔진을 사용해 하이퍼테이블을 생성한다.
+        # DATABASE_URL과 TIMESCALE_URL이 다를 수 있으므로 반드시 Timescale 엔진을 사용.
+        ts_engine = get_timescale_engine()
+        with ts_engine.connect() as conn:
+            # Timescale 확장 보장
+            conn.execute(text("""
+                CREATE EXTENSION IF NOT EXISTS timescaledb;
+            """))
+            # Unity 센서 데이터용 테이블 생성 (프로젝트 포맷: x,y,z,vibe)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS sensor_data (
+                    time TIMESTAMPTZ NOT NULL,
+                    device TEXT NOT NULL,
+                    device_id TEXT,
+                    sensor_type TEXT NOT NULL, -- x|y|z|vibe
+                    value DOUBLE PRECISION NOT NULL,
+                    unit TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    PRIMARY KEY (time, device, sensor_type)
+                );
+            """))
+            
+            # 하이퍼테이블로 변환
+            conn.execute(text("""
+                SELECT create_hypertable('sensor_data', 'time', 
+                    if_not_exists => TRUE);
+            """))
+            
+            # 인덱스 생성
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_time 
+                ON sensor_data (device, time DESC);
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_id_time 
+                ON sensor_data (device_id, time DESC);
+            """))
+            
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_sensor_data_device_type 
+                ON sensor_data (device, sensor_type);
+            """))
+
+            # 타입 베스트프랙티스 적용 (기존 VARCHAR → TEXT로 변경)
+            conn.execute(text("""
+                ALTER TABLE IF EXISTS sensor_data 
+                    ALTER COLUMN device TYPE TEXT,
+                    ALTER COLUMN device_id TYPE TEXT,
+                    ALTER COLUMN sensor_type TYPE TEXT,
+                    ALTER COLUMN unit TYPE TEXT;
+            """))
+            
+            # 기존 테이블들도 유지 (호환성을 위해)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS sensor_data_legacy (
+                    time TIMESTAMPTZ NOT NULL,
+                    device_id VARCHAR(50) NOT NULL,
+                    sensor_type VARCHAR(20) NOT NULL,
+                    value DOUBLE PRECISION NOT NULL,
+                    unit VARCHAR(10),
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            
+            # 이상 이벤트 테이블
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS anomaly_events (
+                    id SERIAL PRIMARY KEY,
+                    device_id VARCHAR(50) NOT NULL,
+                    event_time TIMESTAMPTZ NOT NULL,
+                    anomaly_score DOUBLE PRECISION NOT NULL,
+                    anomaly_type VARCHAR(50),
+                    severity VARCHAR(20),
+                    description TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            
+            # RUL 예측 결과 테이블
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS rul_predictions (
+                    id SERIAL PRIMARY KEY,
+                    device_id VARCHAR(50) NOT NULL,
+                    prediction_time TIMESTAMPTZ NOT NULL,
+                    rul_value DOUBLE PRECISION NOT NULL,
+                    confidence DOUBLE PRECISION NOT NULL,
+                    uncertainty DOUBLE PRECISION,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+            
+            # 장비 정보 테이블
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS devices (
+                    id VARCHAR(50) PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL,
+                    type VARCHAR(50),
+                    location VARCHAR(100),
+                    installation_date DATE,
+                    last_maintenance_date DATE,
+                    status VARCHAR(20) DEFAULT 'active',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+
+            # 정비 요청 테이블
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS maintenance_requests (
+                    id SERIAL PRIMARY KEY,
+                    device_id VARCHAR(50) NOT NULL,
+                    requested_at TIMESTAMPTZ DEFAULT NOW(),
+                    status VARCHAR(20) DEFAULT 'pending',
+                    reason TEXT
+                );
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_maint_device_time
+                ON maintenance_requests (device_id, requested_at DESC);
+            """))
+
+            # serve_ml 모델 메타 테이블 (모델 레지스트리 동기화용)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS serve_ml_models (
+                    equipment_id TEXT NOT NULL,
+                    power TEXT NOT NULL,
+                    model_version TEXT NOT NULL,
+                    modalities JSONB NOT NULL,
+                    thresholds JSONB,
+                    class_map JSONB,
+                    sha256 VARCHAR(128),
+                    bundle_path TEXT NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    PRIMARY KEY (equipment_id, power, model_version)
+                );
+            """))
+
+            # serve_ml 예측 결과 하이퍼테이블 (TEXT 타입 권장 사항 반영)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS serve_ml_predictions (
+                    time TIMESTAMPTZ NOT NULL,
+                    equipment_id TEXT NOT NULL,
+                    power TEXT NOT NULL,
+                    model_version TEXT NOT NULL,
+                    is_anomaly BOOLEAN NOT NULL,
+                    confidence DOUBLE PRECISION NOT NULL,
+                    scores JSONB,
+                    thresholds JSONB,
+                    modalities JSONB,
+                    features JSONB,
+                    bundle_path TEXT,
+                    created_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """))
+
+            # 기존 배포에서 VARCHAR로 생성된 경우 TEXT로 변환 (무해한 반복 실행 가능)
+            conn.execute(text("""
+                ALTER TABLE IF EXISTS serve_ml_predictions
+                    ALTER COLUMN equipment_id TYPE TEXT,
+                    ALTER COLUMN power TYPE TEXT,
+                    ALTER COLUMN model_version TYPE TEXT;
+            """))
+            conn.execute(text("""
+                ALTER TABLE IF EXISTS serve_ml_models
+                    ALTER COLUMN equipment_id TYPE TEXT,
+                    ALTER COLUMN power TYPE TEXT,
+                    ALTER COLUMN model_version TYPE TEXT;
+            """))
+
+            conn.execute(text("""
+                SELECT create_hypertable('serve_ml_predictions', 'time', if_not_exists => TRUE, migrate_data => TRUE);
+            """))
+
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_smp_equipment_time
+                ON serve_ml_predictions (equipment_id, time DESC);
+            """))
+
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_smp_equipment_power_version
+                ON serve_ml_predictions (equipment_id, power, model_version);
+            """))
+            
+            conn.commit()
+            logger.info("TimescaleDB 하이퍼테이블 생성 완료")
+            
+    except Exception as e:
+        logger.error(f"TimescaleDB 테이블 생성 실패: {e}")
+        raise
+
+
+def get_timescale_engine():
+    """TimescaleDB 전용 엔진 반환"""
+    return create_engine(
+        settings.TIMESCALE_URL,
+        poolclass=StaticPool,
+        pool_pre_ping=True,
+        echo=settings.DEBUG
+    ) 

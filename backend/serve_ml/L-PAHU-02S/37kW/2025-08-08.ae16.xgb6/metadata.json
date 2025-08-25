@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-PAHU-02S",
+  "power": "37kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "misalign"
+  ],
+  "th_ae": {
+    "current": 14.310998916625977,
+    "vibration": 11.689186096191406
+  },
+  "files_sha256": {
+    "metadata.json": "4e38fbc44624982c0c8a3713c1556df900ca2f669a6296bd1460a84c6992b8b6",
+    "ae_vibration.pt": "6f0722d01e8711284bf68f98b874b6e09a9da523fce14184b8cab46bb96e6b30",
+    "ae_current.pt": "70a09e93f44ef8a0076b2ba41e624e8774a63d7d56e3efd4e50235a9b755d11a",
+    "standard_scaler_vibration.joblib": "20d34217f80ffee32f4c3fe568e58bdbe6f489744ec0fd30fb6fb2a594ccff15",
+    "xgb.json": "6b5851f8284e4e697d10085a57449565c4c2e8e3547a1125fdfa6a77a8d4ded1",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "ced31a86647cdf7eaf13a96991dcbd83525e4b1fac33ddefe04991c79e71d6ea"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "misalign"
+  },
+  "metrics": {
+    "accuracy": 0.947463768115942,
+    "f1_macro": 0.946770412489401,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9311740890688259,
+        "recall": 0.9504132231404959,
+        "f1-score": 0.9406952965235174,
+        "support": 242.0
+      },
+      "misalign": {
+        "precision": 0.9606557377049181,
+        "recall": 0.9451612903225807,
+        "f1-score": 0.9528455284552846,
+        "support": 310.0
+      },
+      "accuracy": 0.947463768115942,
+      "macro avg": {
+        "precision": 0.9459149133868721,
+        "recall": 0.9477872567315383,
+        "f1-score": 0.946770412489401,
+        "support": 552.0
+      },
+      "weighted avg": {
+        "precision": 0.9477308120347473,
+        "recall": 0.947463768115942,
+        "f1-score": 0.9475187963402707,
+        "support": 552.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        230,
+        12
+      ],
+      [
+        17,
+        293
+      ]
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-EF-04",
+  "power": "2.2kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "unbalance"
+  ],
+  "th_ae": {
+    "current": 0.7277169823646545,
+    "vibration": 1.2897614240646362
+  },
+  "files_sha256": {
+    "metadata.json": "6aeb19ab2db0cb61b74b5d26effd1c9ff1ce29f4b93fbe782789215302e6ebd4",
+    "ae_vibration.pt": "28e8672159c95c98e1edbc491338392f40d8afd77609f45054bd2287b43397e1",
+    "ae_current.pt": "55a95a2b12e4be8a4eff28bf3d5c26a10f0e2691133a29a3c673c1013b7b01cc",
+    "standard_scaler_vibration.joblib": "411c91f149d6e3e5cba8422bf291da0a350102d5242cc4e818ed9d8cb5d90c4c",
+    "xgb.json": "09fbf4b33ba6e5748c9b073b3f7994f6d914db26db0a1cb6c8a7bdb47551f2c5",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "9860ba817a2ea9a3a517887c336967e8c5e22d50f1fbb7d9ecaef104d3e95141"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "unbalance"
+  },
+  "metrics": {
+    "accuracy": 0.9815705128205128,
+    "f1_macro": 0.9757102903781305,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9871106337271751,
+        "recall": 0.9881720430107527,
+        "f1-score": 0.9876410531972059,
+        "support": 930.0
+      },
+      "unbalance": {
+        "precision": 0.9652996845425867,
+        "recall": 0.9622641509433962,
+        "f1-score": 0.9637795275590552,
+        "support": 318.0
+      },
+      "accuracy": 0.9815705128205128,
+      "macro avg": {
+        "precision": 0.9762051591348809,
+        "recall": 0.9752180969770745,
+        "f1-score": 0.9757102903781305,
+        "support": 1248.0
+      },
+      "weighted avg": {
+        "precision": 0.9815530360984098,
+        "recall": 0.9815705128205128,
+        "f1-score": 0.9815609529144078,
+        "support": 1248.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        919,
+        11
+      ],
+      [
+        12,
+        306
+      ]
+    ]
+  }
+}

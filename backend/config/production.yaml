@@ -1,0 +1,54 @@
+# 프로덕션 환경 설정 (GCP/GKE)
+app:
+  name: "스마트팩토리-운영"
+  debug: false
+  environment: "production" 
+  host: "0.0.0.0"
+  port: 8000
+
+database:
+  url: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
+  timescale_url: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@timescaledb:5432/$(POSTGRES_DB)"
+
+mqtt:
+  broker_host: "mqtt"
+  broker_port: 1883
+  username: ""
+  password: ""
+
+kafka:
+  bootstrap_servers: "kafka:9092"
+  topics:
+    raw_data: "sensor-data-raw"
+    processed_data: "sensor-data-processed"
+
+redis:
+  url: "redis://redis:6379"
+
+security:
+  secret_key: "${SECRET_KEY}"  # 환경변수에서 로드
+  algorithm: "HS256"
+  access_token_expire_minutes: 30
+
+ai_model:
+  model_path: "/app/models/"
+  anomaly_threshold: 0.05
+  maintenance_threshold_days: 30
+  sequence_length: 30
+  buffer_size: 100
+
+monitoring:
+  prometheus_port: 9090
+  grafana_port: 3000
+  log_level: "INFO"
+
+sensor_simulator:
+  data_interval: 1.0
+  simulation_speed: 1.0
+  anomaly_probability: 0.05
+
+# GCP 관련 설정
+gcp:
+  project_id: "${GCP_PROJECT_ID}"
+  cluster_name: "smart-factory-cluster"
+  zone: "asia-northeast3-a" 

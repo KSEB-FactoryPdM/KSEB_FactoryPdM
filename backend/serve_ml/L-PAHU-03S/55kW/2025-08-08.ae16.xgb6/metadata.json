@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-PAHU-03S",
+  "power": "55kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "unbalance"
+  ],
+  "th_ae": {
+    "current": 49.513755798339844,
+    "vibration": 9.348193168640137
+  },
+  "files_sha256": {
+    "metadata.json": "63db9064fb0dd9d81a3fdad63397dd384257b8ca08e63f6d0b2ca782c6aaf86e",
+    "ae_vibration.pt": "d44eb27bb86eb6ae9e970f4003dd1bec12a499eb00bb1b4ba052c433e74a868c",
+    "ae_current.pt": "7063bd51a3b87a5ddd71a66e17fdd3821782682e8dc173b8031d8b2e2b439635",
+    "standard_scaler_vibration.joblib": "4688634452b48080de6a552d5346c82bbc0cc6eecf7496d19a0fac304a54620a",
+    "xgb.json": "1eec5bb570665316b3c9277a28ffe22e3cf007edf319ae07504662eb3d01ff55",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "d672222a78b73a2f5a2b66f5a83432cf10614c4415968f43381d8e04887861a1"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "unbalance"
+  },
+  "metrics": {
+    "accuracy": 0.9961685823754789,
+    "f1_macro": 0.9958982901684688,
+    "classification_report": {
+      "normal": {
+        "precision": 0.9948453608247423,
+        "recall": 0.9948453608247423,
+        "f1-score": 0.9948453608247423,
+        "support": 194.0
+      },
+      "unbalance": {
+        "precision": 0.9969512195121951,
+        "recall": 0.9969512195121951,
+        "f1-score": 0.9969512195121951,
+        "support": 328.0
+      },
+      "accuracy": 0.9961685823754789,
+      "macro avg": {
+        "precision": 0.9958982901684688,
+        "recall": 0.9958982901684688,
+        "f1-score": 0.9958982901684688,
+        "support": 522.0
+      },
+      "weighted avg": {
+        "precision": 0.9961685823754789,
+        "recall": 0.9961685823754789,
+        "f1-score": 0.9961685823754789,
+        "support": 522.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        193,
+        1
+      ],
+      [
+        1,
+        327
+      ]
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "equipment_id": "L-SF-01",
+  "power": "7.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "A",
+  "faults": [],
+  "th_ae": {
+    "current": 14.774840354919434,
+    "vibration": 4.195272445678711
+  },
+  "files_sha256": {
+    "metadata.json": "bf9c5737e1d0840edd66fcf8b3540a15958a866fcfd8aca1ddd1c78907b4b4df",
+    "ae_vibration.pt": "f5fb607a4e35ed135ef903f01778a37ee6b8964af508221639cdec7666a4068d",
+    "ae_current.pt": "2b25a487232f8dbd497aa22ea249c58425a64218fb1d5affdabf92e5039687b7",
+    "standard_scaler_vibration.joblib": "14b62e85c58bfabd154f6c53f9b92a35a57b2cb9372c997d3f4d6f1ff8da3656",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "29cad994d23d79ae6d033e504e16a9283351204d8faa62fcf15498c2f8ac36f0"
+  }
+}

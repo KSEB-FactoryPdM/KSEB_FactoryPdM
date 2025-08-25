@@ -1,0 +1,14 @@
+{
+  "id": "EQ-2",
+  "name": "Compressor",
+  "model": "CP-200",
+  "location": "Line B",
+  "lastInspection": "2023-05-15",
+  "threshold": 60,
+  "history": [
+    {"time": 1, "value": 55},
+    {"time": 2, "value": 45},
+    {"time": 3, "value": 65},
+    {"time": 4, "value": 50}
+  ]
+}

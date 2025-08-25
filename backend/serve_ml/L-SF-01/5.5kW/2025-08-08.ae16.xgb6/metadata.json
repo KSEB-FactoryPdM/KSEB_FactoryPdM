@@ -1,0 +1,71 @@
+{
+  "equipment_id": "L-SF-01",
+  "power": "5.5kW",
+  "model_version": "2025-08-08.ae16.xgb6",
+  "modalities": [
+    "current",
+    "vibration"
+  ],
+  "case": "B",
+  "faults": [
+    "belt_loose"
+  ],
+  "th_ae": {
+    "current": 5.6037750244140625,
+    "vibration": 2.471731424331665
+  },
+  "files_sha256": {
+    "metadata.json": "795c563388665cad1101d0ccb2856f7a45e3e99e64714e9d0d85f1110b549857",
+    "ae_vibration.pt": "0f484da19e07987038f86e845dc62a1a8a2b692b9df2b97851d43838922f1161",
+    "ae_current.pt": "671c0dfd97518a13d15fa7942e6591dc9103868d5ee1ad3a54b5c21e1e729781",
+    "standard_scaler_vibration.joblib": "0ee35a1aafb6a8bca30fe21d279971c1dff0c7248cf91bfb0ffebaea3a69fe1b",
+    "xgb.json": "67af5304437689ddaec95e4fb905f4eed9f85fe3d8ec9b6649e92032de00c256",
+    "feature_spec.yaml": "c96a5305fe30d75b55e6e62b4aaf093166d3bc3f83421449eb020759b6713d6a",
+    "standard_scaler_current.joblib": "d21ba6f9b62fcce82291d4824ddaa02f8d41b8968bf2535ff881c79e9e85c53c"
+  },
+  "class_map": {
+    "0": "normal",
+    "1": "belt_loose"
+  },
+  "metrics": {
+    "accuracy": 1.0,
+    "f1_macro": 1.0,
+    "classification_report": {
+      "normal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 97.0
+      },
+      "belt_loose": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 547.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 644.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 644.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        97,
+        0
+      ],
+      [
+        0,
+        547
+      ]
+    ]
+  }
+}
