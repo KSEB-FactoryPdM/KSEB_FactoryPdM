@@ -61,7 +61,7 @@ services:
   # 센서 시뮬레이터 (MQTT 퍼블리시)
   sensor-simulator:
     build: .
-    command: python -m app.services.unity_sensor_simulator --host mqtt --port 1883 --mode realtime --interval 1.0
+    command: python -m app.services.unity_sensor_simulator --host mqtt --port 1883 --mode realtime --interval 3.0
     environment:
       - MQTT_BROKER_HOST=mqtt
       - MQTT_BROKER_PORT=1883
@@ -199,6 +199,7 @@ services:
     ports:
       - "3002:3000"
     environment:
+      - BACKEND_BASE_URL=http://backend:8000/api/v1
       - NEXT_PUBLIC_BACKEND_BASE_URL=${NEXT_PUBLIC_BACKEND_BASE_URL:-http://localhost:8000/api/v1}
       - NEXT_PUBLIC_WEBSOCKET_URL=${NEXT_PUBLIC_WEBSOCKET_URL:-ws://localhost:8000/api/v1/ws}
       - NODE_ENV=${NODE_ENV:-development}

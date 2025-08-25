@@ -72,6 +72,33 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
     }
   }, [data, multi, resample])
 
+  // 그래프 하단 한 줄로 표시할 정보 준비
+  const footerItems = useMemo(() => {
+    const items: { key: string; color: string; label: string }[] = []
+    const fmt = d3.format('.3f')
+    if (!multi && prepared.kind === 'single') {
+      const series = prepared.series
+      const last = series.length ? series[series.length - 1].value : NaN
+      const avg = series.length ? (d3.mean(series, d => d.value) ?? NaN) : NaN
+      const label = `${yLabel || 'value'} (avg ${Number.isFinite(avg) ? fmt(avg) : '-'}, last ${Number.isFinite(last) ? fmt(last) : '-'})`
+      items.push({ key: 'single', color, label })
+    } else if (multi && prepared.kind === 'multi') {
+      const keys = prepared.seriesByKey.map(s => s.key)
+      const palette = d3.scaleOrdinal<string, string>()
+        .domain(keys)
+        .range(['#F87171', '#34D399', '#60A5FA', '#A78BFA', '#FBBF24', '#22D3EE'])
+      const fixed: Record<string, string> = { x: '#F87171', y: '#34D399', z: '#60A5FA' }
+      const getColor = (k: string) => fixed[k] || palette(k)
+      for (const s of prepared.seriesByKey) {
+        const last = s.values.length ? s.values[s.values.length - 1].value : NaN
+        const avg = s.values.length ? (d3.mean(s.values, d => d.value) ?? NaN) : NaN
+        const label = `${s.key} (avg ${Number.isFinite(avg) ? fmt(avg) : '-'}, last ${Number.isFinite(last) ? fmt(last) : '-'})`
+        items.push({ key: s.key, color: getColor(s.key), label })
+      }
+    }
+    return items
+  }, [prepared, multi, color, yLabel])
+
   useEffect(() => {
     const svg = d3.select(ref.current)
     svg.selectAll('*').remove()
@@ -164,77 +191,10 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
         .datum(prepared.series)
         .attr('fill', 'none')
         .attr('stroke', color)
-        .attr('stroke-width', 1.5) // 선 두께 증가로 간격 넓히기
+        .attr('stroke-width', 1.5)
         .attr('d', line)
         .style('stroke-linecap', 'round')
         .style('stroke-linejoin', 'round')
-
-      // Single-series legend with stats
-      const last = prepared.series.length ? prepared.series[prepared.series.length - 1].value : NaN
-      const avg = prepared.series.length ? d3.mean(prepared.series, d => d.value) ?? NaN : NaN
-      const fmt = d3.format('.3f')
-      const text = `vibration (avg ${Number.isFinite(avg) ? fmt(avg) : '-'}, last ${Number.isFinite(last) ? fmt(last) : '-'})`
-
-      // 텍스트 크기 측정을 위한 임시 텍스트 요소
-      const tempText = svg.append('text')
-        .attr('x', 0).attr('y', 0)
-        .attr('fill', '#e2e8f0')
-        .attr('font-size', 12)
-        .attr('font-weight', '500')
-        .text(text)
-        .style('visibility', 'hidden')
-
-      const textBBox = (tempText.node() as SVGTextElement).getBBox()
-      const textWidth = textBBox.width
-      const textHeight = textBBox.height
-      tempText.remove()
-
-      // 동적으로 범례 크기 계산
-      const legendWidth = textWidth + 36 // 좌우 패딩 + 색상 박스 여백
-      const legendHeight = Math.max(textHeight + 12, 28)
-      const legendX = margin.left + 16 // 왼쪽으로 이동
-      const legendY = margin.top + 6 // 추가 6px 위쪽으로 이동
-
-      const legend = svg.append('g').attr('transform', `translate(${legendX}, ${legendY})`).style('pointer-events', 'none')
-
-      // 범례 배경에 그라디언트 효과
-      const gradient = svg.append('defs')
-        .append('linearGradient')
-        .attr('id', 'legendGradient')
-        .attr('x1', '0%').attr('y1', '0%')
-        .attr('x2', '0%').attr('y2', '100%')
-
-      gradient.append('stop').attr('offset', '0%').attr('stop-color', '#1e293b').attr('stop-opacity', 0.95)
-      gradient.append('stop').attr('offset', '100%').attr('stop-color', '#0f172a').attr('stop-opacity', 0.95)
-
-      legend.append('rect')
-        .attr('width', legendWidth)
-        .attr('height', legendHeight)
-        .attr('fill', 'url(#legendGradient)')
-        .attr('opacity', 0.95)
-        .attr('rx', 8)
-        .attr('stroke', '#3b82f6')
-        .attr('stroke-width', 1)
-        .attr('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))')
-
-      // 색상 인디케이터 (더 부드러운 원형)
-      legend.append('circle')
-        .attr('cx', 16)
-        .attr('cy', 14) // 상단 여백 제거
-        .attr('r', 6)
-        .attr('fill', color)
-        .attr('stroke', '#ffffff')
-        .attr('stroke-width', 1)
-        .attr('opacity', 0.9)
-
-      legend.append('text')
-        .attr('x', 32)
-        .attr('y', 14 + textHeight / 3) // 상단 여백 제거
-        .attr('fill', '#f1f5f9')
-        .attr('font-size', 12)
-        .attr('font-weight', '500')
-        .attr('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-        .text(text)
     } else if (multi && prepared.kind === 'multi') {
       const keys = prepared.seriesByKey.map(s => s.key)
       const palette = d3.scaleOrdinal<string, string>()
@@ -253,92 +213,24 @@ export default function D3TimeSeries({ data, height = 300, yLabel = '', color = 
           .style('stroke-linecap', 'round')
           .style('stroke-linejoin', 'round')
       }
-
-      const fmt = d3.format('.3f')
-      const lines = prepared.seriesByKey.map(s => {
-        const last = s.values.length ? s.values[s.values.length - 1].value : NaN
-        const avg = s.values.length ? d3.mean(s.values, d => d.value) ?? NaN : NaN
-        return `${s.key} (avg ${Number.isFinite(avg) ? fmt(avg) : '-'}, last ${Number.isFinite(last) ? fmt(last) : '-'})`
-      })
-
-      // 각 텍스트 라인의 너비 측정
-      const textWidths: number[] = []
-      const textHeight = 12
-      const tempTexts = lines.map(line => {
-        const tempText = svg.append('text')
-          .attr('x', 0).attr('y', 0)
-          .attr('fill', '#e2e8f0')
-          .attr('font-size', 12)
-          .attr('font-weight', '500')
-          .text(line)
-          .style('visibility', 'hidden')
-        const bbox = (tempText.node() as SVGTextElement).getBBox()
-        textWidths.push(bbox.width)
-        return tempText
-      })
-
-      // 임시 텍스트 요소들 제거
-      tempTexts.forEach(t => t.remove())
-
-      // 최대 텍스트 너비 계산
-      const maxTextWidth = Math.max(...textWidths)
-      const itemHeight = 24
-      const legendWidth = maxTextWidth + 48 // 좌우 패딩 + 색상 원 여백
-      const legendHeight = prepared.seriesByKey.length * itemHeight + 20
-      const legendX = margin.left + 16 // 왼쪽으로 이동
-      const legendY = margin.top + 6 // 추가 6px 위쪽으로 이동
-
-      const legend = svg.append('g').attr('transform', `translate(${legendX}, ${legendY})`).style('pointer-events', 'none')
-
-      // 범례 배경에 그라디언트 효과
-      const multiGradient = svg.append('defs')
-        .append('linearGradient')
-        .attr('id', 'multiLegendGradient')
-        .attr('x1', '0%').attr('y1', '0%')
-        .attr('x2', '0%').attr('y2', '100%')
-
-      multiGradient.append('stop').attr('offset', '0%').attr('stop-color', '#1e293b').attr('stop-opacity', 0.95)
-      multiGradient.append('stop').attr('offset', '100%').attr('stop-color', '#0f172a').attr('stop-opacity', 0.95)
-
-      legend.append('rect')
-        .attr('width', legendWidth)
-        .attr('height', legendHeight)
-        .attr('fill', 'url(#multiLegendGradient)')
-        .attr('opacity', 0.95)
-        .attr('rx', 10)
-        .attr('stroke', '#3b82f6')
-        .attr('stroke-width', 1)
-        .attr('filter', 'drop-shadow(0 4px 6px rgba(0,0,0,0.4))')
-
-      prepared.seriesByKey.forEach((s, i) => {
-        const c = getColor(s.key)
-        const y = 10 + i * itemHeight + itemHeight / 2 // 상단 여백 제거
-
-        // 색상 인디케이터 (원형)
-        legend.append('circle')
-          .attr('cx', 18)
-          .attr('cy', y)
-          .attr('r', 6)
-          .attr('fill', c)
-          .attr('stroke', '#ffffff')
-          .attr('stroke-width', 2)
-          .attr('opacity', 0.9)
-
-        legend.append('text')
-          .attr('x', 36)
-          .attr('y', y + textHeight / 3)
-          .attr('fill', '#f1f5f9')
-          .attr('font-size', 12)
-          .attr('font-weight', '500')
-          .attr('font-family', 'Inter, -apple-system, BlinkMacSystemFont, sans-serif')
-          .text(lines[i])
-      })
     }
   }, [prepared, width, height, margin.left, margin.top, innerHeight, innerWidth, color, yLabel, multi, xTickSeconds, xTickCount, domainPaddingSeconds, xDomainSeconds])
 
   return (
     <div className="w-full overflow-hidden rounded-lg" style={{ background: '#0f172a' }}>
       <svg ref={ref} />
+      <div className="px-3 py-2 text-[11px] sm:text-xs text-slate-200 border-t border-slate-700 flex items-center gap-4 overflow-x-auto whitespace-nowrap">
+        {footerItems.length ? (
+          footerItems.map(item => (
+            <div key={item.key} className="inline-flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+              <span>{item.label}</span>
+            </div>
+          ))
+        ) : (
+          <span className="text-slate-400">-</span>
+        )}
+      </div>
     </div>
   )
 }
