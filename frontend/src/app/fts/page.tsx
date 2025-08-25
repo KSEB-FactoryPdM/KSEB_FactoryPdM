@@ -230,7 +230,7 @@ function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionS
       }
 
       const chart = am4core.create(containerId, am4maps.MapChart)
-      chart.geodata = geodata as unknown
+      chart.geodata = geodata as object
       chart.projection = new am4maps.projections.Miller()
       chart.chartContainer.wheelable = false
       chart.series.clear()
