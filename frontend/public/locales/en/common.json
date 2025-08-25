@@ -194,6 +194,27 @@
       "details": "Details"
     }
   },
+  "fts": {
+    "title": "FTS (Follow-the-Sun) Call Desk",
+    "subtitle": "Instant contact to factory managers by region",
+    "searchPlaceholder": "Search factory / manager / phone",
+    "factoryShortcut": "Factory shortcuts",
+    "map": "Map",
+    "selectedRegion": "Selected region: {{region}}",
+    "clickRegion": "Click a region to filter",
+    "clearRegion": "Clear selection",
+    "allContacts": "All contacts in {{country}}",
+    "regionContacts": "{{region}} contacts",
+    "korea": "South Korea",
+    "usa": "United States",
+    "noResults": "No results found",
+    "factoryName": "Factory",
+    "manager": "Manager",
+    "phone": "Phone",
+    "all": "All",
+    "total": "{{count}} results",
+    "clear": "clear"
+  },
   "monitoring": {
     "title": "Live Equipment Dashboard",
     "subtitle": "Visualize equipment health, anomalies, and sensor signals instantly.",

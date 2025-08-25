@@ -32,6 +32,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Phone, PhoneCall, Search as SearchIcon, X } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
+import { useTranslation } from 'react-i18next'
 
 // ---------------------------
 // Types & Mock Data
@@ -54,15 +55,84 @@ interface Factory {
 // If your local KR geodata uses Korean labels (e.g., '서울특별시'), update these to match.
 const FACTORIES: Factory[] = [
   // Korea examples
-  { id: 'kr-seoul-01', name: 'Seoul Plant A', country: 'KR', regionName: 'Seoul', manager: '김미정', phone: '+82-2-1234-5678' },
-  { id: 'kr-busan-01', name: 'Busan Plant', country: 'KR', regionName: 'Busan', manager: '이도현', phone: '+82-51-555-0101' },
-  { id: 'kr-gg-01', name: 'Gyeonggi Plant', country: 'KR', regionName: 'Gyeonggi-do', manager: '박지훈', phone: '+82-31-777-0909' },
+  {
+    id: 'kr-seoul-01',
+    name: 'Seoul Plant A',
+    country: 'KR',
+    regionName: 'Seoul',
+    manager: '김미정',
+    phone: '+82-2-1234-5678',
+  },
+  {
+    id: 'kr-busan-01',
+    name: 'Busan Plant',
+    country: 'KR',
+    regionName: 'Busan',
+    manager: '이도현',
+    phone: '+82-51-555-0101',
+  },
+  {
+    id: 'kr-gg-01',
+    name: 'Gyeonggi Factory',
+    country: 'KR',
+    regionName: 'Gyeonggi-do',
+    manager: '박지훈',
+    phone: '+82-31-777-0909',
+  },
+  {
+    id: 'kr-gg-02',
+    name: 'Sungkyunkwan Factory',
+    country: 'KR',
+    regionName: 'Gyeonggi-do',
+    manager: '정민수',
+    phone: '+82-31-888-0000',
+  },
+  {
+    id: 'kr-in-01',
+    name: 'Inha Factory',
+    country: 'KR',
+    regionName: 'Incheon',
+    manager: '최영희',
+    phone: '+82-32-222-3333',
+  },
 
   // USA examples
-  { id: 'us-ca-01', name: 'California Fab', country: 'US', regionName: 'California', manager: 'Ava Johnson', phone: '+1-415-555-0139' },
-  { id: 'us-tx-01', name: 'Texas Assembly', country: 'US', regionName: 'Texas', manager: 'Noah Davis', phone: '+1-512-555-0110' },
-  { id: 'us-ny-01', name: 'New York Hub', country: 'US', regionName: 'New York', manager: 'Liam Miller', phone: '+1-212-555-0188' }
+  {
+    id: 'us-ca-01',
+    name: 'California Fab',
+    country: 'US',
+    regionName: 'California',
+    manager: 'Ava Johnson',
+    phone: '+1-415-555-0139',
+  },
+  {
+    id: 'us-tx-01',
+    name: 'Texas Assembly',
+    country: 'US',
+    regionName: 'Texas',
+    manager: 'Noah Davis',
+    phone: '+1-512-555-0110',
+  },
+  {
+    id: 'us-ny-01',
+    name: 'New York Hub',
+    country: 'US',
+    regionName: 'New York',
+    manager: 'Liam Miller',
+    phone: '+1-212-555-0188',
+  },
 ]
+
+const REGION_LABELS: Record<string, { en: string; ko: string }> = {
+  'Seoul': { en: 'Seoul', ko: '서울' },
+  'Busan': { en: 'Busan', ko: '부산' },
+  'Gyeonggi-do': { en: 'Gyeonggi', ko: '경기' },
+  'Gyeonggi': { en: 'Gyeonggi', ko: '경기' },
+  'Incheon': { en: 'Incheon', ko: '인천' },
+  'California': { en: 'California', ko: '캘리포니아' },
+  'Texas': { en: 'Texas', ko: '텍사스' },
+  'New York': { en: 'New York', ko: '뉴욕' },
+}
 
 // ---------------------------
 // Utility helpers
@@ -76,6 +146,10 @@ function unique<T>(arr: T[]): T[] {
   return Array.from(new Set(arr))
 }
 
+function normalizeRegionName(name: string) {
+  return name.replace(/[-\s]/g, '').toLowerCase()
+}
+
 // ---------------------------
 // MapRegionPicker (amCharts v4)
 // ---------------------------
@@ -85,9 +159,10 @@ type MapRegionPickerProps = {
   height?: number | string
   highlightRegionName?: string | null
   onRegionSelect?: (regionName: string | null) => void
+  getRegionLabel: (name: string) => string
 }
 
-function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionSelect }: MapRegionPickerProps) {
+function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionSelect, getRegionLabel }: MapRegionPickerProps) {
   const chartRef = useRef<any>(null)
   const containerId = 'ftsMap'
 
@@ -120,6 +195,10 @@ function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionS
 
     const template = series.mapPolygons.template
     template.tooltipText = '{name}'
+    template.adapter.add('tooltipText', (_: any, target: any) => {
+      const name = (target.dataItem?.dataContext as any)?.name
+      return name ? getRegionLabel(name) : ''
+    })
     template.fill = am4core.color('#f4effc')
     template.stroke = am4core.color('#d9d6e5')
     template.togglable = true
@@ -159,7 +238,7 @@ function MapRegionPicker({ country, height = 420, highlightRegionName, onRegionS
       try { chart.dispose() } catch {}
       chartRef.current = null
     }
-  }, [country, highlightRegionName])
+  }, [country, highlightRegionName, getRegionLabel])
 
   return (
     <div className="w-full">
@@ -178,9 +257,10 @@ type CountryToggleProps = {
 }
 
 function CountryToggle({ value, onChange }: CountryToggleProps) {
+  const { t } = useTranslation('common')
   return (
     <div className="inline-flex rounded-2xl border bg-white shadow-sm overflow-hidden">
-      {([['US', 'United States'], ['KR', '대한민국']] as const).map(([code, label]) => {
+      {([['US', t('fts.usa')], ['KR', t('fts.korea')]] as const).map(([code, label]) => {
         const active = value === code
         return (
           <button
@@ -206,7 +286,8 @@ type SearchBoxProps = {
   placeholder?: string
 }
 
-function SearchBox({ value, onChange, placeholder = '공장명 / 관리자 / 전화번호 검색' }: SearchBoxProps) {
+function SearchBox({ value, onChange, placeholder }: SearchBoxProps) {
+  const { t } = useTranslation('common')
   return (
     <div className="relative w-full">
       <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -221,7 +302,7 @@ function SearchBox({ value, onChange, placeholder = '공장명 / 관리자 / 전
           type="button"
           onClick={() => onChange('')}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-gray-100"
-          aria-label="clear"
+          aria-label={t('fts.clear')}
         >
           <X className="h-4 w-4 text-gray-400" />
         </button>
@@ -237,6 +318,7 @@ type FactoryPillsProps = {
 }
 
 function FactoryPills({ factories, selectedFactoryId, onSelect }: FactoryPillsProps) {
+  const { t } = useTranslation('common')
   const sorted = useMemo(() => factories.slice().sort((a, b) => a.name.localeCompare(b.name)), [factories])
   const uniqueById = sorted // already unique
   return (
@@ -249,7 +331,7 @@ function FactoryPills({ factories, selectedFactoryId, onSelect }: FactoryPillsPr
         )}
         onClick={() => onSelect(null)}
       >
-        전체
+        {t('fts.all')}
       </button>
       {uniqueById.map((f) => (
         <button
@@ -270,28 +352,30 @@ function FactoryPills({ factories, selectedFactoryId, onSelect }: FactoryPillsPr
 }
 
 function DirectoryList({ items }: { items: Factory[] }) {
+function DirectoryList({ items, getRegionLabel }: { items: Factory[]; getRegionLabel: (name: string) => string }) {
+  const { t } = useTranslation('common')
   if (!items.length) {
     return (
-      <div className="text-sm text-gray-500 py-8 text-center">검색 결과가 없습니다.</div>
+      <div className="text-sm text-gray-500 py-8 text-center">{t('fts.noResults')}</div>
     )
   }
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
       <div className="grid grid-cols-12 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-600">
-        <div className="col-span-4">공장명</div>
-        <div className="col-span-4">관리자</div>
-        <div className="col-span-4">전화</div>
+        <div className="col-span-4">{t('fts.factoryName')}</div>
+        <div className="col-span-4">{t('fts.manager')}</div>
+        <div className="col-span-4">{t('fts.phone')}</div>
       </div>
       <div className="divide-y divide-gray-100">
         {items.map((f) => (
           <div key={f.id} className="grid grid-cols-12 items-center px-4 py-3 text-sm">
-            <div className="col-span-4 truncate" title={`${f.name} · ${f.regionName}`}>
+            <div className="col-span-4 truncate" title={`${f.name} · ${getRegionLabel(f.regionName)}`}>
               <div className="font-medium text-gray-900">{f.name}</div>
-              <div className="text-xs text-gray-500">{f.regionName}</div>
+              <div className="text-xs text-gray-500">{getRegionLabel(f.regionName)}</div>
             </div>
             <div className="col-span-4">
               <div className="font-medium text-gray-900">{f.manager}</div>
-              <div className="text-xs text-gray-500">{f.country === 'KR' ? '대한민국' : 'United States'}</div>
+              <div className="text-xs text-gray-500">{f.country === 'KR' ? t('fts.korea') : t('fts.usa')}</div>
             </div>
             <div className="col-span-4">
               <a href={`tel:${f.phone}`} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm hover:bg-gray-50">
@@ -311,10 +395,13 @@ function DirectoryList({ items }: { items: Factory[] }) {
 // ---------------------------
 
 export default function FTSPage() {
+  const { t, i18n } = useTranslation('common')
   const [country, setCountry] = useState<Country>('KR')
   const [search, setSearch] = useState('')
   const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null)
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
+
+  const getRegionLabel = (name: string) => REGION_LABELS[name]?.[i18n.language] || name
 
   // Factories filtered by country first
   const countryFactories = useMemo(() => FACTORIES.filter((f) => f.country === country), [country])
@@ -325,7 +412,9 @@ export default function FTSPage() {
   // Apply region filter when selected
   const regionFiltered = useMemo(() => {
     if (!selectedRegion) return countryFactories
-    return countryFactories.filter((f) => f.regionName.toLowerCase() === selectedRegion.toLowerCase())
+    return countryFactories.filter(
+      (f) => normalizeRegionName(f.regionName) === normalizeRegionName(selectedRegion)
+    )
   }, [countryFactories, selectedRegion])
 
   // Apply factory pill (specific factory)
@@ -362,8 +451,8 @@ export default function FTSPage() {
               <Phone className="h-5 w-5 text-violet-700" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold">FTS (Follow‑the‑Sun) Call Desk</h1>
-              <p className="text-sm text-gray-500">지역별 공장 책임자 즉시 연락</p>
+              <h1 className="text-xl font-semibold">{t('fts.title')}</h1>
+              <p className="text-sm text-gray-500">{t('fts.subtitle')}</p>
             </div>
           </div>
           <CountryToggle value={country} onChange={setCountry} />
@@ -372,11 +461,11 @@ export default function FTSPage() {
         {/* Controls */}
         <div className="mb-5 grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-7">
-            <SearchBox value={search} onChange={setSearch} placeholder="공장명 / 관리자 / 전화번호 검색" />
+            <SearchBox value={search} onChange={setSearch} placeholder={t('fts.searchPlaceholder')} />
           </div>
           <div className="col-span-12 lg:col-span-5">
             <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
-              <div className="mb-2 text-xs font-semibold text-gray-600">공장 바로가기</div>
+              <div className="mb-2 text-xs font-semibold text-gray-600">{t('fts.factoryShortcut')}</div>
               <FactoryPills factories={pillsFactories} selectedFactoryId={selectedFactoryId} onSelect={setSelectedFactoryId} />
             </div>
           </div>
@@ -388,12 +477,16 @@ export default function FTSPage() {
           <section className="col-span-12 lg:col-span-6">
             <div className="rounded-2xl border border-gray-100 p-3 shadow-sm">
               <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm font-semibold text-gray-700">지도</div>
+                <div className="text-sm font-semibold text-gray-700">{t('fts.map')}</div>
                 <div className="text-xs text-gray-500">
                   {selectedRegion ? (
-                    <span>선택 지역: <span className="font-medium text-violet-700">{selectedRegion}</span></span>
+                    <span>
+                      {t('fts.selectedRegion', {
+                        region: getRegionLabel(selectedRegion),
+                      })}
+                    </span>
                   ) : (
-                    <span>지역을 클릭해 필터링</span>
+                    <span>{t('fts.clickRegion')}</span>
                   )}
                 </div>
               </div>
@@ -402,6 +495,7 @@ export default function FTSPage() {
                 height={440}
                 highlightRegionName={selectedRegion}
                 onRegionSelect={(r) => setSelectedRegion(r)}
+                getRegionLabel={getRegionLabel}
               />
               {selectedRegion && (
                 <div className="mt-3 text-right">
@@ -410,7 +504,7 @@ export default function FTSPage() {
                     onClick={() => setSelectedRegion(null)}
                     className="text-xs text-gray-500 hover:text-gray-700 underline"
                   >
-                    지역 선택 해제
+                    {t('fts.clearRegion')}
                   </button>
                 </div>
               )}
@@ -421,11 +515,13 @@ export default function FTSPage() {
           <section className="col-span-12 lg:col-span-6">
             <div className="mb-2 flex items-baseline justify-between">
               <h2 className="text-sm font-semibold text-gray-700">
-                {selectedRegion ? `${selectedRegion} 지역 연락처` : (country === 'KR' ? '대한민국 전체 연락처' : 'United States — All contacts')}
+                {selectedRegion
+                  ? t('fts.regionContacts', { region: getRegionLabel(selectedRegion) })
+                  : t('fts.allContacts', { country: country === 'KR' ? t('fts.korea') : t('fts.usa') })}
               </h2>
-              <div className="text-xs text-gray-500">총 {finalList.length}건</div>
+              <div className="text-xs text-gray-500">{t('fts.total', { count: finalList.length })}</div>
             </div>
-            <DirectoryList items={finalList} />
+            <DirectoryList items={finalList} getRegionLabel={getRegionLabel} />
           </section>
         </div>
       </div>
