@@ -29,7 +29,20 @@
     "username": "Username",
     "password": "Password",
     "button": "Login",
-    "failed": "Login failed"
+    "failed": "Login failed",
+    "signupPrompt": "Don't have an account?",
+    "signupLink": "Sign up"
+  },
+  "signup": {
+    "title": "Sign Up",
+    "username": "Username",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "button": "Sign Up",
+    "failed": "Sign up failed",
+    "loginPrompt": "Already have an account?",
+    "loginLink": "Login"
   },
   "footer": {
     "version": "Version {{version}}",

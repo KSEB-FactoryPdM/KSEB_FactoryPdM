@@ -29,7 +29,20 @@
     "username": "사용자 이름",
     "password": "비밀번호",
     "button": "로그인",
-    "failed": "로그인 실패"
+    "failed": "로그인 실패",
+    "signupPrompt": "계정이 없으신가요?",
+    "signupLink": "회원가입"
+  },
+  "signup": {
+    "title": "회원가입",
+    "username": "사용자 이름",
+    "email": "이메일",
+    "password": "비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "button": "회원가입",
+    "failed": "회원가입 실패",
+    "loginPrompt": "이미 계정이 있으신가요?",
+    "loginLink": "로그인"
   },
   "footer": {
     "version": "버전 {{version}}",

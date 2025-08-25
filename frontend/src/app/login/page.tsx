@@ -145,6 +145,15 @@ export default function LoginPage() {
                 )}
               </Button>
             </form>
+            <p className="mt-4 text-center text-sm text-gray-600">
+              {t('login.signupPrompt', "Don't have an account?")}{' '}
+              <a
+                href="/signup"
+                className="text-blue-600 hover:underline"
+              >
+                {t('login.signupLink', 'Sign up')}
+              </a>
+            </p>
           </CardContent>
         </Card>
         {/* Secondary meta */}
